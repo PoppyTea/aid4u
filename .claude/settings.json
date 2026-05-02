@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "langfuse-docs": {
+      "type": "url",
+      "url": "https://mcp.langfuse.com",
+      "note": "Oficjalna dokumentacja Langfuse SDK v4 — WYMAGANE przed zmianami w core/observability/"
+    },
+    "logfire-docs": {
+      "type": "url",
+      "url": "https://mcp.pydantic.dev",
+      "note": "Oficjalna dokumentacja Logfire/Pydantic — używaj przed zmianami w instrumentacji i konfiguracji Logfire. Udostępnia też local_dev_session do tworzenia tymczasowych tokenów."
+    },
+    "context7": {
+      "type": "url",
+      "url": "https://mcp.context7.com/mcp",
+      "note": "Aktualna dokumentacja bibliotek — używaj gdy implementujesz coś zależnego od zewnętrznego SDK (FastAPI, httpx, Pydantic, tenacity)"
+    }
+  }
+}

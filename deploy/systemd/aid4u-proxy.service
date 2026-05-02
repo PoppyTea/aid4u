@@ -1,0 +1,25 @@
+[Unit]
+Description=aid4u — S01E03 proxy server
+After=network.target
+
+[Service]
+Type=simple
+User=twoj-user
+WorkingDirectory=/opt/aid4u
+Environment=PATH=/opt/aid4u/.venv/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=/opt/aid4u/.env
+
+# Uruchamia serwer dla konkretnego zadania
+# Gdy zadanie ma własny server.py, wskaż go tutaj:
+ExecStart=/opt/aid4u/.venv/bin/python -m tasks.s01e03_proxy.server
+
+# Restart przy awarii — VPS może mieć chwilowe problemy
+Restart=on-failure
+RestartSec=5s
+
+# Logi dostępne przez: journalctl -u aid4u-proxy -f
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

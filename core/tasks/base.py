@@ -1,0 +1,129 @@
+"""
+Template Method + Registry pattern.
+
+BaseTask definiuje SZKIELET algorytmu:
+    run() → fetch_data() → solve() → submit()
+
+Każde zadanie implementuje TYLKO solve() (i opcjonalnie fetch_data()).
+Reszta — timing, logowanie, tryb dry-run, submisja — jest wspólna.
+
+Registry Pattern:
+    @task("s01e01")
+    class PeopleTask(BaseTask): ...
+
+    TASK_REGISTRY["s01e01"] → PeopleTask
+"""
+from __future__ import annotations
+
+import time
+from abc import ABC, abstractmethod
+from typing import Any
+
+import logfire
+from rich.console import Console
+
+from core.hub import HubClient, LocalCache
+from core.llm import LLMClient
+
+_console = Console()
+
+# Registry: nazwa zadania → klasa
+TASK_REGISTRY: dict[str, type["BaseTask"]] = {}
+
+
+def task(name: str):
+    """
+    Dekorator rejestrujący zadanie w TASK_REGISTRY.
+
+    Użycie:
+        @task("s01e01")
+        class PeopleTask(BaseTask):
+            def solve(self, data):
+                ...
+    """
+    def decorator(cls: type["BaseTask"]) -> type["BaseTask"]:
+        TASK_REGISTRY[name] = cls
+        cls._task_name = name
+        return cls
+    return decorator
+
+
+class BaseTask(ABC):
+    """
+    Klasa bazowa dla wszystkich zadań kursu.
+
+    Template Method: run() definiuje stały przepływ,
+    fetch_data() i solve() mogą być nadpisane przez podklasy.
+    """
+
+    _task_name: str = ""
+
+    def __init__(
+        self,
+        hub: HubClient,
+        llm: LLMClient,
+        *,
+        dry_run: bool = False,
+    ) -> None:
+        self.hub = hub
+        self.llm = llm
+        self.cache = LocalCache(self._task_name or self.__class__.__name__)
+        self.dry_run = dry_run
+
+    # ─── Template Method — nie nadpisuj ──────────────────────────────────────
+
+    def run(self) -> str | None:
+        """
+        Główny przepływ zadania. Nie nadpisuj tej metody.
+        Zamiast tego implementuj fetch_data() i solve().
+        """
+        task_name = self._task_name or self.__class__.__name__
+        _console.print(f"\n[bold]Running task:[/] [cyan]{task_name}[/]")
+
+        with logfire.span(f"task.{task_name}"):
+            start = time.perf_counter()
+
+            try:
+                data = self.fetch_data()
+                answer = self.solve(data)
+                flag = self._submit(task_name, answer)
+            except Exception:
+                logfire.exception(f"Task {task_name} failed")
+                raise
+
+            elapsed = round(time.perf_counter() - start, 2)
+            logfire.info(f"Task {task_name} completed", elapsed_s=elapsed, flag=flag)
+
+        if flag:
+            _console.print(f"[bold green]✓ Flag:[/] {flag}")
+        return flag
+
+    def _submit(self, task_name: str, answer: Any) -> str | None:
+        if self.dry_run:
+            _console.print(f"[yellow]DRY RUN — answer would be:[/] {str(answer)[:300]}")
+            return None
+
+        response = self.hub.submit(task_name, answer)
+        return self.hub.get_flag(response)
+
+    # ─── Do implementacji w zadaniu ───────────────────────────────────────────
+
+    def fetch_data(self) -> Any:
+        """
+        Opcjonalny krok pobierania danych.
+        Domyślnie: brak danych (None). Nadpisz gdy zadanie wymaga pobrania.
+        """
+        return None
+
+    @abstractmethod
+    def solve(self, data: Any) -> Any:
+        """
+        JEDYNA metoda którą MUSISZ zaimplementować.
+
+        Args:
+            data: Wynik fetch_data() (domyślnie None)
+
+        Returns:
+            Odpowiedź do wysłania do /verify (string, dict, list — zależnie od zadania)
+        """
+        ...

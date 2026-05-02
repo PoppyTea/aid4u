@@ -1,0 +1,42 @@
+# Claude Code — lokalne nadpisania (nie commituj)
+.claude/settings.local.json
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+
+# Środowisko
+.env
+.env.vps
+.env*
+.env.*
+.zed/*
+
+# Foldery pomocnicze
+.help
+/**/.help/**/*
+.tw_task
+/**/.tw_task/**/*
+
+# Cache danych z hubu (nie commituj — każdy ma swój apikey)
+.cache/
+
+# Flagi (opcjonalnie — możesz commitować żeby śledzić postępy)
+# .flags.json
+
+# Logi
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Coverage
+.coverage
+html[cov]/
+
+# uv
+uv.lock

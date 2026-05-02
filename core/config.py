@@ -1,0 +1,106 @@
+"""
+Singleton konfiguracji projektu.
+
+Klucze API pobierane z OS keychain (keyring), z fallbackiem do .env.
+Keyring jest bezpieczniejszy niż .env — klucze nie trafiają do historii gita.
+
+Ustawianie kluczy przez keyring:
+    keyring set aid4u APIKEY
+    keyring set aid4u ANTHROPIC_API_KEY
+
+Fallback do .env (przydatny na VPS gdzie keyring może być niedostępny):
+    cp .env.example .env && vim .env
+"""
+from __future__ import annotations
+
+import os
+from functools import lru_cache
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).parent.parent / ".env")
+
+_KEYRING_SERVICE = "aid4u"
+
+
+class Config:
+    """Singleton. Klucze z keyring, fallback do env."""
+
+    def __init__(self) -> None:
+        self._cache: dict[str, str] = {}
+
+    def get(self, key: str, *, required: bool = True) -> str:
+        if key not in self._cache:
+            value = self._from_keyring(key) or os.getenv(key, "")
+            if not value and required:
+                raise ValueError(
+                    f"Brak klucza: {key}\n"
+                    f"Ustaw przez keyring:  keyring set {_KEYRING_SERVICE} {key}\n"
+                    f"Lub dodaj do .env:    {key}=wartość"
+                )
+            self._cache[key] = value
+        return self._cache[key]
+
+    def _from_keyring(self, key: str) -> str:
+        try:
+            import keyring
+            return keyring.get_password(_KEYRING_SERVICE, key) or ""
+        except Exception:
+            return ""
+
+    # ─── Convenience properties ───────────────────────────────────────────────
+
+    @property
+    def apikey(self) -> str:
+        return self.get("APIKEY")
+
+    @property
+    def anthropic_key(self) -> str:
+        return self.get("ANTHROPIC_API_KEY")
+
+    @property
+    def openai_key(self) -> str:
+        return self.get("OPENAI_API_KEY", required=False)
+
+    @property
+    def gemini_key(self) -> str:
+        return self.get("GEMINI_API_KEY", required=False)
+
+    @property
+    def langfuse_public_key(self) -> str:
+        return self.get("LANGFUSE_PUBLIC_KEY", required=False)
+
+    @property
+    def langfuse_secret_key(self) -> str:
+        return self.get("LANGFUSE_SECRET_KEY", required=False)
+
+    @property
+    def langfuse_host(self) -> str:
+        return os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
+
+    @property
+    def logfire_token(self) -> str:
+        # Write token tylko — Read token NIE jest potrzebny.
+        # Utwórz na: https://logfire.pydantic.dev → projekt → Settings → Write Tokens
+        return self.get("LOGFIRE_TOKEN", required=False)
+
+    @property
+    def langfuse_environment(self) -> str:
+        # Oddziela trace z różnych środowisk (dev/prod) w Langfuse UI.
+        # Ustaw przez env var: LANGFUSE_TRACING_ENVIRONMENT=dev
+        return os.getenv("LANGFUSE_TRACING_ENVIRONMENT", "dev")
+
+    @property
+    def hub_base_url(self) -> str:
+        return os.getenv("HUB_BASE_URL", "https://hub.ag3nts.org")
+
+    @property
+    def vps_host(self) -> str:
+        return self.get("VPS_HOST", required=False)
+
+
+@lru_cache(maxsize=1)
+def get_config() -> Config:
+    """Zwraca singleton Config. Bezpieczne do wielokrotnego wywoływania."""
+    return Config()
