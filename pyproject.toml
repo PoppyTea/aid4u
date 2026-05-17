@@ -2,45 +2,38 @@
 name = "aid4u"
 version = "0.1.0"
 description = "AI Devs 4 — task runner"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
     # LLM providers
     "anthropic>=0.40",
     "openai>=1.50",
+    "google-genai>=2.1.0"
+    # deprecieted (refactor needed)!!!
     "google-generativeai>=0.8",
-
     # Observability — musi być zainicjalizowane jako PIERWSZE (przed jakimkolwiek I/O)
-    "logfire>=2.0",
+    "logfire[httpx]>=2.0",
     "logfire-api>=2.0",
     "langfuse>=2.50",
-
-    # Cost tracking
-    "genai-prices>=0.3",
-
     # HTTP + server
     "httpx>=0.27",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.32",
-
     # Data + validation
     "pydantic>=2.9",
     "openapi-pydantic>=0.4",
-
     # CLI + UX
     "typer>=0.13",
     "prompt-toolkit>=3.0",
     "rich>=13.0",
-
     # Security / secrets
     "keyring>=25.0",
     "python-dotenv>=1.0",
-
     # Niezawodność
     "tenacity>=9.0",
 ]
 
-[tool.uv]
-dev-dependencies = [
+[dependencies-groups]
+dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "pytest-mock>=3.14",
@@ -78,3 +71,6 @@ typeCheckingMode = "basic"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["core", "tasks", "scripts"]

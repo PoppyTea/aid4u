@@ -17,8 +17,10 @@ dist/
 # Foldery pomocnicze
 .help
 /**/.help/**/*
+
 .tw_task
 /**/.tw_task/**/*
+
 
 # Cache danych z hubu (nie commituj — każdy ma swój apikey)
 .cache/
@@ -26,8 +28,6 @@ dist/
 # Flagi (opcjonalnie — możesz commitować żeby śledzić postępy)
 # .flags.json
 
-# Logi
-*.log
 
 # IDE
 .idea/
@@ -40,3 +40,7 @@ html[cov]/
 
 # uv
 uv.lock
+
+# filetypes
+*.txt
+*.log
