@@ -1,4 +1,4 @@
-# Instrukcja dla agenta: dekompozycja zadania → JSON dla ./scripts/tw-import.py
+# Instrukcja dla agenta: dekompozycja zadania → JSON
 
 ## Kontekst
 
