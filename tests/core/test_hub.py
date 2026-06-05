@@ -77,5 +77,6 @@ class TestHubClientSubmit:
         # Verify logfire.info was called to log the submission but redacted the answer
         mock_logfire.assert_any_call(
             "Submitting task secret_task",
-            answer_preview="***REDACTED***"
+            answer_preview="<str> (len: 28)"
         )
+        assert secret_answer not in str(mock_logfire.call_args_list)
