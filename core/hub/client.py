@@ -39,7 +39,7 @@ class HubClient:
             Sprawdź get_flag(response) aby wyciągnąć flagę.
         """
         payload = {"apikey": self._apikey, "task": task, "answer": answer}
-        logfire.info(f"Submitting task {task}", answer_preview=str(answer)[:100])
+        logfire.info(f"Submitting task {task}", answer_preview="***REDACTED***")
 
         response = self._http.post(f"{self._base_url}/verify", json=payload)
         response.raise_for_status()
