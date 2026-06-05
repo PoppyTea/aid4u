@@ -13,7 +13,16 @@
     "context7": {
       "type": "url",
       "url": "https://mcp.context7.com/mcp",
-      "note": "Aktualna dokumentacja bibliotek — używaj gdy implementujesz coś zależnego od zewnętrznego SDK (FastAPI, httpx, Pydantic, tenacity)"
+      "note": "Aktualna dokumentacja bibliotek — używaj gdy implementujesz coś zależnego od zewnętrznego SDK (FastAPI, httpx, Pydantic, tenacity).\n Wymaga tokenu dostępnego przez keyring."
     }
+  },
+  "permissions": {
+      "deny":[
+          "Read(./.env)",
+          "Read(./**/secrets/**)",
+          "Read(**/.aws/*)",
+          "Read(**/.ssh/*)"
+        ]
+      
   }
 }
