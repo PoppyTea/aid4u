@@ -64,6 +64,10 @@ class Config:
         return self.get("OPENAI_API_KEY", required=False)
 
     @property
+    def openrouter_key(self) -> str:
+        return self.get("OPENROUTER_API_KEY", required=False)
+
+    @property
     def gemini_key(self) -> str:
         return self.get("GEMINI_API_KEY", required=False)
 

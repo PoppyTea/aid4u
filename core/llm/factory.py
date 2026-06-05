@@ -44,7 +44,13 @@ def create_provider(model: str, config: Config) -> LLMProvider:
             raise ValueError("GEMINI_API_KEY nie jest ustawiony")
         return GeminiAdapter(api_key=config.gemini_key, model=model)
 
+    if model_lower.startswith("openrouter/"):
+        from core.llm.adapters.openrouter import OpenRouterAdapter
+        if not config.openrouter_key:
+            raise ValueError("OPENROUTER_API_KEY nie jest ustawiony")
+        return OpenRouterAdapter(api_key=config.openrouter_key, model=model)
+
     raise ValueError(
         f"Nieznany prefix modelu: '{model}'. "
-        "Obsługiwane: claude-*, gemini-*, gpt-*, o1-*, o3-*, o4-*"
+        "Obsługiwane: claude-*, gemini-*, gpt-*, o1-*, o3-*, o4-*, openrouter/*"
     )
