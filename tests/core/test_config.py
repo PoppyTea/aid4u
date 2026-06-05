@@ -108,10 +108,16 @@ def test_get_config_singleton():
 
 
 def test_from_keyring_exception(clean_config):
-    with patch("keyring.get_password", side_effect=Exception("keyring error")):
+    from unittest.mock import MagicMock
+    mock_keyring = MagicMock()
+    mock_keyring.get_password.side_effect = Exception("keyring error")
+    with patch.dict("sys.modules", {"keyring": mock_keyring}):
         assert clean_config._from_keyring("ANY_KEY") == ""
 
 
 def test_from_keyring_success(clean_config):
-    with patch("keyring.get_password", return_value="secret_key"):
+    from unittest.mock import MagicMock
+    mock_keyring = MagicMock()
+    mock_keyring.get_password.return_value = "secret_key"
+    with patch.dict("sys.modules", {"keyring": mock_keyring}):
         assert clean_config._from_keyring("ANY_KEY") == "secret_key"
