@@ -62,3 +62,21 @@ class TestHubClientSubmit:
         )
         with pytest.raises(httpx.HTTPStatusError):
             self.hub.submit("people", "bad")
+
+    def test_submit_redacts_answer_in_log(self, mocker):
+        # Setup mock for logfire
+        mock_logfire = mocker.patch("core.hub.client.logfire.info")
+
+        respx.post("https://hub.ag3nts.org/verify").mock(
+            return_value=httpx.Response(200, json={"message": "{FLG:OK}"})
+        )
+
+        secret_answer = "SUPER_SECRET_ANSWER_DATA_123"
+        self.hub.submit("secret_task", secret_answer)
+
+        # Verify logfire.info was called to log the submission but redacted the answer
+        expected_preview = "SUP****123<str> (len: 28)"
+        mock_logfire.assert_any_call(
+            "Submitting task secret_task",
+            answer_preview=expected_preview
+        )
