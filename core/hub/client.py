@@ -40,7 +40,7 @@ class HubClient:
         """
         payload = {"apikey": self._apikey, "task": task, "answer": answer}
         answer_str = str(answer)
-        preview = (f"{answer_str[:3]}****{answer_str[-3:]}") + (f"<{type(answer).__name__}>") + (f" (len: {len(answer)})" if hasattr(answer, "__len__") else "")
+        preview = (f"{answer_str[:3]}****{answer_str[-3:]}") + (f" <{type(answer).__name__}>") + (f" (len: {len(answer)})" if hasattr(answer, "__len__") else "")
         logfire.info(f"Submitting task {task}", answer_preview=preview)
 
         response = self._http.post(f"{self._base_url}/verify", json=payload)
