@@ -104,7 +104,8 @@ class TestAgentLoop:
         )
         assert mock_provider.complete_with_tools.call_count == 3
 
-    def test_tool_executor_error_doesnt_crash_loop(self, llm, mock_provider):
+    @patch('logfire.exception')
+    def test_tool_executor_error_doesnt_crash_loop(self, mock_logfire_exception, llm, mock_provider):
         tool_call = ToolCall(id="c1", name="broken", arguments={})
         mock_provider.complete_with_tools.side_effect = [
             make_response("", tool_calls=[tool_call]),
@@ -120,3 +121,4 @@ class TestAgentLoop:
             tool_executor=bad_executor,
         )
         assert result == "Mimo błędu kontynuuję"
+        mock_logfire_exception.assert_called_once_with("Tool broken failed")
