@@ -12,6 +12,6 @@ class OpenRouterAdapter(OpenAIAdapter):
         # OpenRouter models often have the `openrouter/` prefix stripped if we just use the rest,
         # but the OpenRouter API accepts the full model name e.g. "anthropic/claude-3-opus",
         # so we strip the 'openrouter/' prefix.
-        if model.startswith("openrouter/"):
+        if model.lower().startswith("openrouter/"):
             model = model[11:]
         self._model = model
