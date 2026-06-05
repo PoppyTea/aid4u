@@ -75,7 +75,7 @@ class TestHubClientSubmit:
         self.hub.submit("secret_task", secret_answer)
 
         # Verify logfire.info was called to log the submission but redacted the answer
-        expected_preview = "SUP****123<str> (len: 28)"
+        expected_preview = "SUP****123 <str> (len: 28)"
         mock_logfire.assert_any_call(
             "Submitting task secret_task",
             answer_preview=expected_preview
