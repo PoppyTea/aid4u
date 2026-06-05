@@ -100,9 +100,11 @@ def test_properties_env_direct_defaults(clean_config):
 
 def test_get_config_singleton():
     # Zwraca ten sam obiekt ze względu na cache
+    get_config.cache_clear()
     config1 = get_config()
     config2 = get_config()
     assert config1 is config2
+    get_config.cache_clear()
 
 
 def test_from_keyring_exception(clean_config):
