@@ -27,7 +27,7 @@ from tasks.s01e01_people.solution import (
 
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
 
-SAMPLE_CSV ="""\
+SAMPLE_CSV = """\
 name,surname,gender,born,city,job
 Jan,Kowalski,M,1990,Grudziądz,kierowca TIR-a
 Anna,Nowak,F,1995,Warszawa,lekarz
