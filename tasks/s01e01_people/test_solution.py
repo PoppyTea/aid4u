@@ -27,7 +27,7 @@ from tasks.s01e01_people.solution import (
 
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
 
-SAMPLE_CSV = b"""\
+SAMPLE_CSV = """\
 name,surname,gender,born,city,job
 Jan,Kowalski,M,1990,Grudziądz,kierowca TIR-a
 Anna,Nowak,F,1995,Warszawa,lekarz
@@ -36,7 +36,7 @@ Maria,Wójcik,F,1992,Grudziądz,nauczycielka
 Tomasz,Zieliński,M,2000,Grudziądz,programista
 Krzysztof,Dąbrowski,M,1980,Grudziądz,spedytor
 Marek,Lewandowski,M,1988,Gdańsk,kierowca autobusu
-"""
+""".encode("utf-8")
 
 
 @pytest.fixture

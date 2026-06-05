@@ -67,5 +67,5 @@ class LocalCache:
             path.unlink()
 
     def _key_to_path(self, key: str) -> Path:
-        safe_name = hashlib.md5(key.encode()).hexdigest()
+        safe_name = hashlib.sha256(key.encode()).hexdigest()
         return self._dir / safe_name
