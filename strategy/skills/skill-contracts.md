@@ -1,0 +1,164 @@
+# Skill Contracts — aid4u Ecosystem
+
+> Definicje interfejsów między skillami (S2S) oraz granice odpowiedzialności.
+> Claude jest connectorem — czyta oba skille i obsługuje przejście.
+> Ten plik to mapa referencyjna, nie kod wykonywalny.
+
+---
+
+## S2S Interface: aid4u-task-kickoff → 001-papaver-tw-integration
+
+**Trigger:** kickoff kończy fazę [c] i produkuje output.
+
+### Outputs (kickoff emits)
+
+```markdown
+## Task Breakdown — sXXeYY [tytuł] (MVP)
+
+### +goals
+- [ ] [Cel główny — description]
+
+### +core_task (≤3h każdy)
+- [ ] [Krok A] — depends: goal
+- [ ] [Krok B] — depends: goal
+
+### +std_task (≤30min) [opcjonalne]
+- [ ] [Akcja A.1] — depends: Krok A
+     DONE when: [kryterium]
+
+### Backlog
+- [Pomysł X] — za duże na MVP
+```
+
+### Inputs (tw-integration expects)
+
+- Lista tasków w formacie powyżej ALBO
+- Wolny tekst z opisem scope (tw-integration parsuje sam) ALBO
+- Bezpośrednie polecenie użytkownika ("dodaj task: ...")
+
+tw-integration jest **odbiornikiem** — nie inicjuje dekompozycji.
+
+---
+
+## S2S Interface: 001-papaver-tw-integration → neurodivergent-visual-org
+
+**Trigger:** stuck workflow (użytkownik utknął na goals/core_task/std_task).
+
+### Outputs (tw-integration emits)
+
+```
+Aktywny task: [ID] [opis] [tag poziomu]
+Kontekst: projekt [nazwa], zależności [UUID list]
+Prośba: rozbij jeden poziom niżej
+```
+
+### Inputs (visual-org expects)
+
+Dowolny opis tasku + poziom hierarchii → produkuje listę subtasków.
+
+### Returns (visual-org → tw-integration)
+
+Lista subtasków gotowa do zapisania w scratchpad + ewentualny graf Mermaid.
+tw-integration decyduje które dodać do TW (first + `(...)` + last).
+
+---
+
+## S2S Interface: aid4u-task-kickoff → aid4u-learning-mode
+
+**Trigger:** tag `+difficult` wykryty podczas wywiadu.
+
+### Outputs (kickoff emits)
+
+```
+Temat: [nazwa tematu]
+Score: [N] (z topic-scores.json)
+Kontekst trudności: [opis z wywiadu]
+Zadanie: sXXeYY
+```
+
+### Inputs (learning-mode expects)
+
+Temat + opcjonalny kontekst → produkuje materiały do nauki.
+
+---
+
+## Boundary: tw-ecosystem vs 004-cat-decompose-task
+
+**Fundamentalna różnica perspektywy:**
+
+| Skill | Perspektywa | Pytanie |
+|-------|------------|---------|
+| `001-papaver-tw-integration` + `neurodivergent-visual-org` | **Użytkownik (Papaver)** | "Co *ja* muszę zrobić?" |
+| `004-cat-decompose-task` | **Agent AI** | "Jakie *kroki agenta* są potrzebne?" |
+
+**Praktyczna zasada:**
+- Tworzysz taski dla siebie → `tw-integration`
+- Planujesz co agent ma zrobić w kodzie → `cat-decompose-task`
+- Overlap jest możliwy (np. task "napisz testy" może wewnętrznie używać cat-decompose)
+
+**Plik strategii:** `strategy/workflow.md` (do stworzenia) powinien zawierać
+pełniejszy opis przepływu z obu perspektyw.
+
+---
+
+## Feed: difficult-topics.md
+
+**Status:** Aktywny (zapisywanie) — konsumpcja częściowo backlog (faza [e]).
+
+**Produkuje:** `aid4u-task-kickoff` (przy tagach +difficult, +new_topic)
+
+**Konsumuje (obecne):**
+- `aid4u-learning-mode` — przy delegacji `+difficult`, dostaje kontekst z pliku
+- `neurodivergent-visual-org` — informacja o energochłonnych tematach (Spoon Theory)
+
+**Konsumuje (backlog — faza [e]):**
+- `aid4u-review-capture` — generowanie materiałów powtórkowych
+- `aid4u-quiz` — seed dla pytań o wysokim priorytecie
+
+**Nagłówek w pliku:**
+```markdown
+# difficult-topics.md — Brudnopis Trudnych Tematów
+# Status: Aktywny (zapis) | Konsumpcja → patrz skill-contracts.md
+# Faza [e] (pełna konsumpcja): BACKLOG — wdrożenie po kursie
+```
+
+---
+
+## Cheatsheet Format Standard
+
+Na podstawie przykładów z Obsidian vault (CopyQ cheatsheets):
+
+```yaml
+---
+data_utworzenia: RRRR-MM-DDTHH:MM:SS
+title: "Cheatsheet [Temat]"
+parent note: "[Nazwa notatki nadrzędnej]"
+tags:
+  - aid4u
+  - cheatsheet
+  - sXXeYY
+topic: "[nazwa tematu]"
+score: N
+---
+```
+
+Użyj calloutów Obsidian: `> [!tip]`, `> [!warning]`, `> [!info]`
+Wikilinki do powiązanych notatek na końcu.
+
+---
+
+## Backlog — nierozstrzygnięte
+
+**TDD cycle tags (punkt 4 z sesji):**
+- TW tagi: +tdd_red / +tdd_green / +tdd_refactor (cascade przez hook)
+- Eskalacja do `~/.config/tdd-signal` dla apletów na pasku
+- Hook `on-modify.tdd-cycle` (Python, analogia do friction-tracker) — łatwe
+- Aplet desktopowy — osobny projekt
+
+**cat-decompose-task feed dla difficult-topics:**
+- Idea: im wyższy score tematu, tym prostsze koncepcyjnie rozwiązania proponuje agent
+- Wymaga zdefiniowania `cat-decompose-task` → do dyskusji po kursie
+
+**Generalizacja gamifikacji poza aid4u:**
+- `project_tag` jako parametr konfiguracyjny w `gamification.toml`
+- Multi-project player state (osobne `.game/` per projekt)
