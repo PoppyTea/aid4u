@@ -1,0 +1,12 @@
+{
+  "_comment": "Stan gracza NeuroWarrior. Modyfikowany przez hooki i skrypty — nie ręcznie.",
+  "_config": "Wartości konfiguracyjne (progi, XP) są w gamification.toml",
+  "xp": 0,
+  "tasks_completed": 0,
+  "current_level": 0,
+  "current_title": "—",
+  "streak_days": 0,
+  "last_activity_date": null,
+  "level_crossings": [],
+  "session_history": []
+}

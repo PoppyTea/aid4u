@@ -1,0 +1,67 @@
+# gamification.toml
+# Konfiguracja systemu NeuroWarrior dla aid4u.
+# Modyfikuj tutaj — nie w SKILL.md ani strategy/.
+# Odczytywany przez: aid4u-neurowarrior-progress, on-modify.friction-tracker
+
+[course]
+total_tasks = 25
+goal_tasks  = 20          # minimum do zaliczenia kursu
+
+[levels]
+# Progi i metadane tierów. Skill czyta tę listę dynamicznie.
+[[levels.tiers]]
+min = 1;  max = 4;  title = "Initiate";     emoji = "🌱"; milestone = "Pierwsze kroki"
+[[levels.tiers]]
+min = 5;  max = 8;  title = "Apprentice";   emoji = "⚡"; milestone = "Rozpoznawanie wzorców"
+[[levels.tiers]]
+min = 9;  max = 12; title = "Practitioner"; emoji = "🔧"; milestone = "Budowanie fluency"
+[[levels.tiers]]
+min = 13; max = 16; title = "Expert";       emoji = "🎯"; milestone = "Głęboka kompetencja"
+[[levels.tiers]]
+min = 17; max = 20; title = "Master";       emoji = "🏆"; milestone = "CEL KURSU (≥20/25)"; is_goal = true
+[[levels.tiers]]
+min = 21; max = 25; title = "Grand Master"; emoji = "🌟"; milestone = "Pełne ukończenie"
+
+[xp]
+# Formuła: base_points * season_coeff * task_coeff * step_count
+base_points = 10
+
+[xp.task_coefficients]
+goals     = 1.0
+core_task = 0.7
+std_task  = 0.4
+micro_task = 0.0   # micro-taski nie dają XP (świadoma decyzja)
+
+[xp.season_coefficients]
+s01 = 1.0
+s02 = 1.5
+s03 = 2.5
+s04 = 4.0
+s05 = 6.0
+
+[streak]
+grace_hours = 26   # okno przed utratą serii (buffer na późne wieczory)
+
+[dopamine_messages]
+# Klucze: warunek → wiadomość. Skill dobiera pierwszą pasującą.
+level_5_reached  = "🎉 KURS ZALICZONY! Cel osiągnięty — masz ≥20/25. Świętuj."
+level_6_reached  = "🌟 GRAND MASTER. Pełne ukończenie kursu. Epicki wynik."
+level_up         = "⬆️ LEVEL UP! Witaj na poziomie {title} {emoji}"
+streak_7         = "🔥 Tygodniowa seria! Wyjątkowa konsekwencja."
+streak_3         = "🔥 {streak}-dniowa seria. Tak trzymaj."
+regular          = "💪 {tasks_to_master} zadań do Master. Możesz to zrobić."
+no_tasks         = "🌱 Pierwsze zadanie czeka. Wpisz: task focus"
+
+[paths]
+# Ścieżki względem PROJECT_ROOT (lub HOME jeśli PROJECT_ROOT nie ustawiony)
+player_state = ".game/player.json"
+config_self  = ".game/gamification.toml"  # self-reference dla skryptów
+
+# --- BACKLOG ---
+# [xp.difficulty_multipliers]
+# difficult = 1.5   # +50% XP za zadania z tagiem +difficult
+# new_topic = 1.2   # +20% XP za +new_topic
+#
+# [generalization]
+# enable_multi_project = false
+# project_tag = "aid4u"   # tag TW identyfikujący projekt
