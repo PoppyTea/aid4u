@@ -15,10 +15,10 @@ dist/
 .zed/*
 
 # Foldery pomocnicze
-.help
-/**/.help/**/*
-
-.tw_task
+.help/
+.tw_task/
+agents/
+4th-devs/
 /**/.tw_task/**/*
 
 
