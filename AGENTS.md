@@ -161,5 +161,9 @@ When the user requests a durable behavior change, record it here or in the relev
 
 ## Child DOX Index
 
-This project is not yet indexed. Before continuing you must scan the project, build the DOX tree and replace this message with the actual index. Go deep and scan files recursively to properly evaluate complexity and create nested DOX files where needed.
+- `core/`: System architecture, LLM and task management base.
+- `strategy/`: Project strategic documentation and workflows.
+- `tasks/`: Task execution and course exercises.
+- `tests/`: Project test suite and verification logic.
+- `../misje-poboczne/`: Side missions and specific project artifacts.
 
