@@ -1,10 +1,10 @@
-"""Adapter: Google Generative AI SDK → LLMProvider."""
+"""Adapter: Google GenAI SDK → LLMProvider."""
 from __future__ import annotations
 
-import json
 from typing import TypeVar
 
 from pydantic import BaseModel
+from pydantic_core.core_schema import ErrorType
 
 from core.llm.base import LLMProvider
 from core.llm.types import LLMMessage, LLMResponse, Tool
@@ -14,9 +14,8 @@ T = TypeVar("T", bound=BaseModel)
 
 class GeminiAdapter(LLMProvider):
     def __init__(self, api_key: str, model: str = "gemini-2.5-flash") -> None:
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        self._genai = genai
+        from google import genai
+        self._client = genai.Client(api_key=api_key)
         self._model_name = model
 
     @property
@@ -31,16 +30,24 @@ class GeminiAdapter(LLMProvider):
         max_tokens: int = 1024,
         temperature: float = 0.0,
     ) -> LLMResponse:
-        model = self._genai.GenerativeModel(
-            model_name=self._model_name,
-            system_instruction=system,
-        )
+        from google.genai import types
+
+        # Zachowujemy dotychczasową logikę łączenia wiadomości w jeden prompt,
+        # aby zminimalizować zmiany w zachowaniu modułu.
         prompt = "\n".join(f"{m.role}: {m.content}" for m in messages)
-        config = self._genai.types.GenerationConfig(
+
+        config = types.GenerateContentConfig(
+            system_instruction=system,
             max_output_tokens=max_tokens,
             temperature=temperature,
         )
-        response = model.generate_content(prompt, generation_config=config)
+
+        response = self._client.models.generate_content(
+            model=self._model_name,
+            contents=prompt,
+            config=config,
+        )
+
         usage = response.usage_metadata
         return LLMResponse(
             content=response.text,
@@ -56,11 +63,32 @@ class GeminiAdapter(LLMProvider):
         *,
         system: str | None = None,
     ) -> T:
-        schema_str = json.dumps(schema.model_json_schema(), ensure_ascii=False)
-        system_prompt = (system or "") + f"\nRespond ONLY with valid JSON: {schema_str}"
-        response = self.complete(messages, system=system_prompt, max_tokens=4096)
-        content = response.content.strip().lstrip("```json").rstrip("```").strip()
-        return schema.model_validate_json(content)
+        from google.genai import types
+
+        prompt = "\n".join(f"{m.role}: {m.content}" for m in messages)
+
+        # Nowy SDK wspiera natywnie response_schema (Pydantic),
+        # co eliminuje potrzebę ręcznego parsowania JSON-a z Markdowna.
+        config = types.GenerateContentConfig(
+            system_instruction=system,
+            max_output_tokens=4096,
+            response_mime_type="application/json",
+            response_schema=schema,
+        )
+
+        response = self._client.models.generate_content(
+            model=self._model_name,
+            contents=prompt,
+            config=config,
+        )
+
+        # Jeżeli SDK sparsowało odpowiedź do modelu Pydantic (response.parsed), używamy go.
+        # W przeciwnym razie parsujemy surowy tekst.
+        if response.parsed:
+            return response.parsed  # type: ignore
+        elif response.text is None:
+            raise TypeError("Response text is None")
+        return schema.model_validate_json(response.text)
 
     def complete_with_tools(
         self,
