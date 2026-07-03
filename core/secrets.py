@@ -17,6 +17,25 @@ from pathlib import Path
 from typing import Optional
 from functools import lru_cache
 
+# Lista kluczy domyślnie sprawdzanych w SecretsManager.list()
+default_keys:list[str] = [
+    "APIKEY",
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "GEMINI_API_KEY",
+    "OPENROUTER_API_KEY",
+    "OPENROUTER_FREE_API_KEY",
+    "LANGFUSE_PUBLIC_KEY",
+    "LANGFUSE_SECRET_KEY",
+    "LOGFIRE_TOKEN",
+    "LOGFIRE_BASE_URL",
+    "LM_STUDIO_KEY_AGENT",
+    "LM_STUDIO_API_KEY_FIM",
+    "VPS_HOST",
+    "VPS_PORT_SSH",
+    "VPS_PORT_MOSH",
+    "VPS_PORT_TCP"
+]
 
 class SecretsManager:
     """Menadżer sekreów z systemowego keyring + fallback do .env."""
@@ -64,22 +83,13 @@ class SecretsManager:
         except keyring.errors.PasswordDeleteError:
             print(f"⚠️  Key not found in keyring: {key}")
 
-    def list(self) -> dict[str, bool]:
+
+    def list(self, keys_list: list[str]=default_keys) -> dict[str, bool]:
         """Wyświetl dostępne sekrety (bez wartości!)."""
         # Nie możemy wylistować, ale możemy sprawdzić znane klucze
-        known_keys = [
-            "APIKEY",
-            "ANTHROPIC_API_KEY",
-            "OPENAI_API_KEY",
-            "GEMINI_API_KEY",
-            "LANGFUSE_PUBLIC_KEY",
-            "LANGFUSE_SECRET_KEY",
-            "LOGFIRE_TOKEN",
-            "VPS_HOST",
-        ]
 
         result = {}
-        for key in known_keys:
+        for key in keys_list:
             try:
                 exists = keyring.get_password(self.service, key) is not None
                 result[key] = exists
