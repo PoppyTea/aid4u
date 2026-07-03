@@ -4,6 +4,7 @@ Import sekrety z sekcji keyring w .env do systemowego keyring.
 
 Użycie:
     uv run scripts/import_keyring.py           # Import wszystkich kluczy
+    uv run import-keyring.py --limited         # Import tylko kluczy z listy
     uv run scripts/import_keyring.py --force   # Nadpisz istniejące
     uv run scripts/import_keyring.py --check   # Tylko sprawdzenie
 """
@@ -19,6 +20,7 @@ import keyring
 
 
 KEYRING_SERVICE = "aid4u"
+LIMITED_KEYS = False
 KEYRING_KEYS = [
     "APIKEY",
     "ANTHROPIC_API_KEY",
@@ -59,8 +61,9 @@ def find_keyring_section(env_path: Path) -> dict[str, str]:
             key = key.strip()
             value = value.strip().strip('"\'')
 
-            if key in KEYRING_KEYS:
-                secrets[key] = value
+            if LIMITED_KEYS and key not in KEYRING_KEYS:
+                continue
+            secrets[key] = value
 
     return secrets
 
@@ -129,6 +132,10 @@ def main() -> None:
     parser.add_argument(
         "--check", action="store_true", help="Tylko sprawdź (nie importuj)"
     )
+    parser.add_argument(
+        "--limited", action="store_true", help="Importuj tylko klucze z listy"
+    )
+
     args = parser.parse_args()
 
     # Znajdź .env
