@@ -1,22 +1,36 @@
-# Strategy Module
+# Strategy Module (DOX)
 
 ## Purpose
-Repository of strategic documentation, workflow definitions, and naming standards.
+Repozytorium dokumentacji strategicznej, protokołów uczenia się, standardów nazewnictwa oraz zasad bezpieczeństwa.
 
 ## Ownership
-- `strategy/tasks/`: Workflow and task decomposition rules.
-- `strategy/skills/`: Skill activation logic and triggers.
+- `strategy/tasks/`: Workflow i reguły dekompozycji zadań.
+- `strategy/skills/`: Logika aktywacji i rejestr skilli.
+- `strategy/naming-conventions.md`: Standardy nazewnictwa.
+- `strategy/secrets-management.md`: Strategia bezpieczeństwa i zarządzania sekretami.
 
 ## Local Contracts
-- All strategic documents must be concise and actionable.
-- New naming conventions MUST be registered in `strategy/naming-conventions.md`.
+- Wszystkie dokumenty strategiczne muszą być zwięzłe i operacyjne.
+- Zmiana w strategii zarządzania sekretami lub nazewnictwie wymaga aktualizacji odpowiedniego pliku w tym folderze.
 
 ## Work Guidance
-- Treat documentation as code. Keep it updated with current project practices.
-- Prefer reference files over duplication in AGENTS.md.
+- Traktuj dokumentację jak kod.
+- Obowiązuje zakaz podglądu plików `.env` (oddeleguj do użytkownika).
+- Każde naruszenie bezpieczeństwa (wyciek klucza) wymaga przerwania pracy i raportu.
 
 ## Verification
-- Cross-reference with project-wide standards in root AGENTS.md.
+- Spójność z `core/secrets.py` oraz `config.py` przy każdej zmianie dotyczącej sekretów.
+- Zgodność z globalnymi wytycznymi z `/AGENTS.md`.
+
+## Closeout
+1. Sprawdź zmiany w `strategy/` względem kontraktów w roocie.
+2. Upewnij się, że `Child DOX Index` zawiera wszystkie podfoldery i pliki strategiczne.
+3. Usuń nieaktualne notatki historyczne.
 
 ## Child DOX Index
-- None.
+- `./skills` - Rejestr skilli.
+- `./tasks` - Definicje workflow zadań.
+- `./templates` - Szablony projektowe.
+- `./learning-protocol.md` - Protokół nauki.
+- `./naming-conventions.md` - Standardy nazewnictwa.
+- `./secrets-management.md` - Strategia bezpieczeństwa i sekretów.
