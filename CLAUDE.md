@@ -1,1 +1,0 @@
-/home/lis/projekty/10_izolowane_projekty/00_aid4u/aid4u/AGENTS.md
