@@ -167,5 +167,6 @@ When the user requests a durable behavior change, record it here or in the relev
 - `strategy/`: Project strategic documentation and workflows.
 - `tasks/`: Task execution and course exercises.
 - `tests/`: Project test suite and verification logic.
+- `data/`: Task input datasets — safe-read rules per file.
 - `../misje-poboczne/`: Side missions and specific project artifacts.
 
