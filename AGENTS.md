@@ -18,7 +18,8 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 
 | Temat | Plik |
 | :--- | :--- |
-| **Strategia LLM / modele** | `strategy/llm-selection.md` |
+| **Strategia LLM (wybór/eskalacja/tier)** | `strategy/llm-selection.md` |
+| **Modele LLM (referencja/ściągawka)** | `strategy/llm-models.md` |
 | **Dekompozycja zadań (JSON + TW)** | `strategy/tasks/task-decomposition.md` |
 | **Workflow implementacji + skille** | `strategy/tasks/workflow.md` |
 | **Aktywacja skillów / trigger rules** | `strategy/skills/skill-activation.md` |
@@ -27,8 +28,9 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 | **Struktura infrastruktury** | `README.md` |
 | **MCP serwery** | `.claude/settings.json` |
 
-> Migracja nazw w toku — stare pliki (`strategy_llm_v1.0.0.md`, `strategy_task_decomposition_*`)
-> działają do czasu przepisania. Po migracji usuń tę notatkę.
+> Migracja nazw w toku — stary plik `strategy_task_decomposition_v1.0.0.md`
+> działa do czasu przepisania na `strategy/tasks/task-decomposition.md`. Po migracji usuń tę notatkę.
+> (`strategy_llm_v1.0.0.md` → `strategy/llm-selection.md` + `strategy/llm-models.md`: zrobione.)
 
 ---
 

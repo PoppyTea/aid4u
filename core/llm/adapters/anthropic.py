@@ -13,7 +13,7 @@ T = TypeVar("T", bound=BaseModel)
 
 # Modele Anthropic dostępne w kursie (kwiecień 2026)
 # Używaj przez LLMClient, nie bezpośrednio przez ten adapter.
-# Pełna strategia wyboru modelu: llm-strategy.md
+# Pełna strategia wyboru modelu: strategy/llm-selection.md
 ANTHROPIC_MODELS = {
     "fast": "claude-haiku-4-5-20251001",   # szybki fallback gdy Gemini nie daje rady
     "balanced": "claude-sonnet-4-6",        # złożone zadania, function calling, agenci
