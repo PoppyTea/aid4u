@@ -1,4 +1,5 @@
 """Testy LLMClient z zamockowanym providerem."""
+
 from __future__ import annotations
 
 import pytest
@@ -33,6 +34,7 @@ def llm(mock_provider):
     client._provider = mock_provider
     # Prosta chain bez rate limit / cost tracking dla szybkich testów
     from core.llm.middleware import ProviderCallMiddleware
+
     client._chain = ProviderCallMiddleware(mock_provider)
     return client
 
@@ -96,7 +98,7 @@ class TestAgentLoop:
         mock_provider.complete_with_tools.return_value = make_response(
             "...", tool_calls=[tool_call]
         )
-        result = llm.run_agent_loop(
+        llm.run_agent_loop(
             [LLMMessage.user("test")],
             tools=[Tool("loop", "Zapętla", {})],
             tool_executor=lambda n, a: "ok",
@@ -104,8 +106,10 @@ class TestAgentLoop:
         )
         assert mock_provider.complete_with_tools.call_count == 3
 
-    @patch('logfire.exception')
-    def test_tool_executor_error_doesnt_crash_loop(self, mock_logfire_exception, llm, mock_provider):
+    @patch("logfire.exception")
+    def test_tool_executor_error_doesnt_crash_loop(
+        self, mock_logfire_exception, llm, mock_provider
+    ):
         tool_call = ToolCall(id="c1", name="broken", arguments={})
         mock_provider.complete_with_tools.side_effect = [
             make_response("", tool_calls=[tool_call]),
@@ -122,3 +126,8 @@ class TestAgentLoop:
         )
         assert result == "Mimo błędu kontynuuję"
         mock_logfire_exception.assert_called_once_with("Tool broken failed")
+
+        # Verify that the exception detail "Narzędzie się posypało" didn't leak into the model's history
+        history = mock_provider.complete_with_tools.call_args[0][0]
+        for msg in history:
+            assert "Narzędzie się posypało" not in msg.content

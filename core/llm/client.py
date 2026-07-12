@@ -12,6 +12,7 @@ Kod w zadaniu:
     data = self.llm.structured(messages, MySchema)
     result = self.llm.run_agent_loop(messages, tools, executor)
 """
+
 from __future__ import annotations
 
 from typing import Any, Callable, TypeVar
@@ -20,7 +21,7 @@ from pydantic import BaseModel
 
 from core.llm.base import LLMProvider
 from core.llm.middleware import CostTrackMiddleware, ProviderCallMiddleware, RateLimitMiddleware
-from core.llm.types import LLMMessage, LLMResponse, Tool
+from core.llm.types import LLMMessage, Tool
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -111,9 +112,7 @@ class LLMClient:
             for iteration in range(max_iterations):
                 logfire.info(f"Agent iteration {iteration + 1}/{max_iterations}")
 
-                response = self._provider.complete_with_tools(
-                    history, tools, system=system
-                )
+                response = self._provider.complete_with_tools(history, tools, system=system)
                 last_content = response.content
 
                 if not response.has_tool_calls:
@@ -129,8 +128,8 @@ class LLMClient:
                     with logfire.span(f"tool.{tool_call.name}", args=tool_call.arguments):
                         try:
                             result = tool_executor(tool_call.name, tool_call.arguments)
-                        except Exception as e:
-                            result = f"ERROR: {e}"
+                        except Exception:
+                            result = "ERROR: Tool execution failed."
                             logfire.exception(f"Tool {tool_call.name} failed")
 
                         logfire.info(f"Tool {tool_call.name} result", result=result[:200])
