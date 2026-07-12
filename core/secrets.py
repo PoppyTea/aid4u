@@ -23,6 +23,7 @@ default_keys:list[str] = [
     "ANTHROPIC_API_KEY",
     "OPENAI_API_KEY",
     "GEMINI_API_KEY",
+    "GEMINI_API_KEY_PREMIUM",
     "OPENROUTER_API_KEY",
     "OPENROUTER_FREE_API_KEY",
     "LANGFUSE_PUBLIC_KEY",
