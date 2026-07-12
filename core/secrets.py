@@ -11,6 +11,7 @@ CLI examples:
 """
 from __future__ import annotations
 
+import logfire
 import keyring
 import os
 from pathlib import Path
@@ -51,7 +52,7 @@ class SecretsManager:
             if value:
                 return value
         except Exception as e:
-            print(f"⚠️  Keyring error ({key}): {e}")
+            logfire.warning(f"Keyring error ({key}): {e}")
 
         # 2. Spróbuj OS environment
         if value := os.getenv(key):
@@ -73,15 +74,15 @@ class SecretsManager:
     def set(self, key: str, value: str) -> None:
         """Przechowaj sekret w keyring."""
         keyring.set_password(self.service, key, value)
-        print(f"✓ Stored {key} in keyring")
+        logfire.info(f"Stored {key} in keyring")
 
     def delete(self, key: str) -> None:
         """Usuń sekret z keyring."""
         try:
             keyring.delete_password(self.service, key)
-            print(f"✓ Deleted {key} from keyring")
+            logfire.info(f"Deleted {key} from keyring")
         except keyring.errors.PasswordDeleteError:
-            print(f"⚠️  Key not found in keyring: {key}")
+            logfire.warning(f"Key not found in keyring: {key}")
 
 
     def list(self, keys_list: list[str]=default_keys) -> dict[str, bool]:
