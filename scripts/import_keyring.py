@@ -124,10 +124,12 @@ def check_keyring(secrets: dict[str, str]) -> None:
 
 
 def main() -> None:
+    global LIMITED_KEYS
     parser = argparse.ArgumentParser(description="Import sekrety z .env do systemowego keyring")
     parser.add_argument("--force", action="store_true", help="Nadpisz istniejące klucze")
     parser.add_argument("--check", action="store_true", help="Tylko sprawdź (nie importuj)")
     parser.add_argument("--limited", action="store_true", help="Importuj tylko klucze z listy")
+    LIMITED_KEYS = parser.parse_known_args()[0].limited
 
     args = parser.parse_args()
 
