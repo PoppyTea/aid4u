@@ -161,6 +161,8 @@ Default section order:
 
 When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md
 
+- **Commit routing (soft guideline, not a hard gate):** any change to code files (`.py` — app or tests, including refactors and non-behavioral cleanups, not just logic fixes) goes through a feature branch + PR — this triggers Qodo (unit/integration test generation), CodeRabbit (PR overview), and occasionally Jules (refactor suggestions). Everything non-code (markdown docs, config files like `pyproject.toml`, symlinks, data files) commits straight to `main`. Trivial comment/docstring-only edits riding along inside an otherwise doc-focused commit are fine to leave on `main`. Override locally in a child AGENTS.md if a subtree needs different rules.
+
 ## Child DOX Index
 
 - `core/`: System architecture, LLM and task management base.
