@@ -67,7 +67,8 @@ ignore = ["E402"]
 
 [tool.pyright]
 pythonVersion = "3.13"
-# Ustalamy na basic, żeby był pomocny, ale nie spowalniał pracy (strict bywa upierdliwy)
+venvPath = "."
+venv = ".venv"
 typeCheckingMode = "basic"
 
 [build-system]
