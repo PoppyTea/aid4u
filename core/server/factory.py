@@ -22,6 +22,7 @@ Użycie w zadaniu:
     # W run.py zadania:
     run_server(app, port=8000)
 """
+
 from __future__ import annotations
 
 import time
@@ -42,9 +43,12 @@ class ServerFactory:
         app = FastAPI(title=service_name, docs_url="/docs")
 
         # Auto-instrumentacja Logfire — każdy request = span
+        logfire_mod = None
         try:
             import logfire
+
             logfire.instrument_fastapi(app)
+            logfire_mod = logfire
         except Exception:
             pass  # Logfire opcjonalne — serwer działa bez niego
 
@@ -54,15 +58,15 @@ class ServerFactory:
             start = time.perf_counter()
             response = await call_next(request)
             elapsed = round((time.perf_counter() - start) * 1000, 1)
-            try:
-                import logfire
-                logfire.info(
-                    f"{request.method} {request.url.path}",
-                    status=response.status_code,
-                    elapsed_ms=elapsed,
-                )
-            except Exception:
-                pass
+            if logfire_mod is not None:
+                try:
+                    logfire_mod.info(
+                        f"{request.method} {request.url.path}",
+                        status=response.status_code,
+                        elapsed_ms=elapsed,
+                    )
+                except Exception:
+                    pass
             return response
 
         @app.get("/health")
