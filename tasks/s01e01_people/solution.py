@@ -46,6 +46,24 @@ def parse_csv(raw: bytes) -> list[dict]:
     return list(reader)
 
 
+def _get_birth_year(person: dict) -> int:
+    """
+    Wyciąga rok urodzenia niezależnie od formatu źródła:
+    - "born" / "year_of_birth" → już sam rok (np. "1990")
+    - "birthDate" → pełna data ISO (np. "1975-07-07") — bierzemy część przed '-'
+    """
+    raw = person.get("born") or person.get("year_of_birth") or person.get("birthDate")
+    if not raw:
+        return 0
+    return int(str(raw).split("-")[0])
+
+
+def _get_city(person: dict) -> str:
+    """Pobiera miasto z pliku csv z zadania.
+    Uzasanienie: Miasto bywa pod kluczem 'city' (dane testowe) albo 'birthPlace' (dane z huba)."""
+    return (person.get("city") or person.get("birthPlace") or "").strip()
+
+
 def filter_candidates(people: list[dict]) -> list[dict]:
     """
     Filtruje osoby według kryteriów zadania.
@@ -54,10 +72,10 @@ def filter_candidates(people: list[dict]) -> list[dict]:
     result = []
     for person in people:
         try:
-            born = int(person.get("born") or person.get("year_of_birth") or 0)
+            born = _get_birth_year(person)
             age = REFERENCE_YEAR - born
             gender = person.get("gender", "").strip().upper()
-            city = person.get("city", "").strip()
+            city = _get_city(person)
         except (ValueError, TypeError):
             continue
 
@@ -97,8 +115,8 @@ def format_answer(people: list[dict]) -> list[dict]:
             "name": p.get("name", ""),
             "surname": p.get("surname", ""),
             "gender": p.get("gender", ""),
-            "born": int(p.get("born") or p.get("year_of_birth") or 0),
-            "city": p.get("city", ""),
+            "born": _get_birth_year(p),
+            "city": _get_city(p),
             "tags": p.get("tags", []),
         }
         for p in people
