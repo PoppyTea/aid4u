@@ -8,10 +8,10 @@ Użycie:
     uv run scripts/import_keyring.py --force   # Nadpisz istniejące
     uv run scripts/import_keyring.py --check   # Tylko sprawdzenie
 """
+
 from __future__ import annotations
 
 import argparse
-import os
 import re
 import sys
 from pathlib import Path
@@ -59,7 +59,7 @@ def find_keyring_section(env_path: Path) -> dict[str, str]:
         if "=" in line:
             key, value = line.split("=", 1)
             key = key.strip()
-            value = value.strip().strip('"\'')
+            value = value.strip().strip("\"'")
 
             if LIMITED_KEYS and key not in KEYRING_KEYS:
                 continue
@@ -79,12 +79,13 @@ def import_to_keyring(secrets: dict[str, str], force: bool = False) -> None:
             skipped += 1
             continue
 
-        # Sprawdź czy już istnieje
-        existing = keyring.get_password(KEYRING_SERVICE, key)
-        if existing and not force:
-            print(f"⊘ Już istnieje (--force żeby nadpisać): {key}")
-            skipped += 1
-            continue
+        # Sprawdź czy już istnieje tylko jeśli nie wymuszamy nadpisania
+        if not force:
+            existing = keyring.get_password(KEYRING_SERVICE, key)
+            if existing:
+                print(f"⊘ Już istnieje (--force żeby nadpisać): {key}")
+                skipped += 1
+                continue
 
         try:
             keyring.set_password(KEYRING_SERVICE, key, value)
@@ -123,18 +124,10 @@ def check_keyring(secrets: dict[str, str]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Import sekrety z .env do systemowego keyring"
-    )
-    parser.add_argument(
-        "--force", action="store_true", help="Nadpisz istniejące klucze"
-    )
-    parser.add_argument(
-        "--check", action="store_true", help="Tylko sprawdź (nie importuj)"
-    )
-    parser.add_argument(
-        "--limited", action="store_true", help="Importuj tylko klucze z listy"
-    )
+    parser = argparse.ArgumentParser(description="Import sekrety z .env do systemowego keyring")
+    parser.add_argument("--force", action="store_true", help="Nadpisz istniejące klucze")
+    parser.add_argument("--check", action="store_true", help="Tylko sprawdź (nie importuj)")
+    parser.add_argument("--limited", action="store_true", help="Importuj tylko klucze z listy")
 
     args = parser.parse_args()
 
