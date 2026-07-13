@@ -13,7 +13,7 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class GeminiAdapter(LLMProvider):
-    def __init__(self, api_key: str, model: str = "gemini-2.5-flash") -> None:
+    def __init__(self, api_key: str, model: str = "gemini-3.1-flash") -> None:
         from google import genai
 
         self._client = genai.Client(api_key=api_key)

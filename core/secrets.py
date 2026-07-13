@@ -47,7 +47,7 @@ class SecretsManager:
         self.service = service_name
 
     def get(self, key: str, *, required: bool = False) -> Optional[str]:
-        """Pobierz sekret z keyring, fallback do env, potem .env."""
+        """Pobierz sekret z keyring, fallback do .env"""
         # 1. Spróbuj keyring
         try:
             value = keyring.get_password(self.service, key)
@@ -57,10 +57,6 @@ class SecretsManager:
             logfire.warning(f"Keyring error ({key})", exc_info=True)
 
         # 2. Spróbuj OS environment
-        if value := os.getenv(key):
-            return value
-
-        # 3. Spróbuj .env file
         if value := os.getenv(key):
             return value
 
