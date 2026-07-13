@@ -8,6 +8,7 @@ Dodanie nowego kroku (np. cache'owanie odpowiedzi, prompt guard):
     1. Utwórz klasę dziedziczącą po LLMMiddleware
     2. Dodaj ją do łańcucha w LLMClient.__init__()
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -81,6 +82,7 @@ class CostTrackMiddleware(LLMMiddleware):
 
         try:
             import genai_prices
+
             cost = genai_prices.calculate(
                 model=response.model,
                 input_tokens=response.input_tokens,
@@ -95,7 +97,7 @@ class CostTrackMiddleware(LLMMiddleware):
                 elapsed_s=round(elapsed, 3),
             )
         except Exception:
-            pass  # cost tracking jest best-effort
+            logfire.warning("Failed to track cost", exc_info=True)  # cost tracking jest best-effort
 
         return response
 
