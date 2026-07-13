@@ -11,8 +11,10 @@ CLI examples:
 """
 from __future__ import annotations
 
+import logfire
 import keyring
 import os
+import concurrent.futures
 from pathlib import Path
 from typing import Optional
 from functools import lru_cache
@@ -23,6 +25,7 @@ default_keys:list[str] = [
     "ANTHROPIC_API_KEY",
     "OPENAI_API_KEY",
     "GEMINI_API_KEY",
+    "GEMINI_API_KEY_PREMIUM",
     "OPENROUTER_API_KEY",
     "OPENROUTER_FREE_API_KEY",
     "LANGFUSE_PUBLIC_KEY",
@@ -51,7 +54,7 @@ class SecretsManager:
             if value:
                 return value
         except Exception as e:
-            print(f"⚠️  Keyring error ({key}): {e}")
+            logfire.warning(f"Keyring error ({key})", exc_info=True)
 
         # 2. Spróbuj OS environment
         if value := os.getenv(key):
@@ -73,30 +76,30 @@ class SecretsManager:
     def set(self, key: str, value: str) -> None:
         """Przechowaj sekret w keyring."""
         keyring.set_password(self.service, key, value)
-        print(f"✓ Stored {key} in keyring")
+        logfire.info(f"Stored {key} in keyring")
 
     def delete(self, key: str) -> None:
         """Usuń sekret z keyring."""
         try:
             keyring.delete_password(self.service, key)
-            print(f"✓ Deleted {key} from keyring")
+            logfire.info(f"Deleted {key} from keyring")
         except keyring.errors.PasswordDeleteError:
-            print(f"⚠️  Key not found in keyring: {key}")
+            logfire.warning(f"Key not found in keyring: {key}")
 
 
     def list(self, keys_list: list[str]=default_keys) -> dict[str, bool]:
         """Wyświetl dostępne sekrety (bez wartości!)."""
         # Nie możemy wylistować, ale możemy sprawdzić znane klucze
 
-        result = {}
-        for key in keys_list:
+        def _check_key(key: str) -> tuple[str, bool]:
             try:
                 exists = keyring.get_password(self.service, key) is not None
-                result[key] = exists
+                return key, exists
             except Exception:
-                result[key] = False
+                return key, False
 
-        return result
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            return dict(executor.map(_check_key, keys_list))
 
     def info(self) -> dict:
         """Informacje o aktualnym keyring backend."""
