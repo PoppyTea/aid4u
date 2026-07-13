@@ -67,6 +67,9 @@ def test_properties_optional(clean_config):
         assert clean_config.gemini_key == "mocked_optional_key"
         mock_get.assert_called_with("GEMINI_API_KEY", required=False)
 
+        assert clean_config.gemini_key_premium == "mocked_optional_key"
+        mock_get.assert_called_with("GEMINI_API_KEY_PREMIUM", required=False)
+
         assert clean_config.langfuse_public_key == "mocked_optional_key"
         mock_get.assert_called_with("LANGFUSE_PUBLIC_KEY", required=False)
 
@@ -96,6 +99,19 @@ def test_properties_env_direct_defaults(clean_config):
         assert clean_config.langfuse_host == "https://cloud.langfuse.com"
         assert clean_config.langfuse_environment == "dev"
         assert clean_config.hub_base_url == "https://hub.ag3nts.org"
+
+
+def test_gemini_key_for_tier_standard(clean_config):
+    with patch.object(Config, "gemini_key", new_callable=lambda: property(lambda self: "standard_key")):
+        with patch.object(Config, "gemini_key_premium", new_callable=lambda: property(lambda self: "premium_key")):
+            assert clean_config.gemini_key_for_tier("standard") == "standard_key"
+            assert clean_config.gemini_key_for_tier() == "standard_key"
+
+
+def test_gemini_key_for_tier_premium(clean_config):
+    with patch.object(Config, "gemini_key", new_callable=lambda: property(lambda self: "standard_key")):
+        with patch.object(Config, "gemini_key_premium", new_callable=lambda: property(lambda self: "premium_key")):
+            assert clean_config.gemini_key_for_tier("premium") == "premium_key"
 
 
 def test_get_config_singleton():
