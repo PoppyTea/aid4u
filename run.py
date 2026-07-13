@@ -5,6 +5,7 @@ Komendy:
     uv run run.py solve s01e01              # rozwiąż jedno zadanie
     uv run run.py solve s01e01 --dry-run    # pokaż odpowiedź bez wysyłania
     uv run run.py solve s01e01 --model gemini-2.5-flash
+    uv run run.py solve s01e01 --model gemini-3.5-flash --premium  # płatny tier Gemini
     uv run run.py list                      # lista dostępnych zadań
     uv run run.py status                    # pokaż zdobyte flagi
 
@@ -21,7 +22,6 @@ setup_observability()
 # ─── Właściwe importy po setup obserwabilności ───────────────────────────────
 import json
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -56,9 +56,10 @@ def _save_flag(task_name: str, flag: str) -> None:
     _FLAGS_FILE.write_text(json.dumps(flags, indent=2, ensure_ascii=False))
 
 
-def _make_llm(model: str) -> LLMClient:
+def _make_llm(model: str, *, premium: bool = False) -> LLMClient:
     cfg = get_config()
-    provider = create_provider(model, cfg)
+    tier = "premium" if premium else "standard"
+    provider = create_provider(model, cfg, tier=tier)
     return LLMClient(provider)
 
 
@@ -69,6 +70,15 @@ def _make_llm(model: str) -> LLMClient:
 def solve(
     task_name: str = typer.Argument(..., help="Nazwa zadania, np. s01e01"),
     model: str = typer.Option("gemini-2.5-flash", "--model", "-m", help="Model LLM"),
+    premium: bool = typer.Option(
+        False,
+        "--premium",
+        "-p",
+        help=(
+            "Użyj płatnego tier Gemini (osobny klucz GEMINI_API_KEY_PREMIUM) zamiast "
+            "darmowego. Dotyczy tylko modeli gemini-*; inni providerzy ignorują tę flagę."
+        ),
+    ),
     dry_run: bool = typer.Option(False, "--dry-run", help="Pokaż odpowiedź bez wysyłania do hubu"),
 ) -> None:
     """Rozwiąż jedno zadanie."""
@@ -79,7 +89,7 @@ def solve(
         raise typer.Exit(1)
 
     hub = HubClient()
-    llm = _make_llm(model)
+    llm = _make_llm(model, premium=premium)
     task_cls = TASK_REGISTRY[task_name]
     task_instance = task_cls(hub, llm, dry_run=dry_run)
 

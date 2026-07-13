@@ -1,4 +1,5 @@
 """Testy jednostkowe HubClient — bez sieci (respx do mockowania HTTP)."""
+
 from __future__ import annotations
 
 import pytest
@@ -76,7 +77,55 @@ class TestHubClientSubmit:
 
         # Verify logfire.info was called to log the submission but redacted the answer
         expected_preview = "SUP****123 <str> (len: 28)"
-        mock_logfire.assert_any_call(
-            "Submitting task secret_task",
-            answer_preview=expected_preview
-        )
+        mock_logfire.assert_any_call("Submitting task secret_task", answer_preview=expected_preview)
+
+
+@respx.mock
+class TestHubClientGetData503Tolerant:
+    """Testy get_data_503_tolerant() z zamockowanym HTTP i mockowanym czasem (tenacity)."""
+
+    def setup_method(self):
+        self.hub = HubClient.__new__(HubClient)
+        self.hub._apikey = "test-key"
+        self.hub._base_url = "https://hub.ag3nts.org"
+        self.hub._http = httpx.Client()
+        self.url = f"{self.hub._base_url}/data/{self.hub._apikey}/test-file.txt"
+
+    def teardown_method(self):
+        self.hub._http.close()
+
+    def test_success_without_retry(self):
+        route = respx.get(self.url).mock(return_value=httpx.Response(200, content=b"success data"))
+
+        result = self.hub.get_data_503_tolerant("test-file.txt")
+        assert result == b"success data"
+        assert route.call_count == 1
+
+    def test_success_after_503_retries(self, mocker):
+        # Pomijamy prawdziwe sleep'y w testach (przyspiesza wykonanie)
+        mocker.patch("time.sleep")
+
+        route = respx.get(self.url)
+        # 2 razy 503, 3. raz sukces
+        route.side_effect = [
+            httpx.Response(503),
+            httpx.Response(503),
+            httpx.Response(200, content=b"recovered data"),
+        ]
+
+        result = self.hub.get_data_503_tolerant("test-file.txt")
+        assert result == b"recovered data"
+        assert route.call_count == 3
+
+    def test_exhausts_retries_on_503(self, mocker):
+        from tenacity import RetryError
+
+        mocker.patch("time.sleep")
+
+        route = respx.get(self.url).mock(return_value=httpx.Response(503))
+
+        with pytest.raises(RetryError):
+            self.hub.get_data_503_tolerant("test-file.txt")
+
+        # Zgodnie z @retry(stop=stop_after_attempt(8))
+        assert route.call_count == 8

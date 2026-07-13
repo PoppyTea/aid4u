@@ -98,7 +98,7 @@ class TestAgentLoop:
         mock_provider.complete_with_tools.return_value = make_response(
             "...", tool_calls=[tool_call]
         )
-        llm.run_agent_loop(
+        _ = llm.run_agent_loop(
             [LLMMessage.user("test")],
             tools=[Tool("loop", "Zapętla", {})],
             tool_executor=lambda n, a: "ok",
