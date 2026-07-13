@@ -52,7 +52,7 @@ class SecretsManager:
             if value:
                 return value
         except Exception as e:
-            logfire.warning(f"Keyring error ({key}): {e}")
+            logfire.warning(f"Keyring error ({key})", exc_info=True)
 
         # 2. Spróbuj OS environment
         if value := os.getenv(key):
