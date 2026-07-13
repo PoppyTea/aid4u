@@ -96,8 +96,8 @@ class CostTrackMiddleware(LLMMiddleware):
                 cost_usd=round(cost, 6) if cost else None,
                 elapsed_s=round(elapsed, 3),
             )
-        except Exception as e:
-            logfire.warning(f"Failed to track cost: {e}")  # cost tracking jest best-effort
+        except Exception:
+            logfire.warning("Failed to track cost", exc_info=True)  # cost tracking jest best-effort
 
         return response
 
