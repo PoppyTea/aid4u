@@ -60,8 +60,9 @@ def _get_birth_year(person: dict) -> int:
 
 def _get_city(person: dict) -> str:
     """Pobiera miasto z pliku csv z zadania.
-    Uzasanienie: Miasto bywa pod kluczem 'city' (dane testowe) albo 'birthPlace' (dane z huba)."""
-    return (person.get("city") or person.get("birthPlace") or "").strip()
+    Uzasadnienie: Miasto bywa pod kluczem 'city' (dane testowe) albo 'birthPlace' (dane z huba)."""
+    val = person.get("city") or person.get("birthPlace") or ""
+    return str(val).strip()
 
 
 def filter_candidates(people: list[dict]) -> list[dict]:
