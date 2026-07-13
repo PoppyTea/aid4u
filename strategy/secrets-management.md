@@ -50,11 +50,26 @@ Poniższa lista definiuje klucze uznawane za "standardowe" w systemie `SecretsMa
 | `APIKEY` | Główny klucz API projektu aid4u |
 | `ANTHROPIC_API_KEY` | Klucz do modeli Claude (Anthropic) |
 | `OPENAI_API_KEY` | Klucz do modeli GPT (OpenAI) |
-| `GEMINI_API_KEY` | Klucz do modeli Gemini (Google) |
+| `GEMINI_API_KEY` | Klucz do modeli Gemini (Google) — tier **standard** (darmowy) |
+| `GEMINI_API_KEY_PREMIUM` | Klucz do modeli Gemini (Google) — tier **premium** (płatny) |
 | `LANGFUSE_PUBLIC_KEY` | Klucz publiczny do obserwacji Langfuse |
 | `LANGFUSE_SECRET_KEY` | Klucz prywatny do obserwacji Langfuse |
 | `LOGFIRE_TOKEN` | Token do logowania i telemetrii Pydantic Logfire |
 | `VPS_HOST` | Adres hosta do deploymentu / SSH |
+
+---
+
+## ⚠️ Szczególny przypadek: darmowy vs płatny klucz Gemini
+
+Free i paid tier Gemini API są własnością **osobnych projektów Google Cloud**
+(billing wyłączony vs włączony) — jeden klucz API fizycznie nie może obsłużyć
+obu tierów naraz. Dlatego dla Gemini istnieją **dwa** osobne klucze
+(`GEMINI_API_KEY` / `GEMINI_API_KEY_PREMIUM`), a nie jeden z przełącznikiem.
+
+Wybór, który klucz zostanie użyty, odbywa się **wyłącznie** w
+`core/llm/factory.py` (parametr `tier`, domyślnie `"standard"`) —
+`GeminiAdapter` o tierach nic nie wie i nie powinien. CLI: `run.py solve ... --premium`.
+Szczegóły strategii eskalacji: `strategy/llm-selection.md`.
 
 ---
 
