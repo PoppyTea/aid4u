@@ -91,6 +91,9 @@ class TestHubClientGetData503Tolerant:
         self.hub._http = httpx.Client()
         self.url = f"{self.hub._base_url}/data/{self.hub._apikey}/test-file.txt"
 
+    def teardown_method(self):
+        self.hub._http.close()
+
     def test_success_without_retry(self):
         route = respx.get(self.url).mock(return_value=httpx.Response(200, content=b"success data"))
 
