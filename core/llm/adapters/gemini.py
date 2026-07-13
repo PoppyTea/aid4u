@@ -1,10 +1,10 @@
 """Adapter: Google GenAI SDK → LLMProvider."""
+
 from __future__ import annotations
 
 from typing import TypeVar
 
 from pydantic import BaseModel
-from pydantic_core.core_schema import ErrorType
 
 from core.llm.base import LLMProvider
 from core.llm.types import LLMMessage, LLMResponse, Tool
@@ -15,6 +15,7 @@ T = TypeVar("T", bound=BaseModel)
 class GeminiAdapter(LLMProvider):
     def __init__(self, api_key: str, model: str = "gemini-2.5-flash") -> None:
         from google import genai
+
         self._client = genai.Client(api_key=api_key)
         self._model_name = model
 
@@ -123,8 +124,62 @@ class GeminiAdapter(LLMProvider):
         *,
         system: str | None = None,
     ) -> LLMResponse:
-        # TODO: Gemini function calling — niski priorytet, dodaj gdy zadanie tego wymaga
-        raise NotImplementedError(
-            "Gemini tool calling not yet implemented. "
-            "Użyj AnthropicAdapter lub OpenAIAdapter dla zadań z function calling."
+        from google.genai import types
+        from core.llm.types import ToolCall
+
+        prompt = "\n".join(f"{m.role}: {m.content}" for m in messages)
+
+        function_declarations = []
+        for t in tools:
+            # Pydantic dict (schema) -> types.FunctionDeclaration
+            # Pydantic schemas often use types like 'string', 'object' etc. in lowercase.
+            # Types.FunctionDeclaration parameter supports a dict representation of the schema.
+            # We can map core.llm.types.Tool to it.
+            fd = types.FunctionDeclaration(
+                name=t.name, description=t.description, parameters=t.parameters
+            )
+            function_declarations.append(fd)
+
+        gemini_tools = [types.Tool(function_declarations=function_declarations)]
+
+        config = types.GenerateContentConfig(
+            system_instruction=system,
+            tools=gemini_tools,
+            max_output_tokens=4096,
+        )
+
+        response = self._client.models.generate_content(
+            model=self._model_name,
+            contents=prompt,
+            config=config,
+        )
+
+        tool_calls: list[ToolCall] = []
+        content_text = ""
+
+        if (
+            response.candidates
+            and response.candidates[0].content
+            and response.candidates[0].content.parts
+        ):
+            for part in response.candidates[0].content.parts:
+                if part.function_call:
+                    tool_calls.append(
+                        ToolCall(
+                            id=part.function_call.id
+                            or part.function_call.name,  # id might be optional in old SDKs, fallback to name
+                            name=part.function_call.name,
+                            arguments=part.function_call.args if part.function_call.args else {},
+                        )
+                    )
+                elif part.text:
+                    content_text += part.text
+
+        usage = response.usage_metadata
+        return LLMResponse(
+            content=content_text.strip(),
+            model=self._model_name,
+            input_tokens=usage.prompt_token_count if usage else 0,
+            output_tokens=usage.candidates_token_count if usage else 0,
+            tool_calls=tool_calls,
         )

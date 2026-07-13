@@ -70,7 +70,23 @@ class Config:
 
     @property
     def gemini_key(self) -> str:
+        """Klucz Gemini dla tier 'standard' (darmowy — projekt Google Cloud BEZ billingu)."""
         return self.get("GEMINI_API_KEY", required=False)
+
+    @property
+    def gemini_key_premium(self) -> str:
+        """
+        Klucz Gemini dla tier 'premium' (płatny — osobny projekt Google Cloud Z billingiem).
+
+        Free i paid tier Gemini API są własnością różnych projektów Google Cloud —
+        jeden klucz API nie może obsłużyć obu. Stąd dwa osobne klucze zamiast jednego
+        z przełącznikiem. Szczegóły: strategy/llm-selection.md.
+        """
+        return self.get("GEMINI_API_KEY_PREMIUM", required=False)
+
+    def gemini_key_for_tier(self, tier: str = "standard") -> str:
+        """Zwraca właściwy klucz Gemini dla podanego tier ('standard' | 'premium')."""
+        return self.gemini_key_premium if tier == "premium" else self.gemini_key
 
     @property
     def langfuse_public_key(self) -> str:
