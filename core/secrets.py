@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import keyring
 import os
+import concurrent.futures
 from pathlib import Path
 from typing import Optional
 from functools import lru_cache
@@ -88,15 +89,15 @@ class SecretsManager:
         """Wyświetl dostępne sekrety (bez wartości!)."""
         # Nie możemy wylistować, ale możemy sprawdzić znane klucze
 
-        result = {}
-        for key in keys_list:
+        def _check_key(key: str) -> tuple[str, bool]:
             try:
                 exists = keyring.get_password(self.service, key) is not None
-                result[key] = exists
+                return key, exists
             except Exception:
-                result[key] = False
+                return key, False
 
-        return result
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            return dict(executor.map(_check_key, keys_list))
 
     def info(self) -> dict:
         """Informacje o aktualnym keyring backend."""
