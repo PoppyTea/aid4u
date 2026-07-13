@@ -109,7 +109,7 @@ class GeminiAdapter(LLMProvider):
         try:
             return schema.model_validate_json(response.text)
         except Exception as e:
-            if finish_reason and str(finish_reason) != "STOP":
+            if finish_reason and getattr(finish_reason, "name", str(finish_reason)).upper() != "STOP":
                 raise ValueError(
                     f"Odpowiedź modelu wygląda na ucięty JSON (finish_reason={finish_reason}). "
                     f"Prawdopodobnie zabrakło max_output_tokens. Oryginalny błąd: {e}"
