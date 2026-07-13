@@ -70,11 +70,20 @@ class GeminiAdapter(LLMProvider):
 
         # Nowy SDK wspiera natywnie response_schema (Pydantic),
         # co eliminuje potrzebę ręcznego parsowania JSON-a z Markdowna.
+        #
+        # thinking_budget=0: gemini-2.5-flash domyślnie ma włączone dynamiczne
+        # "myślenie" (thinkingBudget=-1), które zużywa TĘ SAMĄ pulę tokenów co
+        # max_output_tokens. Przy dłuższych/wsadowych odpowiedziach (np. tagowanie
+        # kilkudziesięciu rekordów) model potrafi zużyć cały budżet na wewnętrzne
+        # rozumowanie i urwać się w połowie JSON-a (patrz: dokumentacja Google,
+        # sekcja "Task complexity" — klasyfikacja to podręcznikowy przykład
+        # zadania, gdzie myślenie można i należy wyłączyć).
         config = types.GenerateContentConfig(
             system_instruction=system,
-            max_output_tokens=4096,
+            max_output_tokens=8192,
             response_mime_type="application/json",
             response_schema=schema,
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
         )
 
         response = self._client.models.generate_content(
@@ -87,9 +96,26 @@ class GeminiAdapter(LLMProvider):
         # W przeciwnym razie parsujemy surowy tekst.
         if response.parsed:
             return response.parsed  # type: ignore
-        elif response.text is None:
-            raise TypeError("Response text is None")
-        return schema.model_validate_json(response.text)
+
+        finish_reason = None
+        if response.candidates:
+            finish_reason = response.candidates[0].finish_reason
+
+        if response.text is None:
+            raise TypeError(
+                f"Response text is None (finish_reason={finish_reason}). "
+                "Model prawdopodobnie nie wygenerował żadnej treści."
+            )
+
+        try:
+            return schema.model_validate_json(response.text)
+        except Exception as e:
+            if finish_reason and getattr(finish_reason, "name", str(finish_reason)).upper() != "STOP":
+                raise ValueError(
+                    f"Odpowiedź modelu wygląda na ucięty JSON (finish_reason={finish_reason}). "
+                    f"Prawdopodobnie zabrakło max_output_tokens. Oryginalny błąd: {e}"
+                ) from e
+            raise
 
     def complete_with_tools(
         self,
