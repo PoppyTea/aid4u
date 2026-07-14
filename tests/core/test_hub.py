@@ -129,3 +129,50 @@ class TestHubClientGetData503Tolerant:
 
         # Zgodnie z @retry(stop=stop_after_attempt(8))
         assert route.call_count == 8
+
+
+class TestHubClientTeardown:
+    """Testy dla metody __del__ HubClient."""
+
+    def test_del_closes_http_client(self, mocker):
+        hub = HubClient.__new__(HubClient)
+        mock_http = mocker.MagicMock(spec=httpx.Client)
+        hub._http = mock_http
+
+        hub.__del__()
+        mock_http.close.assert_called_once()
+
+    def test_del_logs_warning_on_http_error(self, mocker):
+        hub = HubClient.__new__(HubClient)
+        mock_http = mocker.MagicMock(spec=httpx.Client)
+        error = httpx.HTTPError("Mocked socket close error")
+        mock_http.close.side_effect = error
+        hub._http = mock_http
+
+        mock_logfire = mocker.patch("core.hub.client.logfire.warning")
+
+        hub.__del__()
+        mock_http.close.assert_called_once()
+        mock_logfire.assert_called_once_with("Failed to close HubClient HTTP session", error=error)
+
+    def test_del_swallows_other_exceptions_silently(self, mocker):
+        hub = HubClient.__new__(HubClient)
+        mock_http = mocker.MagicMock(spec=httpx.Client)
+        mock_http.close.side_effect = RuntimeError("Generic unexpected error")
+        hub._http = mock_http
+
+        mock_logfire = mocker.patch("core.hub.client.logfire.warning")
+
+        # Ten wywołanie nie powinno rzucić wyjątku
+        hub.__del__()
+        mock_http.close.assert_called_once()
+        mock_logfire.assert_not_called()
+
+    def test_del_handles_missing_or_none_http_attribute(self):
+        hub = HubClient.__new__(HubClient)
+        # self._http nie jest ustawione wcale
+        hub.__del__()
+
+        hub2 = HubClient.__new__(HubClient)
+        hub2._http = None
+        hub2.__del__()
