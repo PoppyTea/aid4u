@@ -4,6 +4,7 @@ Repository pattern — HubClient.
 Cały dostęp do hub.ag3nts.org przez tę klasę.
 Izoluje zadania od szczegółów HTTP, retry i parsowania flag.
 """
+
 from __future__ import annotations
 
 import re
@@ -40,7 +41,11 @@ class HubClient:
         """
         payload = {"apikey": self._apikey, "task": task, "answer": answer}
         answer_str = str(answer)
-        preview = (f"{answer_str[:3]}****{answer_str[-3:]}") + (f" <{type(answer).__name__}>") + (f" (len: {len(answer)})" if hasattr(answer, "__len__") else "")
+        preview = (
+            (f"{answer_str[:3]}****{answer_str[-3:]}")
+            + (f" <{type(answer).__name__}>")
+            + (f" (len: {len(answer)})" if hasattr(answer, "__len__") else "")
+        )
         logfire.info(f"Submitting task {task}", answer_preview=preview)
 
         response = self._http.post(f"{self._base_url}/verify", json=payload)
@@ -74,9 +79,7 @@ class HubClient:
         url = f"{self._base_url}/data/{self._apikey}/{path}"
         response = self._http.get(url)
         if response.status_code == 503:
-            raise httpx.HTTPStatusError(
-                "503 — retry", request=response.request, response=response
-            )
+            raise httpx.HTTPStatusError("503 — retry", request=response.request, response=response)
         response.raise_for_status()
         return response.content
 
@@ -104,7 +107,11 @@ class HubClient:
         return match.group() if match else None
 
     def __del__(self) -> None:
-        try:
-            self._http.close()
-        except Exception:
-            pass
+        http = getattr(self, "_http", None)
+        if http is not None:
+            try:
+                http.close()
+            except httpx.HTTPError as e:
+                logfire.warning("Failed to close HubClient HTTP session", error=e)
+            except Exception:
+                pass
