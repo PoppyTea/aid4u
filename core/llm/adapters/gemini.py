@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TypeVar
+from typing import Any, TypeVar, cast
 
 from pydantic import BaseModel
 
@@ -49,12 +49,21 @@ class GeminiAdapter(LLMProvider):
             config=config,
         )
 
+        if response.text is None:
+            finish_reason = response.candidates[0].finish_reason if response.candidates else None
+            raise TypeError(
+                f"Response text is None (finish_reason={finish_reason}). "
+                "Model prawdopodobnie nie wygenerował żadnej treści."
+            )
+
         usage = response.usage_metadata
+        input_tokens = (usage.prompt_token_count or 0) if usage else 0
+        output_tokens = (usage.candidates_token_count or 0) if usage else 0
         return LLMResponse(
             content=response.text,
             model=self._model_name,
-            input_tokens=usage.prompt_token_count,
-            output_tokens=usage.candidates_token_count,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
         )
 
     def complete_structured(
@@ -94,8 +103,8 @@ class GeminiAdapter(LLMProvider):
 
         # Jeżeli SDK sparsowało odpowiedź do modelu Pydantic (response.parsed), używamy go.
         # W przeciwnym razie parsujemy surowy tekst.
-        if response.parsed:
-            return response.parsed  # type: ignore
+        if isinstance(response.parsed, schema):
+            return response.parsed
 
         finish_reason = None
         if response.candidates:
@@ -136,7 +145,7 @@ class GeminiAdapter(LLMProvider):
             # Types.FunctionDeclaration parameter supports a dict representation of the schema.
             # We can map core.llm.types.Tool to it.
             fd = types.FunctionDeclaration(
-                name=t.name, description=t.description, parameters=t.parameters
+                name=t.name, description=t.description, parameters_json_schema=t.parameters
             )
             function_declarations.append(fd)
 
@@ -144,7 +153,11 @@ class GeminiAdapter(LLMProvider):
 
         config = types.GenerateContentConfig(
             system_instruction=system,
-            tools=gemini_tools,
+            # google-genai definiuje ToolListUnion warunkowo (zależnie od tego, czy
+            # `mcp` jest zainstalowane), więc Pyright nie potrafi go użyć jako
+            # wyrażenia typu do adnotacji ani do cast() — stąd cast na Any zamiast
+            # ponownego budowania tej unii ręcznie.
+            tools=cast(Any, gemini_tools),
             max_output_tokens=4096,
         )
 
@@ -163,7 +176,7 @@ class GeminiAdapter(LLMProvider):
             and response.candidates[0].content.parts
         ):
             for part in response.candidates[0].content.parts:
-                if part.function_call:
+                if part.function_call and part.function_call.name:
                     tool_calls.append(
                         ToolCall(
                             id=part.function_call.id
@@ -176,10 +189,12 @@ class GeminiAdapter(LLMProvider):
                     content_text += part.text
 
         usage = response.usage_metadata
+        input_tokens = (usage.prompt_token_count or 0) if usage else 0
+        output_tokens = (usage.candidates_token_count or 0) if usage else 0
         return LLMResponse(
             content=content_text.strip(),
             model=self._model_name,
-            input_tokens=usage.prompt_token_count if usage else 0,
-            output_tokens=usage.candidates_token_count if usage else 0,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
             tool_calls=tool_calls,
         )

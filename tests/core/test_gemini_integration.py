@@ -1,7 +1,7 @@
 """Integration tests for GeminiAdapter."""
 
 from __future__ import annotations
-
+import os
 import pytest
 from pydantic import BaseModel
 from core.llm.adapters.gemini import GeminiAdapter
@@ -19,7 +19,7 @@ def test_gemini_complete():
     api_key = get_secrets().get("GEMINI_API_KEY")
     if not api_key:
         pytest.skip("GEMINI_API_KEY not found")
-        
+
     adapter = GeminiAdapter(api_key=api_key)
     messages = [LLMMessage.user("Say exactly 'Hello World'")]
 

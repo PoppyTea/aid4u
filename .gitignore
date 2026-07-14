@@ -45,3 +45,12 @@ uv.lock
 # filetypes
 *.txt
 *.log
+
+# github PR workflow
+#    pull request summaries etc
+**/pr-*.md
+**/pr_*.md
+**/*-pr-*.md
+**/PR-*.md
+**/*-PR-*.md
+**/PR_*.md
