@@ -10,7 +10,7 @@
 
 Każde zadanie zaczynamy od najtańszej opcji i eskalujemy tylko gdy model
 faktycznie sobie nie radzi — nie z góry.
-
+Obecnie eskalację przeprowadza użytkownik podczas uruchamiania zadania.
 ---
 
 ## Dwa wymiary eskalacji
@@ -48,8 +48,8 @@ nie robić przełączników wewnątrz adapterów.
 
 | Grupa | Flash-Lite | Flash | Pro |
 |---|---|---|---|
-| **Standard — Free Tier** (domyślny) | najnowszy stabilny (dziś: `gemini-3.1-flash-lite`) | najnowszy stabilny (dziś: `gemini-3.5-flash`) | `gemini-2.5-pro` |
-| **Premium — Płatny** (`--premium`) | najnowszy stabilny | najnowszy stabilny | najnowszy stabilny (dziś: `gemini-3.1-pro-preview`, wciąż preview) |
+| **Standard — Free Tier** (domyślny) | najnowszy stabilny (2026/07/14: `gemini-3.1-flash-lite`) | najnowszy stabilny (2026/07/14: `gemini-3.5-flash`) | `gemini-2.5-pro` |
+| **Premium — Płatny** (`--premium`) | najnowszy stabilny | najnowszy stabilny | najnowszy stabilny (2026/07/14: `gemini-3.1-pro-preview`, wciąż preview) |
 
 > "Najnowszy stabilny" to instrukcja utrzymania, nie literalny alias API —
 > podmieniaj konkretny identyfikator w `strategy/llm-models.md`, gdy Google
@@ -105,10 +105,10 @@ płatny Flash 3.x bywa tańszy i szybszy niż przeskok do innego providera.
 
 ```bash
 # Pierwsze podejście — zawsze Gemini standard (darmowy)
-uv run run.py solve s01e02 --model gemini-2.5-flash
+uv run run.py solve s01e02 --model gemini-3.5-flash
 
 # Prostsze zadanie? Ultra lekki model, wciąż standard
-uv run run.py solve s01e02 --model gemini-2.5-flash-lite
+uv run run.py solve s01e02 --model gemini-3.1-flash-lite
 
 # Flash nie daje rady, ale nie chcemy jeszcze zmieniać providera?
 uv run run.py solve s01e02 --model gemini-2.5-pro
@@ -152,7 +152,7 @@ więc rozszerzenie jest lokalne i nie wymaga zmian w routingu.
 ## Zmienne środowiskowe (kolejność odzwierciedla priorytety)
 
 ```bash
-# .env — fallback; klucze docelowo w systemowym keyring (patrz secrets-management.md)
+# ~~.env — fallback (nieczynny - pozbywamy się go stopniowo)~~ ; klucze docelowo w systemowym keyring (patrz secrets-management.md)
 
 # ── Gemini — standard (darmowy) ──────────────────────────────────────────────
 GEMINI_API_KEY="..."
