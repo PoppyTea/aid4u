@@ -13,6 +13,8 @@ TDD workflow z Claude Code:
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from tasks.s01e01_people.solution import (
@@ -23,6 +25,8 @@ from tasks.s01e01_people.solution import (
     format_answer,
     parse_csv,
 )
+
+REAL_PEOPLE_CSV = Path(__file__).resolve().parents[2] / "data" / "main_story" / "people.csv"
 
 
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -47,6 +51,12 @@ def sample_people() -> list[dict]:
 @pytest.fixture
 def filtered_people(sample_people) -> list[dict]:
     return filter_candidates(sample_people)
+
+
+@pytest.fixture
+def real_people() -> list[dict]:
+    """Parsuje faktyczny people.csv z huba (data/main_story/), nie mockową fixturę."""
+    return parse_csv(REAL_PEOPLE_CSV.read_bytes())
 
 
 # ─── parse_csv ────────────────────────────────────────────────────────────────
@@ -129,6 +139,40 @@ class TestFilterCandidates:
         people = [{"name": "X", "surname": "Y", "gender": "M", "born": "nie-liczba", "city": "Grudziądz", "job": "test"}]
         result = filter_candidates(people)
         assert result == []
+
+
+# ─── filter_candidates na realnych danych (people.csv) ───────────────────────
+#
+# Diagnostyka s01e01: hipoteza była, że problem leży w warstwie sortowania
+# people.csv (druga hipoteza — komunikacja z Gemini — wymaga klucza API i nie
+# jest tu testowalna). Ten test sprawdza, czy filter_candidates zachowuje
+# oryginalną kolejność wierszy z pliku, czy gdzieś je przestawia — bo
+# apply_tags łączy wyniki tagowania z kandydatami po indeksie, więc jakiekolwiek
+# resortowanie między filtrowaniem a tagowaniem rozjeżdża przypisanie tagów.
+
+class TestFilterCandidatesRealData:
+    def test_real_csv_parses(self, real_people):
+        assert len(real_people) > 0
+        assert {"name", "surname", "gender", "birthDate", "birthPlace", "job"}.issubset(real_people[0].keys())
+
+    def test_returns_some_candidates(self, real_people):
+        result = filter_candidates(real_people)
+        assert len(result) > 0, "Brak kandydatów na realnym people.csv — sprawdź kryteria filtrowania"
+
+    def test_preserves_original_row_order(self, real_people):
+        """filter_candidates nie może przestawiać wierszy względem kolejności w CSV."""
+        result = filter_candidates(real_people)
+        original_index_by_id = {id(p): i for i, p in enumerate(real_people)}
+        indices = [original_index_by_id[id(p)] for p in result]
+        assert indices == sorted(indices), "Kolejność kandydatów rozjechała się z kolejnością w people.csv"
+
+    def test_candidates_match_filter_criteria(self, real_people):
+        """Każdy kandydat realnie spełnia kryteria (płeć/miasto/wiek) — nie tylko liczba się zgadza."""
+        result = filter_candidates(real_people)
+        for person in result:
+            assert person["gender"].strip().upper() == "M"
+            assert person.get("city") or person.get("birthPlace")
+            assert (person.get("city") or person.get("birthPlace")).strip() == "Grudziądz"
 
 
 # ─── apply_tags ──────────────────────────────────────────────────────────────
