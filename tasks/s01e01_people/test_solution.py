@@ -18,7 +18,11 @@ from pathlib import Path
 import pytest
 
 from tasks.s01e01_people.solution import (
+    MAX_AGE,
+    MIN_AGE,
+    REFERENCE_YEAR,
     TaggedJob,
+    _get_birth_year,
     apply_tags,
     filter_by_tag,
     filter_candidates,
@@ -162,8 +166,12 @@ class TestFilterCandidatesRealData:
     def test_preserves_original_row_order(self, real_people):
         """filter_candidates nie może przestawiać wierszy względem kolejności w CSV."""
         result = filter_candidates(real_people)
-        original_index_by_id = {id(p): i for i, p in enumerate(real_people)}
-        indices = [original_index_by_id[id(p)] for p in result]
+        indices = []
+        search_start = 0
+        for p in result:
+            idx = next(i for i, orig in enumerate(real_people[search_start:], start=search_start) if orig == p)
+            indices.append(idx)
+            search_start = idx + 1
         assert indices == sorted(indices), "Kolejność kandydatów rozjechała się z kolejnością w people.csv"
 
     def test_candidates_match_filter_criteria(self, real_people):
@@ -173,6 +181,8 @@ class TestFilterCandidatesRealData:
             assert person["gender"].strip().upper() == "M"
             assert person.get("city") or person.get("birthPlace")
             assert (person.get("city") or person.get("birthPlace")).strip() == "Grudziądz"
+            born = _get_birth_year(person)
+            assert MIN_AGE <= REFERENCE_YEAR - born <= MAX_AGE
 
 
 # ─── apply_tags ──────────────────────────────────────────────────────────────
