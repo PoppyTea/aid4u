@@ -54,6 +54,18 @@ def test_get_or_fetch(temp_cache_dir):
     assert result2 == data
     assert fetch_calls == 1
 
+def test_get_or_fetch_tracks_last_key(temp_cache_dir):
+    """last_key musi wskazywać ostatnio użyty klucz — używane przez BaseTask do nazwania pliku w data/outputs/."""
+    cache = LocalCache()
+    assert cache.last_key is None
+
+    cache.get_or_fetch("people.csv", lambda: b"dane")
+    assert cache.last_key == "people.csv"
+
+    cache.get_or_fetch("other.png", lambda: b"inne dane")
+    assert cache.last_key == "other.png"
+
+
 def test_invalidate(temp_cache_dir):
     """Testowanie unieważniania klucza."""
     cache = LocalCache()

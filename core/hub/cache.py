@@ -29,6 +29,8 @@ class LocalCache:
     def __init__(self, subdir: str = "default") -> None:
         self._dir = _CACHE_ROOT / subdir
         self._dir.mkdir(parents=True, exist_ok=True)
+        self.last_key: str | None = None
+        """Klucz ostatniego get_or_fetch — używany przez BaseTask do nazwania pliku w data/outputs/."""
 
     def get(self, key: str) -> bytes | None:
         """Zwraca cached dane lub None jeśli brak."""
@@ -53,6 +55,7 @@ class LocalCache:
                 lambda: hub.get_data("electricity.png"),
             )
         """
+        self.last_key = key
         cached = self.get(key)
         if cached is not None:
             return cached
