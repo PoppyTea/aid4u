@@ -15,8 +15,11 @@ Registry Pattern:
 """
 from __future__ import annotations
 
+import json
 import time
 from abc import ABC, abstractmethod
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import logfire
@@ -26,6 +29,7 @@ from core.hub import HubClient, LocalCache
 from core.llm import LLMClient
 
 _console = Console()
+_OUTPUTS_DIR = Path("data/outputs")
 
 # Registry: nazwa zadania → klasa
 TASK_REGISTRY: dict[str, type["BaseTask"]] = {}
@@ -86,6 +90,7 @@ class BaseTask(ABC):
             try:
                 data = self.fetch_data()
                 answer = self.solve(data)
+                self._save_output(answer)
                 flag = self._submit(task_name, answer)
             except Exception:
                 logfire.exception(f"Task {task_name} failed")
@@ -97,6 +102,33 @@ class BaseTask(ABC):
         if flag:
             _console.print(f"[bold green]✓ Flag:[/] {flag}")
         return flag
+
+    def _save_output(self, answer: Any) -> Path:
+        """
+        Zapisuje odpowiedź agenta do data/outputs/ (trwały ślad, nie cache —
+        cache w .cache/ nadpisuje ten sam klucz przy każdym fetchu, tu zostaje
+        historia każdego uruchomienia).
+
+        Nazwa: [nazwa zadania]-[MMDD-hhmmss]-[org. nazwa pliku z huba].
+        Gdy zadanie nie pobierało pliku przez cache.get_or_fetch (last_key
+        puste), pada na 'answer.json'.
+        """
+        task_name = self._task_name or self.__class__.__name__
+        timestamp = datetime.now().strftime("%m%d-%H%M%S")
+        org_name = self.cache.last_key or "answer.json"
+
+        _OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
+        path = _OUTPUTS_DIR / f"{task_name}-{timestamp}-{org_name}"
+
+        if isinstance(answer, bytes):
+            path.write_bytes(answer)
+        elif isinstance(answer, str):
+            path.write_text(answer, encoding="utf-8")
+        else:
+            path.write_text(json.dumps(answer, indent=2, ensure_ascii=False), encoding="utf-8")
+
+        logfire.info(f"Output saved to {path}")
+        return path
 
     def _submit(self, task_name: str, answer: Any) -> str | None:
         if self.dry_run:
