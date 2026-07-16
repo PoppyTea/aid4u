@@ -126,7 +126,7 @@ def format_answer(people: list[dict]) -> list[dict]:
 
 # ─── Task ─────────────────────────────────────────────────────────────────────
 
-@task("s01e01")
+@task("s01e01", hub_name="people")
 class PeopleTask(BaseTask):
 
     def fetch_data(self) -> bytes:

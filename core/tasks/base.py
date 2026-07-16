@@ -35,12 +35,17 @@ _OUTPUTS_DIR = Path("data/outputs")
 TASK_REGISTRY: dict[str, type["BaseTask"]] = {}
 
 
-def task(name: str):
+def task(name: str, *, hub_name: str | None = None):
     """
     Dekorator rejestrujący zadanie w TASK_REGISTRY.
 
+    `name` to klucz CLI/rejestru/logów/nazwy pliku wyjściowego.
+    `hub_name` to nazwa oczekiwana przez pole "task" w POST /verify —
+    domyślnie taka sama jak `name`, ale niektóre zadania na hubie mają
+    inną nazwę niż ich slug w tym repo (np. CLI "s01e01" → hub "people").
+
     Użycie:
-        @task("s01e01")
+        @task("s01e01", hub_name="people")
         class PeopleTask(BaseTask):
             def solve(self, data):
                 ...
@@ -48,6 +53,7 @@ def task(name: str):
     def decorator(cls: type["BaseTask"]) -> type["BaseTask"]:
         TASK_REGISTRY[name] = cls
         cls._task_name = name
+        cls._hub_task_name = hub_name or name
         return cls
     return decorator
 
@@ -61,6 +67,7 @@ class BaseTask(ABC):
     """
 
     _task_name: str = ""
+    _hub_task_name: str = ""
 
     def __init__(
         self,
@@ -91,7 +98,7 @@ class BaseTask(ABC):
                 data = self.fetch_data()
                 answer = self.solve(data)
                 self._save_output(answer)
-                flag = self._submit(task_name, answer)
+                flag = self._submit(self._hub_task_name or task_name, answer)
             except Exception:
                 logfire.exception(f"Task {task_name} failed")
                 raise
