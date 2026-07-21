@@ -71,6 +71,10 @@ venvPath = "."
 venv = ".venv"
 typeCheckingMode = "basic"
 
+[tool.ty.environment]
+python = ".venv"
+python-version = "3.13"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
