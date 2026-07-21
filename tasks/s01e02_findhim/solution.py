@@ -3,6 +3,38 @@ from typing import Annotated
 from pydantic import BaseModel, Field
 import math
 
+from core.config import get_config
+from core.llm import LLMClient, LLMMessage, create_provider
+
+_llm_client: LLMClient | None = None
+
+
+def _get_llm_client() -> LLMClient:
+    """
+    Leniwy singleton LLMClient (gemini-2.5-flash, tier standard — domyślny
+    model projektu). PowerPlant nie dostaje klienta wstrzykniętego z zewnątrz,
+    bo to zadanie nie ma jeszcze klasy @task(BaseTask) — do rewizji, gdy powstanie.
+    """
+    global _llm_client
+    if _llm_client is None:
+        provider = create_provider("gemini-2.5-flash", get_config())
+        _llm_client = LLMClient(provider)
+    return _llm_client
+
+
+class CityCoordinates(BaseModel):
+    """Kształt odpowiedzi LLM dla pojedynczego zapytania o współrzędne miasta."""
+    city_name: str
+    latitude: Annotated[
+        float | None,
+        Field(default=None, description="Decimal degrees, up to 6 decimal places. Null if unknown."),
+    ]
+    longitude: Annotated[
+        float | None,
+        Field(default=None, description="Decimal degrees, up to 6 decimal places. Null if unknown."),
+    ]
+
+
 class GeoPoint(BaseModel):
     latitude: Annotated[float| None, Field(ge=-90, le=90)]
     longitude: Annotated[float | None, Field(ge=-180, le=180)]
@@ -41,10 +73,32 @@ class PowerPlant(BaseModel):
         """
         pass
 
+    def _geocode_city(self, city_name: str) -> GeoPoint | None:
+        """
+        Pyta LLM o współrzędne miasta (wiedza parametryczna modelu — bez web_search,
+        decyzja z 2026-07-20: dla znanych miast search nic nie dodaje, patrz notatka
+        w pamięci projektu). Seam do mockowania w testach jednostkowych.
+        """
+        result = _get_llm_client().structured(
+            messages=[LLMMessage.user(f"City: {city_name}")],
+            schema=CityCoordinates,
+            system="Provide geographic coordinates for the given city. If unsure about a city, return null for latitude and longitude.",
+        )
+        if result.latitude is None or result.longitude is None:
+            return None
+        return GeoPoint(latitude=result.latitude, longitude=result.longitude)
+
+    def resolve_coordinates(self) -> None:
+        """
+        Zamienia self.location_name (str) na self.location (GeoPoint | None),
+        korzystając z _geocode_city.
+        """
+        self.location = self._geocode_city(self.location_name)
+
 class Suspect(BaseModel):
     name: Annotated[str,Field(frozen=True)]
     surname: Annotated[str,Field(frozen=True)]
     born: Annotated[int,Field(frozen=True)]
     age: int|None|str
-    locations_history=Field(default_factory=list[GeoPoint])
-    access_lvl: Annotated[int, Field(True)]
+    locations_history: Annotated[list[GeoPoint], Field(default_factory=list)]
+    access_lvl: Annotated[int, Field(frozen=True)]
