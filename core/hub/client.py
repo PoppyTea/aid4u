@@ -71,7 +71,7 @@ class HubClient:
         response.raise_for_status()
         return response.content
 
-    @langfuse_observe
+    @langfuse_observe()
     @retry(stop=stop_after_attempt(8), wait=wait_exponential(min=3, max=60))
     def get_data_503_tolerant(self, path: str) -> bytes:
         """

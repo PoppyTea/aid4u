@@ -68,8 +68,19 @@ class RateLimitMiddleware(LLMMiddleware):
 
 class CostTrackMiddleware(LLMMiddleware):
     """
-    Liczy koszt wywołania (genai-prices) i loguje do Logfire.
-    Nieblokujący — błędy trackowania kosztu nie przerywają wywołania.
+    Liczy koszt wywołania (genai-prices), loguje do Logfire i tworzy
+    generation w Langfuse.
+
+    To jedyny punkt przez który przechodzi KAŻDE wywołanie LLM niezależnie
+    od providera — stąd tu, nie w adapterach. Ważne dla Gemini (domyślny
+    provider projektu): Logfire ma natywną auto-instrumentację tylko dla
+    Anthropic (`instrument_anthropic()`), więc bez tego miejsca żadne
+    wywołanie Gemini nigdy nie trafiało do żadnego systemu obserwability.
+
+    Błędy telemetrii (koszt, Langfuse) są nieblokujące — nigdy nie przerywają
+    właściwego wywołania LLM. Znane ograniczenie: jeśli call_next() rzuci
+    wyjątkiem, generation w Langfuse zostaje niezamknięta (brak .end()) —
+    akceptowalne dla pierwszej wersji, do poprawy gdyby okazało się problemem.
     """
 
     def handle(self, messages: list[LLMMessage], **kwargs) -> LLMResponse:
@@ -77,9 +88,12 @@ class CostTrackMiddleware(LLMMiddleware):
         import logfire
 
         start = time.perf_counter()
+        generation = self._start_langfuse_generation(messages)
+
         response = self.call_next(messages, **kwargs)
         elapsed = time.perf_counter() - start
 
+        cost: float | None = None
         try:
             import genai_prices
 
@@ -99,7 +113,44 @@ class CostTrackMiddleware(LLMMiddleware):
         except Exception:
             logfire.warning("Failed to track cost", exc_info=True)  # cost tracking jest best-effort
 
+        self._end_langfuse_generation(generation, response, cost)
+
         return response
+
+    @staticmethod
+    def _start_langfuse_generation(messages: list[LLMMessage]):
+        """Zwraca observation Langfuse albo None (no-op), jeśli cokolwiek pójdzie nie tak."""
+        try:
+            from langfuse import get_client
+
+            return get_client().start_observation(
+                as_type="generation",
+                name="llm_call",
+                input=[{"role": m.role, "content": m.content} for m in messages],
+            )
+        except Exception:
+            import logfire
+            logfire.warning("Failed to start Langfuse generation", exc_info=True)
+            return None
+
+    @staticmethod
+    def _end_langfuse_generation(generation, response: LLMResponse, cost: float | None) -> None:
+        if generation is None:
+            return
+        try:
+            generation.update(
+                model=response.model,
+                output=response.content,
+                usage_details={
+                    "input_tokens": response.input_tokens,
+                    "output_tokens": response.output_tokens,
+                },
+                metadata={"cost_usd": str(round(cost, 6))} if cost is not None else None,
+            )
+            generation.end()
+        except Exception:
+            import logfire
+            logfire.warning("Failed to finalize Langfuse generation", exc_info=True)
 
 
 class ProviderCallMiddleware(LLMMiddleware):
