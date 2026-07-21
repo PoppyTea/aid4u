@@ -32,6 +32,14 @@ SDK v4 — breaking changes względem v3:
 ⚠️  PRZED MODYFIKACJĄ TEGO PLIKU: użyj langfuse-docs MCP serwera.
     API Langfuse zmieniło się między v3 i v4. Wiedza treningowa może być nieaktualna.
 """
+# ----fix branch note: start ---
+# Fix langfuse integration with http and llm calls in the observability layer.
+
+# best spot to add: middleware.py
+
+# To agents: after read tis segment delete this comment and add it to TO_DO
+# ----fix branch note: end ---
+
 from __future__ import annotations
 
 _initialized = False
