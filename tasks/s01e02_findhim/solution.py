@@ -1,4 +1,5 @@
 from __future__ import annotations
+from tasks.s01e01_people.solution import REFERENCE_YEAR
 from typing import Annotated
 from pydantic import BaseModel, Field
 import math
@@ -102,3 +103,11 @@ class Suspect(BaseModel):
     age: int|None|str
     locations_history: Annotated[list[GeoPoint], Field(default_factory=list)]
     access_lvl: Annotated[int, Field(frozen=True)]
+
+    def calc_age(self) -> None:
+        if self.age is None:
+            if self.born != None:
+                self.age: int = REFERENCE_YEAR - self.born
+            else:
+                raise ValueError("born is required when age is not provided")
+        return

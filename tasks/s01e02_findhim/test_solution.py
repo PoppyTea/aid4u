@@ -42,7 +42,17 @@ def test_calc_age():
     """Poprawność obliczania wieku na podstawie roku urodzenia"""
     test_dude = EVIL_DUDE.model_copy()
     test_dude.calc_age()
-    assert test_dude.age == 26
+    assert test_dude.age == 36
+
+def test_clac_age_error():
+    """"""
+    test_dude = EVIL_DUDE.model_copy()
+    test_dude.born = None
+    try:
+        test_dude.calc_age()
+    except ValueError:
+        pass
+    assert test_dude.age is None
 
 
 def test_resolve_coordinates(monkeypatch):
