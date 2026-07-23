@@ -91,24 +91,41 @@ class BaseTask(ABC):
         task_name = self._task_name or self.__class__.__name__
         _console.print(f"\n[bold]Running task:[/] [cyan]{task_name}[/]")
 
-        with logfire.span(f"task.{task_name}"):
-            start = time.perf_counter()
+        try:
+            with logfire.span(f"task.{task_name}"):
+                start = time.perf_counter()
 
-            try:
-                data = self.fetch_data()
-                answer = self.solve(data)
-                self._save_output(answer)
-                flag = self._submit(self._hub_task_name or task_name, answer)
-            except Exception:
-                logfire.exception(f"Task {task_name} failed")
-                raise
+                try:
+                    data = self.fetch_data()
+                    answer = self.solve(data)
+                    self._save_output(answer)
+                    flag = self._submit(self._hub_task_name or task_name, answer)
+                except Exception:
+                    logfire.exception(f"Task {task_name} failed")
+                    raise
 
-            elapsed = round(time.perf_counter() - start, 2)
-            logfire.info(f"Task {task_name} completed", elapsed_s=elapsed, flag=flag)
+                elapsed = round(time.perf_counter() - start, 2)
+                logfire.info(f"Task {task_name} completed", elapsed_s=elapsed, flag=flag)
 
-        if flag:
-            _console.print(f"[bold green]✓ Flag:[/] {flag}")
-        return flag
+            if flag:
+                _console.print(f"[bold green]✓ Flag:[/] {flag}")
+            return flag
+        finally:
+            self._flush_langfuse()
+
+    @staticmethod
+    def _flush_langfuse() -> None:
+        """
+        `uv run run.py solve sXXeYY` to krótkotrwały proces CLI — kończy się
+        zaraz po run(). Bez jawnego flush() zbuforowane trace'y mogą nie
+        zdążyć wysłać się do Langfuse przed wyjściem (atexit hook to tylko
+        fallback, niegwarantowany przy każdym trybie zakończenia procesu).
+        """
+        try:
+            from langfuse import get_client
+            get_client().flush()
+        except Exception:
+            pass
 
     def _save_output(self, answer: Any) -> Path:
         """
