@@ -1,9 +1,10 @@
 from __future__ import annotations
 from tasks.s01e01_people.solution import REFERENCE_YEAR
 from typing import Annotated
-from pydantic import BaseModel, Field
+from pathlib import Path
+from pydantic import BaseModel, Field, computed_field, field_validator
 import math
-
+import json
 from core.config import get_config
 from core.llm import LLMClient, LLMMessage, create_provider
 
@@ -99,15 +100,21 @@ class PowerPlant(BaseModel):
 class Suspect(BaseModel):
     name: Annotated[str,Field(frozen=True)]
     surname: Annotated[str,Field(frozen=True)]
-    born: Annotated[int,Field(frozen=True)]
-    age: int|None|str
-    locations_history: Annotated[list[GeoPoint], Field(default_factory=list)]
-    access_lvl: Annotated[int, Field(frozen=True)]
+    born: Annotated[int, Field(le=REFERENCE_YEAR, ge=1900)]
+    location_history: list[GeoPoint]
+    access_lvl: Annotated[int | None, Field(ge=0, le=10)] = None
 
-    def calc_age(self) -> None:
-        if self.age is None:
-            if self.born != None:
-                self.age: int = REFERENCE_YEAR - self.born
-            else:
-                raise ValueError("born is required when age is not provided")
-        return
+    @computed_field
+    @property
+    def age(self) -> int:
+        return REFERENCE_YEAR - self.born
+
+    @field_validator("location_history", mode="before")
+    @classmethod
+    def parse_location_history(cls, v: Path | list[GeoPoint] | list[dict]) -> list[GeoPoint]:
+        if isinstance(v, Path):
+            path = Path(v)
+            with open(path, mode="r", encoding="utf-8") as f:
+                raw_json = json.load(f)
+                return [GeoPoint(**data_point) for data_point in raw_json]
+        return v

@@ -1,3 +1,4 @@
+from pathlib import Path
 import pytest
 from solution import GeoPoint, Suspect, PowerPlant
 
@@ -15,7 +16,15 @@ from solution import GeoPoint, Suspect, PowerPlant
 # Testing data-set
 WARSAW = GeoPoint(latitude=52.2297, longitude=21.0122)
 KRAKOW = GeoPoint(latitude=50.0647, longitude=19.9450)
-EVIL_DUDE = Suspect(name="Maurycy", born=1990, surname="Dreptak", locations_history=[WARSAW, KRAKOW], access_lvl=2, age=None)
+EVIL_DUDE = Suspect(
+    name="Maurycy",
+    born=1990,
+    surname="Dreptak",
+    access_lvl=2,
+    location_history=[KRAKOW, WARSAW])
+# Ścieżki
+BASE_PATH: Path = Path(__file__).parent
+DATA_PATH: Path = BASE_PATH / "data"
 
 ### TDD CYCLE 01 ###
 
@@ -38,22 +47,9 @@ def test_GeoPoint_calc_distance_from_A_to_A():
 
 ### TDD CYCLE 02 ###
 
-def test_calc_age():
+def test_suspect_age_field():
     """Poprawność obliczania wieku na podstawie roku urodzenia"""
-    test_dude = EVIL_DUDE.model_copy()
-    test_dude.calc_age()
-    assert test_dude.age == 36
-
-def test_clac_age_error():
-    """"""
-    test_dude = EVIL_DUDE.model_copy()
-    test_dude.born = None
-    try:
-        test_dude.calc_age()
-    except ValueError:
-        pass
-    assert test_dude.age is None
-
+    assert EVIL_DUDE.age == 36
 
 def test_resolve_coordinates(monkeypatch):
     """
@@ -92,3 +88,23 @@ def test_nearest_powerplant():
 @pytest.mark.skip(reason="TDD cycle 2 - test jeszcze niezaprojektowany: brak modelu Answer (payload do /verify)")
 def test_answer_completion():
     ...
+
+def test_suspect_location_history_coords_list():
+    test_dude: Suspect = Suspect(
+        name="John",
+        surname="Kowalski",
+        born=1992,
+        location_history=[KRAKOW, WARSAW])
+    assert test_dude.location_history[1].latitude == WARSAW.latitude
+    assert test_dude.location_history[1].longitude == WARSAW.longitude
+    assert len(test_dude.location_history) == 2
+
+def test_suspect_location_history_path():
+    test_dude: Suspect = Suspect(
+        name="John",
+        surname="Nowak",
+        born=1972,
+        location_history=Path(DATA_PATH / "test_suspect_locations.json"))
+    assert len(test_dude.location_history) == 2
+    assert test_dude.location_history[1].latitude == WARSAW.latitude
+    assert test_dude.location_history[1].longitude == WARSAW.longitude
