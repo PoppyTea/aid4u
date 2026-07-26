@@ -17,8 +17,8 @@ from typing import Any
 from pydantic import BaseModel
 
 from core.tasks import BaseTask, task
-from tasks.s01e01_people.prompts import SYSTEM_TAGGING, USER_TAGGING
 from tasks.common.const import REFERENCE_YEAR
+from tasks.s01e01_people.prompts import SYSTEM_TAGGING, USER_TAGGING
 
 MIN_AGE, MAX_AGE = 20, 40
 TARGET_CITY = "Grudziądz"

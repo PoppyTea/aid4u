@@ -1,12 +1,17 @@
-from random import randint
-from tasks.s01e02_findhim.test_data import
 from pathlib import Path
 
 import pytest
 from solution import GeoPoint, PowerPlant, Suspect
 from test_data import WARSAW
 
-from tasks.s01e02_findhim.test_data import EVIL_DUDE, KRAKOW, PP_LOCATIONS_LIST, RADOM, SZCZECIN, PP_LIST
+from tasks.s01e02_findhim.test_data import (
+    EVIL_DUDE,
+    KRAKOW,
+    PP_LIST,
+    PP_LOCATIONS_LIST,
+    RADOM,
+    SZCZECIN,
+)
 
 # Współrzędne:
 #   latitude > 0 =>  North (N)
@@ -25,7 +30,6 @@ DATA_PATH: Path = BASE_PATH / "data"
 test_dude = EVIL_DUDE.model_copy()
 power_plants = PP_LIST.copy()
 power_plants_locations = PP_LOCATIONS_LIST.copy()
-test_dude.location_history
 ### TDD CYCLE 01 ###
 
 
@@ -89,7 +93,7 @@ def test_inspect_location_history():
     pytest.param(WARSAW, WARSAW, WARSAW, id="point|<-0->|same_point => same_point"),
     pytest.param(WARSAW, [KRAKOW, SZCZECIN, RADOM], RADOM, id="point|<-?->|[many points] => the_closest_point"),
     pytest.param(WARSAW, [RADOM, SZCZECIN, KRAKOW, RADOM], RADOM, id="point|<-?->|many_closest_points, other_points => [closest_points]"),
-    pytest.param(power_plants[5], test_dude.location_history, WARSAW, id="prawdopodobne dane z atrybutów"),
+    pytest.param(power_plants[5], test_dude.location_history, WARSAW, id="prawdopodobne dane z atrybutów odpowiednich klas"),
 ])
 def test_is_nearest_to__parametrize (single_point, many_points, solution, expected):
     expected = single_point.dist_is_nearest_to(many_points)
