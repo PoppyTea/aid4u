@@ -1,3 +1,4 @@
+from typing import Iterable
 from pathlib import Path
 
 import pytest
@@ -89,19 +90,77 @@ def test_inspect_location_history():
     """
     ...
 
-@pytest.mark.parametrize("single_point, many_points, solution", [
-    #point|<-0->|same_point => same_point
-    pytest.param(WARSAW, WARSAW, WARSAW, id="same_2_same"),
-    #point|<-?->|[many points] => the_closest_point
-    pytest.param(WARSAW, [KRAKOW, SZCZECIN, RADOM], RADOM, id="one_2_one_from_many"),
-    #point|<-?->|many_closest_points, other_points => [closest_points]
-    pytest.param(WARSAW, [RADOM, SZCZECIN, KRAKOW, RADOM], RADOM, id="many_nearest"),
-    # prawdopodobne dane z atrybutów odpowiednich klas
-    pytest.param(power_plants[5], test_dude.location_history, WARSAW, id="simulation_2_one_of_many"),
+# Perfect city doubler creation
+double_of_radom = RADOM.model_copy()
+
+# Fake copy creation
+fake_radom = double_of_radom.model_copy()
+fake_radom.longitude = KRAKOW.longitude
+
+# city_in_equal_dist_to_radom
+point_x = GeoPoint(
+    name="Odbicie_Radomia_na_Zachod",
+    latitude=51.4025,
+    longitude=20.8773
+)
+
+@pytest.mark.parametrize("single_point, many_points, solution, run", [
+    #1. point|<-0->|same_point => same_point
+    pytest.param(WARSAW, WARSAW, WARSAW, 1, id="same_2_same"),
+    #2. point|<-?->|[many points] => the_closest_point
+    pytest.param(WARSAW, [KRAKOW, SZCZECIN, RADOM], RADOM, 2, id="one_2_one_from_many"),
+    #3. point|<-?->|many_closest_points, other_points => [closest_points]
+    pytest.param(WARSAW, [double_of_radom, SZCZECIN, KRAKOW, RADOM, fake_radom, point_x], [RADOM, fake_radom, point_x], 3, id="many_diff_nearest"),
+    #4. prawdopodobne dane z atrybutów odpowiednich klas
+    pytest.param(power_plants[4].location, test_dude.location_history, WARSAW, 4, id="simulation_2_one_of_many"),
+    # 5 Dedup candidates
+    pytest.param(WARSAW, [RADOM, SZCZECIN, KRAKOW, RADOM, KRAKOW], RADOM, 5, id="many_nearest_with_doubles"),
 ])
-def test_is_nearest_to__parametrize (single_point, many_points, solution):
-    expected = single_point.dist_is_nearest_to(many_points)
-    assert expected == solution
+def test_is_nearest_to__parametrize (single_point, many_points, solution, run):
+    expected = single_point.is_nearest_to(many_points)
+
+    inside: bool = expected in many_points
+    assert inside
+
+    count_checked: int = len(solution) == len(expected)
+    assert count_checked
+    expected_count: int = len(expected)
+    many_points_count: int = len(many_points)
+
+
+    if run == 1:
+        no_distance = single_point.distance_to(expected) == 0.0
+        assert no_distance
+    if ((len(expected) > 1 )and(len(solution) > 1)):
+        # Czy miasta są poprawnie eliminowane?
+        check_count: bool = expected_count < many_points_count
+        assert check_count
+
+        for i in range(len(expected)):
+            for j in range(len(solution)):
+                # Czy wszystkie punkty są równo oddalone od single_point (leżą na okręgu O(single_point) i R=distance_between)?
+                same_distance = single_point.distance_to(expected[i]) == single_point.distance_to(expected[j])
+                assert same_distance
+                distance_as_expected = single_point.distance_to(expected[i]) == single_point.distance_to(solution[j])
+                assert distance_as_expected
+                # Czy wszystkie imiona w wyniku są inne i nie ma duplikatów?
+                diff_but_no_dup = expected[i].name != solution[j].name
+                assert diff_but_no_dup
+                inside_starting_group: bool = expected[i] in many_points
+                assert inside_starting_group
+    else:
+        check_count = expected_count == 1
+        assert check_count
+        good_predction: bool = (( expected.latitude == solution.latitude) and (expected.longitude == solution.longitude))
+        assert good_predction
+        expected_distance = single_point.distance_to(expected)
+        non_zero_distance = expected_distance != 0.0
+        assert non_zero_distance
+        predicted_distance = single_point.distance_to(solution)
+        distance_as_expected = expected_distance == predicted_distance
+        assert distance_as_expected
+        inside_starting_group: bool = expected in many_points
+        assert inside_starting_group
 
 
 

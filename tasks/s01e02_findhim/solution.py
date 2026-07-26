@@ -56,7 +56,7 @@ class GeoPoint(BaseModel):
 
 
 
-    def is_nearest_to(self, *other)-> GeoPoint | list[GeoPoint]:
+    def is_nearest_to(self, *other: GeoPoint | list[GeoPoint]) -> GeoPoint | list[GeoPoint] | None:
         """
         patrz `test_is_nearest_to_parametrize`, powinien wystarczyć do zaaimplementowania logiki
         1. najniższą wartość znajdź przy pomocy min(set(distances))
@@ -70,6 +70,33 @@ class GeoPoint(BaseModel):
         3.1 jeśli len(answer_list)>1 to zwróć answer_list
         3.2 jeśli len(answer_list)=0 to zwróć false
         """
+        candidates: list[GeoPoint] = []
+        for item in other:
+            if isinstance(item, list):
+                candidates.extend(item)
+            else:
+                candidates.append(item)
+
+        if not candidates:
+            return None
+
+        distances = [self.distance_to(point) for point in candidates]
+        lowest_distance = min(set(distances))
+
+        answer_list: list[GeoPoint] = []
+        for point, distance in zip(candidates, distances):
+            if distance == lowest_distance:
+                answer_list.append(point)
+            elif distance < lowest_distance:
+                answer_list = [point]
+                lowest_distance = distance
+            # distance > lowest_distance -> nic nie rób
+
+        if len(answer_list) == 1:
+            return answer_list[0]
+        if len(answer_list) > 1:
+            return answer_list
+        return None
 
 
 class NamedPlace(GeoPoint):
