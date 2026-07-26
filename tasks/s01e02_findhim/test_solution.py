@@ -1,8 +1,12 @@
+from random import randint
+from tasks.s01e02_findhim.test_data import
 from pathlib import Path
+
 import pytest
-from solution import GeoPoint, Suspect, PowerPlant
+from solution import GeoPoint, PowerPlant, Suspect
+from test_data import WARSAW
 
-
+from tasks.s01e02_findhim.test_data import EVIL_DUDE, KRAKOW, PP_LOCATIONS_LIST, RADOM, SZCZECIN, PP_LIST
 
 # Współrzędne:
 #   latitude > 0 =>  North (N)
@@ -13,41 +17,15 @@ from solution import GeoPoint, Suspect, PowerPlant
 #   longitude = 0 => Prime Meridian (PM)
 #   longitude < 0 => West (W)
 
-# Faktyczne dane z zadania
-ZABRZE = GeoPoint(latitude=50.3249, longitude=18.7858)        
-PIOTRKÓW_TRYBUNALSKI = GeoPoint(latitude=51.4055, longitude=19.7032)   
-GRUDZIĄDZ = GeoPoint(latitude=53.4841, longitude=18.7537)     
-TCZEW = GeoPoint(latitude=54.0924, longitude=18.7779)          
-RADOM = GeoPoint(latitude=51.4025, longitude=21.1471)          
-CHEŁMNO = GeoPoint(latitude=53.3486, longitude=18.4251)        
-ŻARNOWIEC = GeoPoint(latitude=50.4844, longitude=19.8631)      
-
-PP_LIST=[ZABRZE, PIOTRKÓW_TRYBUNALSKI, GRUDZIĄDZ, TCZEW, RADOM, CHEŁMNO, ŻARNOWIEC]
-
-# Testing data-set
-
-WARSAW = GeoPoint(latitude=52.2297, longitude=21.0122)
-KRAKOW = GeoPoint(latitude=50.0647, longitude=19.9450)
-GDAŃSK = GeoPoint(latitude=54.3523, longitude=18.6491)      
-SZCZECIN = GeoPoint(latitude=53.4289, longitude=14.5530)    
-OPOLE = GeoPoint(latitude=50.6721, longitude=17.9253)       
-ZAKOPANE = GeoPoint(latitude=49.2990, longitude=19.9489)    
-
-
-
-EVIL_DUDE = Suspect(
-    name="Maurycy",
-    born=1990,
-    surname="Dreptak",
-    access_lvl=2,
-    location_history=[KRAKOW, WARSAW, GDAŃSK, SZCZECIN, OPOLE, ZAKOPANE])
-
-
 
 # Ścieżki
 BASE_PATH: Path = Path(__file__).parent
 DATA_PATH: Path = BASE_PATH / "data"
-
+# Suspects
+test_dude = EVIL_DUDE.model_copy()
+power_plants = PP_LIST.copy()
+power_plants_locations = PP_LOCATIONS_LIST.copy()
+test_dude.location_history
 ### TDD CYCLE 01 ###
 
 
@@ -95,25 +73,29 @@ def test_resolve_coordinates(monkeypatch):
     assert plant.location.longitude == pytest.approx(18.7536)
 
 
-@pytest.mark.skip(reason="TDD cycle 2 - test jeszcze niezaprojektowany: nearest_suspect(suspect) wymaga realnej listy podejrzanych")
+@pytest.mark.skip(reason="następny po is_nearest_to()")
 def test_inspect_location_history():
+    """
+    `inspect_location_history(Suspect)`
+    1. Sprawdza czy historia lokalizacji jest None
+    1.1 Jeśli nie -> przerwij
+    2. Sprawdza czy istnieje plik pod ścieżką `Path(DATA_PATH / {Suspect.name}_{Suspect.surname}_history)`
+    2.1 Jeśli nie -> spróbuj pobrać z endpointu centrali `/data`
+    3. Jeśli `(2.) == true` sparsuj ten plik i osadź w `Suspect.location_history`
+    """
     ...
 
+@pytest.mark.parametrize("single_point, many_points, solution", [
+    pytest.param(WARSAW, WARSAW, WARSAW, id="point|<-0->|same_point => same_point"),
+    pytest.param(WARSAW, [KRAKOW, SZCZECIN, RADOM], RADOM, id="point|<-?->|[many points] => the_closest_point"),
+    pytest.param(WARSAW, [RADOM, SZCZECIN, KRAKOW, RADOM], RADOM, id="point|<-?->|many_closest_points, other_points => [closest_points]"),
+    pytest.param(power_plants[5], test_dude.location_history, WARSAW, id="prawdopodobne dane z atrybutów"),
+])
+def test_is_nearest_to__parametrize (single_point, many_points, solution, expected):
+    expected = single_point.dist_is_nearest_to(many_points)
+    assert expected == solution
 
-@pytest.mark.skip(reason="TDD cycle 2 - test jeszcze niezaprojektowany")
-def test_is_nearest_to():
-    """
-    Metoda klasy GeoPoint
-    Wyszukuje najbliższą do punktu wywołującego lokalizację z listy podanych jako argument
-    geo_point.location.is_nearest_to.lista_lokacji = lokacja
-    Zastosowanie w zadaniu: Czy podawana elektrownia jest najbliższa
-    """
-    power_plants_locations: list[PowerPlant] = PP_LIST.copy()
-    test_dude = EVIL_DUDE.copy()
-    nearest_to_radom_is = power_plant_radom.location.nearest_powerplant_to(test_dude.location_history)
-    assert nearest_to_radom_is == WARSAW
-    
-    
+
 
 @pytest.mark.skip(reason="TDD cycle 2 - test jeszcze niezaprojektowany: brak modelu Answer (payload do /verify)")
 def test_answer_completion():
