@@ -88,6 +88,13 @@ typeCheckingMode = "basic"
 root = "tests"
 typeCheckingMode = "basic"
 
+[[tool.basedpyright.python.analysis.inlayHints]]
+enabled = true
+callArgumentNames = "partial"
+variableTypes = true
+functionReturnTypes = true
+pytestParameters = true
+inlayHintDebounceMs = 150
 # core/ nie ma własnego executionEnvironment — celowo dziedziczy typeCheckingMode
 # "standard" wprost z sekcji [tool.basedpyright] powyżej (to jest ta "ostrzejsza" strefa).
 

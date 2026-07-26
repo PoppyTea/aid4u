@@ -18,6 +18,10 @@ preset = "default"
 
 check-unannotated-defs = true
 infer-return-types = "checked"
+enable-fallback-search-path = true
+
+[errors]
+# this is an empty table, meaning all errors are enabled by default
 
 [[sub-config]]
 matches = "tasks/**/*.py"
