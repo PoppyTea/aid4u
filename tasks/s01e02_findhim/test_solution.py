@@ -13,15 +13,37 @@ from solution import GeoPoint, Suspect, PowerPlant
 #   longitude = 0 => Prime Meridian (PM)
 #   longitude < 0 => West (W)
 
+# Faktyczne dane z zadania
+ZABRZE = GeoPoint(latitude=50.3249, longitude=18.7858)        
+PIOTRKÓW_TRYBUNALSKI = GeoPoint(latitude=51.4055, longitude=19.7032)   
+GRUDZIĄDZ = GeoPoint(latitude=53.4841, longitude=18.7537)     
+TCZEW = GeoPoint(latitude=54.0924, longitude=18.7779)          
+RADOM = GeoPoint(latitude=51.4025, longitude=21.1471)          
+CHEŁMNO = GeoPoint(latitude=53.3486, longitude=18.4251)        
+ŻARNOWIEC = GeoPoint(latitude=50.4844, longitude=19.8631)      
+
+PP_LIST=[ZABRZE, PIOTRKÓW_TRYBUNALSKI, GRUDZIĄDZ, TCZEW, RADOM, CHEŁMNO, ŻARNOWIEC]
+
 # Testing data-set
+
 WARSAW = GeoPoint(latitude=52.2297, longitude=21.0122)
 KRAKOW = GeoPoint(latitude=50.0647, longitude=19.9450)
+GDAŃSK = GeoPoint(latitude=54.3523, longitude=18.6491)      
+SZCZECIN = GeoPoint(latitude=53.4289, longitude=14.5530)    
+OPOLE = GeoPoint(latitude=50.6721, longitude=17.9253)       
+ZAKOPANE = GeoPoint(latitude=49.2990, longitude=19.9489)    
+
+
+
 EVIL_DUDE = Suspect(
     name="Maurycy",
     born=1990,
     surname="Dreptak",
     access_lvl=2,
-    location_history=[KRAKOW, WARSAW])
+    location_history=[KRAKOW, WARSAW, GDAŃSK, SZCZECIN, OPOLE, ZAKOPANE])
+
+
+
 # Ścieżki
 BASE_PATH: Path = Path(__file__).parent
 DATA_PATH: Path = BASE_PATH / "data"
@@ -79,11 +101,19 @@ def test_inspect_location_history():
 
 
 @pytest.mark.skip(reason="TDD cycle 2 - test jeszcze niezaprojektowany")
-def test_nearest_powerplant():
+def test_is_nearest_to():
     """
-    Czy podawana elektrownia jest najbliższa
+    Metoda klasy GeoPoint
+    Wyszukuje najbliższą do punktu wywołującego lokalizację z listy podanych jako argument
+    geo_point.location.is_nearest_to.lista_lokacji = lokacja
+    Zastosowanie w zadaniu: Czy podawana elektrownia jest najbliższa
     """
-
+    power_plants_locations: list[PowerPlant] = PP_LIST.copy()
+    test_dude = EVIL_DUDE.copy()
+    nearest_to_radom_is = power_plant_radom.location.nearest_powerplant_to(test_dude.location_history)
+    assert nearest_to_radom_is == WARSAW
+    
+    
 
 @pytest.mark.skip(reason="TDD cycle 2 - test jeszcze niezaprojektowany: brak modelu Answer (payload do /verify)")
 def test_answer_completion():
