@@ -90,12 +90,16 @@ def test_inspect_location_history():
     ...
 
 @pytest.mark.parametrize("single_point, many_points, solution", [
-    pytest.param(WARSAW, WARSAW, WARSAW, id="point|<-0->|same_point => same_point"),
-    pytest.param(WARSAW, [KRAKOW, SZCZECIN, RADOM], RADOM, id="point|<-?->|[many points] => the_closest_point"),
-    pytest.param(WARSAW, [RADOM, SZCZECIN, KRAKOW, RADOM], RADOM, id="point|<-?->|many_closest_points, other_points => [closest_points]"),
-    pytest.param(power_plants[5], test_dude.location_history, WARSAW, id="prawdopodobne dane z atrybutów odpowiednich klas"),
+    #point|<-0->|same_point => same_point
+    pytest.param(WARSAW, WARSAW, WARSAW, id="same_2_same"),
+    #point|<-?->|[many points] => the_closest_point
+    pytest.param(WARSAW, [KRAKOW, SZCZECIN, RADOM], RADOM, id="one_2_one_from_many"),
+    #point|<-?->|many_closest_points, other_points => [closest_points]
+    pytest.param(WARSAW, [RADOM, SZCZECIN, KRAKOW, RADOM], RADOM, id="many_nearest"),
+    # prawdopodobne dane z atrybutów odpowiednich klas
+    pytest.param(power_plants[5], test_dude.location_history, WARSAW, id="simulation_2_one_of_many"),
 ])
-def test_is_nearest_to__parametrize (single_point, many_points, solution, expected):
+def test_is_nearest_to__parametrize (single_point, many_points, solution):
     expected = single_point.dist_is_nearest_to(many_points)
     assert expected == solution
 
