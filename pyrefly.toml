@@ -1,0 +1,30 @@
+# Pyrefly — sprawdzanie typów, editor-first (na razie bez bramki w CI/pre-commit).
+#
+# Rygor: `default` w całym repo — umiarkowany, nie wymusza adnotacji wszędzie.
+# `tasks/` i `tests/` dostają dodatkowe złagodzenie (kod kursowy / testy, dużo WIP)
+# przez sub-configi niżej. `core/` zostaje na rygorze roota — to wspólna infrastruktura
+# (HubClient, LLMClient), więc ma dostawać pełniejsze sprawdzanie od razu.
+#
+# Podnoszenie rygoru później: zmień `preset` na "strict" (root albo per sub-config —
+# uwaga, `preset` NIE jest nadpisywalny w [[sub-config]], tylko `errors`/`check-unannotated-defs`/
+# `infer-return-types`/`replace-imports-with-any`/`ignore-errors-in-generated-code`).
+
+project-includes = ["core/**/*.py", "tasks/**/*.py", "tests/**/*.py", "scripts/**/*.py"]
+project-excludes = ["**/__pycache__", ".venv/**"]
+
+python-interpreter-path = ".venv/bin/python"
+
+preset = "default"
+
+check-unannotated-defs = true
+infer-return-types = "checked"
+
+[[sub-config]]
+matches = "tasks/**/*.py"
+check-unannotated-defs = false
+infer-return-types = "annotated"
+
+[[sub-config]]
+matches = "tests/**/*.py"
+check-unannotated-defs = false
+infer-return-types = "annotated"
