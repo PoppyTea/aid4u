@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import json
-from typing import Iterable
 from pathlib import Path
 
 import pytest
+
 from tasks.s01e02_findhim.solution import (
     GeoConnection,
     GeoPoint,
@@ -11,10 +13,10 @@ from tasks.s01e02_findhim.solution import (
     build_initial_messages,
     build_tool_executor,
     connecion_bruteforce,
-    find_nearest_plant_for_suspect,
     get_access_level,
     get_person_locations,
     parse_power_plants,
+    search_suspect_history_for_nearest_power_plant,
     shortest_conection,
 )
 from tasks.s01e02_findhim.test_data import (
@@ -101,7 +103,6 @@ def test_inspect_location_history():
     2.1 Jeśli nie -> spróbuj pobrać z endpointu centrali `/data`
     3. Jeśli `(2.) == true` sparsuj ten plik i osadź w `Suspect.location_history`
     """
-    ...
 
 # Perfect city doubler creation
 double_of_radom = RADOM.model_copy()
@@ -215,8 +216,8 @@ def test_geo_connection_equality_is_order_independent():
 def test_geo_connection_reversed_swaps_points():
     connection = GeoConnection(alpha_point=WARSAW, beta_point=KRAKOW)
     flipped = reversed(connection)
-    assert flipped.alpha_point == KRAKOW
-    assert flipped.beta_point == WARSAW
+    for flipped_point, original_point in zip(flipped, [KRAKOW, WARSAW]):
+        assert flipped_point == original_point
 
 
 def test_geo_connection_ordering_by_distance():
@@ -333,33 +334,33 @@ def test_get_access_level_returns_just_the_level():
     assert get_access_level(hub, "Wacław", "Jasiński", 1986) == 2
 
 
-### TDD CYCLE 06 — narzędzia agenta (find_nearest_plant_for_suspect, tool_executor) ###
+### TDD CYCLE 06 — narzędzia agenta (search_suspect_history_for_nearest_power_plant, tool_executor) ###
 
-def test_find_nearest_plant_for_suspect_finds_true_minimum_across_plants():
+def test_search_suspect_history_for_nearest_power_plant_finds_true_minimum_across_plants():
     # Podejrzany widziany dokładnie w Radomiu -> dystans 0 do elektrowni Radom,
     # musi wygrać z pozostałymi 6, niezależnie od kolejności na liście.
     hub = FakeHub(response=[{"latitude": RADOM.latitude, "longitude": RADOM.longitude}])
-    result = find_nearest_plant_for_suspect(hub, power_plants, "Testowy", "Podejrzany", 1990)
+    result = search_suspect_history_for_nearest_power_plant(hub, power_plants, "Testowy", "Podejrzany", 1990)
 
     assert result["plant_code"] == "PWR8406PL"  # Elektrownia Radom
     assert result["distance_km"] == pytest.approx(0.0, abs=0.01)
 
 
-def test_find_nearest_plant_for_suspect_returns_none_code_when_no_plant_resolved():
+def test_search_suspect_history_for_nearest_power_plant_returns_none_code_when_no_plant_resolved():
     unresolved_plants = [
         PowerPlant(location_name="Nieznane", location=None, code="PWR0000PL", power_level=1, active=True)
     ]
     hub = FakeHub(response=[{"latitude": WARSAW.latitude, "longitude": WARSAW.longitude}])
-    result = find_nearest_plant_for_suspect(hub, unresolved_plants, "Testowy", "Podejrzany", 1990)
+    result = search_suspect_history_for_nearest_power_plant(hub, unresolved_plants, "Testowy", "Podejrzany", 1990)
 
     assert result == {"plant_code": None, "distance_km": None}
 
 
-def test_tool_executor_dispatches_find_nearest_plant_for_suspect():
+def test_tool_executor_dispatches_search_suspect_history_for_nearest_power_plant():
     hub = FakeHub(response=[{"latitude": RADOM.latitude, "longitude": RADOM.longitude}])
     executor = build_tool_executor(hub, power_plants)
 
-    result = json.loads(executor("find_nearest_plant_for_suspect", {
+    result = json.loads(executor("search_suspect_history_for_nearest_power_plant", {
         "name": "Testowy", "surname": "Podejrzany", "birth_year": 1990,
     }))
 

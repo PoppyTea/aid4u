@@ -3,10 +3,9 @@ from __future__ import annotations
 import json
 import math
 import time
+from _collections_abc import Iterator
 from pathlib import Path
-from typing import Annotated
-
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import BaseModel, Field, computed_field, field_validator
 
@@ -121,13 +120,40 @@ class GeoConnection(BaseModel):
             beta point: {self.beta_point!r}
             shortest distance: {self.shortest_distance!r}
             """
-    
-    def __name__(self):
-        return self.name
-    
-    def __str__(self):
-        return self.name
-    
+
+    def __reversed__(self) -> Iterator[GeoPoint]:
+        yield self.beta_point
+        yield self.alpha_point
+
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, GeoConnection):
+            return False
+        standard_eq: bool = self.alpha_point == other.alpha_point and self.beta_point == other.beta_point
+        reverse_eq: bool = self.alpha_point == other.beta_point and self.beta_point == other.alpha_point
+        return standard_eq or reverse_eq
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, GeoConnection):
+            return False
+        return self.shortest_distance < other.shortest_distance
+
+    def __gt__(self, other: object) -> bool:
+        if not isinstance(other, GeoConnection):
+            return False
+        return self.shortest_distance > other.shortest_distance
+
+
+    @property
+    def points_dict(self) -> dict[str, GeoPoint]:
+        """Zwraca punkty jako słownik, umożliwiając wygodną iterację."""
+        return {
+            "alpha_point": self.alpha_point,
+            "beta_point": self.beta_point,
+        }
+
+
+
     @computed_field
     @property
     def name(self) -> str:
@@ -149,25 +175,7 @@ class GeoConnection(BaseModel):
     def shortest_distance(self) -> float:
         return self.alpha_point.distance_to(self.beta_point)
 
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, GeoConnection):
-            return False
-        standard_eq: bool = self.alpha_point == other.alpha_point and self.beta_point == other.beta_point
-        reverse_eq: bool = self.alpha_point == other.beta_point and self.beta_point == other.alpha_point
-        return standard_eq or reverse_eq
 
-    def __lt__(self, other: object) -> bool:
-        if not isinstance(other, GeoConnection):
-            return False
-        return self.shortest_distance < other.shortest_distance
-
-    def __gt__(self, other: object) -> bool:
-        if not isinstance(other, GeoConnection):
-            return False
-        return self.shortest_distance > other.shortest_distance
-
-    def __reversed__(self) -> GeoConnection:
-        return GeoConnection(alpha_point=self.beta_point, beta_point=self.alpha_point)
 
 
 def connecion_bruteforce(point: list[GeoPoint], *collection: list[GeoPoint]) -> list[GeoConnection]:
@@ -329,7 +337,7 @@ def resolve_all_power_plants(plants: list[PowerPlant], *, delay_seconds: float =
     return plants
 
 
-def find_nearest_plant_for_suspect(
+def search_suspect_history_for_nearest_power_plant(
     hub: HubClient, plants: list[PowerPlant], name: str, surname: str, birth_year: int
 ) -> dict:
     """
@@ -356,7 +364,7 @@ def find_nearest_plant_for_suspect(
 
 
 FIND_NEAREST_PLANT_TOOL = Tool(
-    name="find_nearest_plant_for_suspect",
+    name="search_suspect_history_for_nearest_power_plant",
     description=(
         "Dla podanej osoby (imię, nazwisko, rok urodzenia) sprawdza jej historię "
         "lokalizacji i zwraca kod najbliższej elektrowni oraz dystans w km. Użyj "
@@ -399,8 +407,8 @@ def build_tool_executor(hub: HubClient, plants: list[PowerPlant]):
     dokładnie te dwa argumenty NIGDY nie są polami, które model wypełnia.
     """
     def tool_executor(name: str, args: dict) -> str:
-        if name == "find_nearest_plant_for_suspect":
-            result = find_nearest_plant_for_suspect(
+        if name == "search_suspect_history_for_nearest_power_plant":
+            result = search_suspect_history_for_nearest_power_plant(
                 hub, plants, args["name"], args["surname"], args["birth_year"]
             )
             return json.dumps(result, ensure_ascii=False)
@@ -458,7 +466,7 @@ class FindhimTask(BaseTask):
             messages,
             FINDHIM_TOOLS,
             executor,
-            system=SYSTEM_AGENT_FINDHIM,
+            system=SYSTEM_AGENT_FINDHIM["v3-EN"],
             max_iterations=12,
         )
 
