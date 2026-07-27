@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import time
 from pathlib import Path
 from typing import Annotated
 
@@ -310,15 +311,21 @@ class Suspect(BaseModel):
 
 # ─── Agent + Function Calling — narzędzia dla LLMClient.run_agent_loop ───────
 
-def resolve_all_power_plants(plants: list[PowerPlant]) -> list[PowerPlant]:
+def resolve_all_power_plants(plants: list[PowerPlant], *, delay_seconds: float = 13.0) -> list[PowerPlant]:
     """
     Geokoduje wszystkie elektrownie NA STARCIE (jednorazowo), zanim agent zacznie
     działać — żeby model nie musiał podawać współrzędnych elektrowni przy każdym
     wywołaniu narzędzia, i żeby to nie liczyło się do jego max_iterations.
+
+    `delay_seconds` — throttling między wywołaniami LLM. Darmowy tier Gemini
+    (gemini-2.5-flash) pozwala na 5 zapytań/minutę; 7 elektrowni bez przerwy
+    w pętli od razu łapie 429 RESOURCE_EXHAUSTED (sprawdzone empirycznie).
     """
-    for plant in plants:
-        if plant.location is None:
-            plant.resolve_coordinates()
+    to_resolve = [p for p in plants if p.location is None]
+    for i, plant in enumerate(to_resolve):
+        if i > 0:
+            time.sleep(delay_seconds)
+        plant.resolve_coordinates()
     return plants
 
 
