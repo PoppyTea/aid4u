@@ -1,5 +1,5 @@
 # Faktyczne dane z zadania
-from solution import GeoPoint, PowerPlant, Suspect
+from tasks.s01e02_findhim.solution import GeoPoint, PowerPlant, Suspect
 
 ZABRZE = GeoPoint(
     name="Zabrze",

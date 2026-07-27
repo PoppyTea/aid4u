@@ -3,7 +3,7 @@ from typing import Iterable
 from pathlib import Path
 
 import pytest
-from solution import (
+from tasks.s01e02_findhim.solution import (
     GeoConnection,
     GeoPoint,
     PowerPlant,
@@ -17,8 +17,6 @@ from solution import (
     parse_power_plants,
     shortest_conection,
 )
-from test_data import WARSAW
-
 from tasks.s01e02_findhim.test_data import (
     EVIL_DUDE,
     KRAKOW,
@@ -26,6 +24,7 @@ from tasks.s01e02_findhim.test_data import (
     PP_LOCATIONS_LIST,
     RADOM,
     SZCZECIN,
+    WARSAW,
 )
 
 # Współrzędne:

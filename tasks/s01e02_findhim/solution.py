@@ -5,12 +5,15 @@ import math
 from pathlib import Path
 from typing import Annotated
 
+from typing import Any
+
 from pydantic import BaseModel, Field, computed_field, field_validator
 
 from core.config import get_config
 from core.hub import HubClient
 from core.llm import LLMClient, LLMMessage, create_provider
 from core.llm.types import Tool
+from core.tasks import BaseTask, task
 from tasks.common.const import REFERENCE_YEAR
 from tasks.s01e02_findhim.prompts import SYSTEM_AGENT_FINDHIM, USER_AGENT_FINDHIM
 
@@ -411,3 +414,53 @@ def build_initial_messages(suspects: list[Suspect]) -> list[LLMMessage]:
         ensure_ascii=False,
     )
     return [LLMMessage.user(USER_AGENT_FINDHIM.format(suspects_json=suspects_json))]
+
+
+def _extract_json(text: str) -> dict:
+    """Model ma zwrócić czysty JSON, ale jeśli owinie w markdown ```, zdejmij to."""
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.strip("`")
+        cleaned = cleaned.removeprefix("json").strip()
+    return json.loads(cleaned)
+
+
+# ─── Task ─────────────────────────────────────────────────────────────────────
+
+@task("s01e02", hub_name="findhim")
+class FindhimTask(BaseTask):
+
+    def fetch_data(self) -> bytes:
+        return self.cache.get_or_fetch(
+            "findhim_locations.json",
+            lambda: self.hub.get_data("findhim_locations.json"),
+        )
+
+    def solve(self, data: bytes) -> Any:
+        # 1. Elektrownie: parsuj + geokoduj raz na start (agent nie robi tego per suspect)
+        plants = parse_power_plants(json.loads(data))
+        resolve_all_power_plants(plants)
+
+        # 2. Podejrzani: lista z S01E01 (tylko ci wysłani jako podejrzani, tag "transport")
+        suspects = self._load_suspects()
+
+        # 3. Agent + Function Calling — LLMClient.run_agent_loop, nie własna pętla
+        executor = build_tool_executor(self.hub, plants)
+        messages = build_initial_messages(suspects)
+        final_text = self.llm.run_agent_loop(
+            messages,
+            FINDHIM_TOOLS,
+            executor,
+            system=SYSTEM_AGENT_FINDHIM,
+            max_iterations=12,
+        )
+
+        return _extract_json(final_text)
+
+    def _load_suspects(self) -> list[Suspect]:
+        suspects_path = Path(__file__).parent / "data" / "suspects.json"
+        raw = json.loads(suspects_path.read_text(encoding="utf-8"))
+        return [
+            Suspect(name=s["name"], surname=s["surname"], born=s["birthYear"], location_history=[])
+            for s in raw
+        ]
