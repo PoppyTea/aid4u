@@ -34,6 +34,14 @@ class GeoPoint(BaseModel):
     latitude: Annotated[float | None, Field(ge=-90, le=90, default=None, description="Decimal degrees, up to 6 decimal places. Null if unknown.")]
     longitude: Annotated[float | None, Field(ge=-180, le=180, default=None, description="Decimal degrees, up to 6 decimal places. Null if unknown.")]
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, GeoPoint):
+            return False
+        return self.latitude == other.latitude and self.longitude == other.longitude
+
+    def __add__(self: GeoPoint, other: GeoPoint) -> GeoConnection:
+        return GeoConnection(alpha_point=self, beta_point=other)
+
     def distance_to(self, target:GeoPoint):
         if self == target:
             distance:float = 0.0
@@ -58,17 +66,7 @@ class GeoPoint(BaseModel):
 
     def is_nearest_to(self, *other: GeoPoint | list[GeoPoint]) -> GeoPoint | list[GeoPoint] | None:
         """
-        patrz `test_is_nearest_to_parametrize`, powinien wystarczyć do zaaimplementowania logiki
-        1. najniższą wartość znajdź przy pomocy min(set(distances))
-        2. pętla po hostorii pobytu:
-            - new_distance == lowest_distance -> answer_list.append(location)
-
-            - new_distance < lowest_distance -> answer_list.clear(), answer_list.append(location)
-
-            - new_distance > lowest_distance -> continue
-        3. jeśli len(answer_list)=1 to zwróć answer_list[0]
-        3.1 jeśli len(answer_list)>1 to zwróć answer_list
-        3.2 jeśli len(answer_list)=0 to zwróć false
+        Zwraca wszystkie najbliższe self, unikalne punkty z zadanej puli punktów geograficznych.
         """
         candidates: list[GeoPoint] = []
         for item in other:
@@ -80,24 +78,108 @@ class GeoPoint(BaseModel):
         if not candidates:
             return None
 
-        distances = [self.distance_to(point) for point in candidates]
-        lowest_distance = min(set(distances))
+        # Pętla 1: rozdziel kandydatów do kategorii (kubełków) wg dystansu.
+        by_distance: dict[float, list[GeoPoint]] = {}
+        for point in candidates:
+            distance = self.distance_to(point)
+            by_distance.setdefault(distance, []).append(point)
 
-        answer_list: list[GeoPoint] = []
-        for point, distance in zip(candidates, distances):
-            if distance == lowest_distance:
-                answer_list.append(point)
-            elif distance < lowest_distance:
-                answer_list = [point]
-                lowest_distance = distance
-            # distance > lowest_distance -> nic nie rób
+        lowest_distance = min(by_distance)
+        winners = by_distance[lowest_distance]
 
-        if len(answer_list) == 1:
-            return answer_list[0]
-        if len(answer_list) > 1:
-            return answer_list
-        return None
+        # Pętla 2: złóż odpowiedź z kategorii zwycięskiej, usuwając duplikaty co do wartości
+        # (ten sam punkt podany dwa razy w historii nie powinien liczyć się podwójnie).
+        unique_winners: list[GeoPoint] = []
+        for point in winners:
+            if point not in unique_winners:
+                unique_winners.append(point)
 
+        if len(unique_winners) == 1:
+            return unique_winners[0]
+        return unique_winners
+
+
+class GeoConnection(BaseModel):
+    """
+    Reprezentuje połączenie dwóch punktów geograficznych.
+    """
+    alpha_point: GeoPoint
+    beta_point: GeoPoint
+
+    def __repr__(self):
+        return f"""
+            object type: {type(self).__name__!r}
+            string representation: {self.name!r}
+            alpha point: {self.alpha_point!r}
+            beta point: {self.beta_point!r}
+            shortest distance: {self.shortest_distance!r}
+            """
+    
+    def __name__(self):
+        return self.name
+    
+    def __str__(self):
+        return self.name
+    
+    @computed_field
+    @property
+    def name(self) -> str:
+        if self.alpha_point.name:
+            name_prefix: str = f"{self.alpha_point.name}"
+        else:
+            name_prefix: str = f"<alpha [lat:{self.alpha_point.latitude}, lon:{self.alpha_point.longitude}]>"
+        if self.beta_point.name:
+            name_suffix: str = f"{self.beta_point.name}"
+        else:
+            name_suffix: str = f"<beta [lat:{self.beta_point.latitude}, lon:{self.beta_point.longitude}]>"
+        if self.shortest_distance:
+            name: str = f"{name_prefix!r}|<--{self.shortest_distance!r}[km]-->|{name_suffix!r}"
+            return name
+        return f"{name_prefix!r}<--a-->{name_suffix!r}"
+
+    @computed_field
+    @property
+    def shortest_distance(self) -> float:
+        return self.alpha_point.distance_to(self.beta_point)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, GeoConnection):
+            return False
+        standard_eq: bool = self.alpha_point == other.alpha_point and self.beta_point == other.beta_point
+        reverse_eq: bool = self.alpha_point == other.beta_point and self.beta_point == other.alpha_point
+        return standard_eq or reverse_eq
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, GeoConnection):
+            return False
+        return self.shortest_distance < other.shortest_distance
+
+    def __gt__(self, other: object) -> bool:
+        if not isinstance(other, GeoConnection):
+            return False
+        return self.shortest_distance > other.shortest_distance
+
+    def __reversed__(self) -> GeoConnection:
+        return GeoConnection(alpha_point=self.beta_point, beta_point=self.alpha_point)
+
+
+def connecion_bruteforce(point: list[GeoPoint], *collection: list[GeoPoint]) -> list[GeoConnection]:
+    """
+    Zwraca wszystkie pary punktów Geograficznych, unikalne punkty z zadanej puli punktów geograficznych.
+    """
+    all_connections: list[GeoConnection] = []
+    for p1 in point:
+        for p2 in collection:
+            alfa_beta_conect:GeoConnection = GeoConnection(alpha_point=p1, beta_point=p2)
+            if alfa_beta_conect not in all_connections:
+                all_connections.append(alfa_beta_conect)
+    return all_connections
+
+def shortest_conection(connections: list[GeoConnection]) -> GeoConnection:
+    """
+    Zwraca połączenie z najmniejszą odległością.
+    """
+    return min(connections, key=lambda c: c.shortest_distance())
 
 class NamedPlace(GeoPoint):
     """Kształt odpowiedzi LLM dla pojedynczego zapytania o współrzędne miasta."""

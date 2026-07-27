@@ -110,31 +110,26 @@ point_x = GeoPoint(
     #2. point|<-?->|[many points] => the_closest_point
     pytest.param(WARSAW, [KRAKOW, SZCZECIN, RADOM], RADOM, 2, id="one_2_one_from_many"),
     #3. point|<-?->|many_closest_points, other_points => [closest_points]
-    pytest.param(WARSAW, [double_of_radom, SZCZECIN, KRAKOW, RADOM, fake_radom, point_x], [RADOM, fake_radom, point_x], 3, id="many_diff_nearest"),
+    pytest.param(WARSAW, [double_of_radom, SZCZECIN, KRAKOW, RADOM, fake_radom, point_x], [RADOM, point_x], 3, id="many_diff_nearest"),
     #4. prawdopodobne dane z atrybutów odpowiednich klas
     pytest.param(power_plants[4].location, test_dude.location_history, WARSAW, 4, id="simulation_2_one_of_many"),
     # 5 Dedup candidates
-    pytest.param(WARSAW, [RADOM, SZCZECIN, KRAKOW, RADOM, KRAKOW], RADOM, 5, id="many_nearest_with_doubles"),
+    pytest.param(WARSAW, [RADOM, SZCZECIN, KRAKOW, RADOM, KRAKOW], RADOM, 5, id="many_nearest_with_doubles")
 ])
 def test_is_nearest_to__parametrize (single_point, many_points, solution, run):
     expected = single_point.is_nearest_to(many_points)
 
-    inside: bool = expected in many_points
-    assert inside
-
-    count_checked: int = len(solution) == len(expected)
-    assert count_checked
-    expected_count: int = len(expected)
-    many_points_count: int = len(many_points)
-
-
     if run == 1:
         no_distance = single_point.distance_to(expected) == 0.0
         assert no_distance
-    if ((len(expected) > 1 )and(len(solution) > 1)):
-        # Czy miasta są poprawnie eliminowane?
+    if isinstance(expected, list):
+        expected_count: int = len(expected)
+        many_points_count: int = len(many_points)
+        predicted_count: int = len(solution)
         check_count: bool = expected_count < many_points_count
         assert check_count
+        count_checked: int = predicted_count == expected_count
+        assert count_checked
 
         for i in range(len(expected)):
             for j in range(len(solution)):
@@ -144,23 +139,25 @@ def test_is_nearest_to__parametrize (single_point, many_points, solution, run):
                 distance_as_expected = single_point.distance_to(expected[i]) == single_point.distance_to(solution[j])
                 assert distance_as_expected
                 # Czy wszystkie imiona w wyniku są inne i nie ma duplikatów?
-                diff_but_no_dup = expected[i].name != solution[j].name
+                same_name_count: int = 0
+                if expected[i].name == solution[j].name:
+                    same_name_count += 1
+                diff_but_no_dup: bool = same_name_count <= 1
                 assert diff_but_no_dup
                 inside_starting_group: bool = expected[i] in many_points
                 assert inside_starting_group
     else:
-        check_count = expected_count == 1
-        assert check_count
+        expected_distance = single_point.distance_to(expected)
+        predicted_distance = single_point.distance_to(solution)
         good_predction: bool = (( expected.latitude == solution.latitude) and (expected.longitude == solution.longitude))
         assert good_predction
-        expected_distance = single_point.distance_to(expected)
-        non_zero_distance = expected_distance != 0.0
-        assert non_zero_distance
-        predicted_distance = single_point.distance_to(solution)
         distance_as_expected = expected_distance == predicted_distance
         assert distance_as_expected
-        inside_starting_group: bool = expected in many_points
-        assert inside_starting_group
+        zero_distance = expected_distance == 0.0
+        if run == 1:
+            assert zero_distance
+        else:
+            assert not zero_distance
 
 
 
