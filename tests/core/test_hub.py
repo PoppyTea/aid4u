@@ -40,7 +40,6 @@ class TestFlagExtraction:
         assert _FLAG_PATTERN.search("FLG:NOOUTER") is None  # brak nawiasów
 
 
-@respx.mock
 class TestHubClientSubmit:
     """Testy submit() z zamockowanym HTTP."""
 
@@ -50,6 +49,7 @@ class TestHubClientSubmit:
         self.hub._base_url = "https://hub.ag3nts.org"
         self.hub._http = httpx.Client()
 
+    @respx.mock
     def test_submit_sends_correct_payload(self):
         respx.post("https://hub.ag3nts.org/verify").mock(
             return_value=httpx.Response(200, json={"message": "{FLG:OK}"})
@@ -57,6 +57,7 @@ class TestHubClientSubmit:
         result = self.hub.submit("people", ["answer"])
         assert result == {"message": "{FLG:OK}"}
 
+    @respx.mock
     def test_submit_raises_on_http_error(self):
         respx.post("https://hub.ag3nts.org/verify").mock(
             return_value=httpx.Response(500, json={"error": "server error"})
@@ -64,6 +65,7 @@ class TestHubClientSubmit:
         with pytest.raises(httpx.HTTPStatusError):
             self.hub.submit("people", "bad")
 
+    @respx.mock
     def test_submit_redacts_answer_in_log(self, mocker):
         # Setup mock for logfire
         mock_logfire = mocker.patch("core.hub.client.logfire.info")
@@ -80,7 +82,6 @@ class TestHubClientSubmit:
         mock_logfire.assert_any_call("Submitting task secret_task", answer_preview=expected_preview)
 
 
-@respx.mock
 class TestHubClientGetData503Tolerant:
     """Testy get_data_503_tolerant() z zamockowanym HTTP i mockowanym czasem (tenacity)."""
 
@@ -94,6 +95,7 @@ class TestHubClientGetData503Tolerant:
     def teardown_method(self):
         self.hub._http.close()
 
+    @respx.mock
     def test_success_without_retry(self):
         route = respx.get(self.url).mock(return_value=httpx.Response(200, content=b"success data"))
 
@@ -101,6 +103,7 @@ class TestHubClientGetData503Tolerant:
         assert result == b"success data"
         assert route.call_count == 1
 
+    @respx.mock
     def test_success_after_503_retries(self, mocker):
         # Pomijamy prawdziwe sleep'y w testach (przyspiesza wykonanie)
         mocker.patch("time.sleep")
@@ -117,6 +120,7 @@ class TestHubClientGetData503Tolerant:
         assert result == b"recovered data"
         assert route.call_count == 3
 
+    @respx.mock
     def test_exhausts_retries_on_503(self, mocker):
         from tenacity import RetryError
 
@@ -129,6 +133,59 @@ class TestHubClientGetData503Tolerant:
 
         # Zgodnie z @retry(stop=stop_after_attempt(8))
         assert route.call_count == 8
+
+
+class TestHubClientGetData:
+    """Testy get_data() z zamockowanym HTTP i mockowanym czasem (tenacity)."""
+
+    def setup_method(self):
+        self.hub = HubClient.__new__(HubClient)
+        self.hub._apikey = "test-key"
+        self.hub._base_url = "https://hub.ag3nts.org"
+        self.hub._http = httpx.Client()
+        self.url = f"{self.hub._base_url}/data/{self.hub._apikey}/test-file.txt"
+
+    def teardown_method(self):
+        self.hub._http.close()
+
+    @respx.mock
+    def test_get_data_success_without_retry(self):
+        route = respx.get(self.url).mock(return_value=httpx.Response(200, content=b"success data"))
+
+        result = self.hub.get_data("test-file.txt")
+        assert result == b"success data"
+        assert route.call_count == 1
+
+    @respx.mock
+    def test_get_data_success_after_retries(self, mocker):
+        # Pomijamy prawdziwe sleep'y w testach (przyspiesza wykonanie)
+        mocker.patch("time.sleep")
+
+        route = respx.get(self.url)
+        # 2 razy błąd (np. 500), 3. raz sukces
+        route.side_effect = [
+            httpx.Response(500),
+            httpx.Response(500),
+            httpx.Response(200, content=b"recovered data"),
+        ]
+
+        result = self.hub.get_data("test-file.txt")
+        assert result == b"recovered data"
+        assert route.call_count == 3
+
+    @respx.mock
+    def test_get_data_exhausts_retries(self, mocker):
+        from tenacity import RetryError
+
+        mocker.patch("time.sleep")
+
+        route = respx.get(self.url).mock(return_value=httpx.Response(500))
+
+        with pytest.raises(RetryError):
+            self.hub.get_data("test-file.txt")
+
+        # Zgodnie z @retry(stop=stop_after_attempt(3))
+        assert route.call_count == 3
 
 
 class TestHubClientTeardown:
