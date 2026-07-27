@@ -11,6 +11,7 @@ TDD workflow z Claude Code:
   3. Zaimplementuj minimum kodu żeby test przeszedł → GREEN
   4. Refaktoryzuj → GREEN
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -65,6 +66,7 @@ def real_people() -> list[dict]:
 
 # ─── parse_csv ────────────────────────────────────────────────────────────────
 
+
 class TestParseCsv:
     def test_returns_list_of_dicts(self):
         result = parse_csv(SAMPLE_CSV)
@@ -91,6 +93,7 @@ class TestParseCsv:
 
 # ─── filter_candidates ───────────────────────────────────────────────────────
 
+
 class TestFilterCandidates:
     def test_keeps_only_males(self, sample_people):
         result = filter_candidates(sample_people)
@@ -102,22 +105,58 @@ class TestFilterCandidates:
 
     def test_age_range_lower_bound(self):
         # 2026 - 2006 = 20 → minimalny wiek, powinien przejść
-        people = [{"name": "X", "surname": "Y", "gender": "M", "born": "2006", "city": "Grudziądz", "job": "test"}]
+        people = [
+            {
+                "name": "X",
+                "surname": "Y",
+                "gender": "M",
+                "born": "2006",
+                "city": "Grudziądz",
+                "job": "test",
+            }
+        ]
         assert len(filter_candidates(people)) == 1
 
     def test_age_range_upper_bound(self):
         # 2026 - 1986 = 40 → maksymalny wiek, powinien przejść
-        people = [{"name": "X", "surname": "Y", "gender": "M", "born": "1986", "city": "Grudziądz", "job": "test"}]
+        people = [
+            {
+                "name": "X",
+                "surname": "Y",
+                "gender": "M",
+                "born": "1986",
+                "city": "Grudziądz",
+                "job": "test",
+            }
+        ]
         assert len(filter_candidates(people)) == 1
 
     def test_too_old_excluded(self):
         # 2026 - 1985 = 41 → za stary
-        people = [{"name": "X", "surname": "Y", "gender": "M", "born": "1985", "city": "Grudziądz", "job": "test"}]
+        people = [
+            {
+                "name": "X",
+                "surname": "Y",
+                "gender": "M",
+                "born": "1985",
+                "city": "Grudziądz",
+                "job": "test",
+            }
+        ]
         assert len(filter_candidates(people)) == 0
 
     def test_too_young_excluded(self):
         # 2026 - 2007 = 19 → za młody
-        people = [{"name": "X", "surname": "Y", "gender": "M", "born": "2007", "city": "Grudziądz", "job": "test"}]
+        people = [
+            {
+                "name": "X",
+                "surname": "Y",
+                "gender": "M",
+                "born": "2007",
+                "city": "Grudziądz",
+                "job": "test",
+            }
+        ]
         assert len(filter_candidates(people)) == 0
 
     def test_wrong_city_excluded(self, sample_people):
@@ -140,7 +179,16 @@ class TestFilterCandidates:
         assert len(result) == 2
 
     def test_handles_invalid_born(self):
-        people = [{"name": "X", "surname": "Y", "gender": "M", "born": "nie-liczba", "city": "Grudziądz", "job": "test"}]
+        people = [
+            {
+                "name": "X",
+                "surname": "Y",
+                "gender": "M",
+                "born": "nie-liczba",
+                "city": "Grudziądz",
+                "job": "test",
+            }
+        ]
         result = filter_candidates(people)
         assert result == []
 
@@ -154,25 +202,31 @@ class TestFilterCandidates:
 # apply_tags łączy wyniki tagowania z kandydatami po indeksie, więc jakiekolwiek
 # resortowanie między filtrowaniem a tagowaniem rozjeżdża przypisanie tagów.
 
+
 class TestFilterCandidatesRealData:
     def test_real_csv_parses(self, real_people):
         assert len(real_people) > 0
-        assert {"name", "surname", "gender", "birthDate", "birthPlace", "job"}.issubset(real_people[0].keys())
+        assert {"name", "surname", "gender", "birthDate", "birthPlace", "job"}.issubset(
+            real_people[0].keys()
+        )
 
     def test_returns_some_candidates(self, real_people):
         result = filter_candidates(real_people)
-        assert len(result) > 0, "Brak kandydatów na realnym people.csv — sprawdź kryteria filtrowania"
+        assert len(result) > 0, (
+            "Brak kandydatów na realnym people.csv — sprawdź kryteria filtrowania"
+        )
 
     def test_preserves_original_row_order(self, real_people):
         """filter_candidates nie może przestawiać wierszy względem kolejności w CSV."""
         result = filter_candidates(real_people)
         indices = []
-        search_start = 0
+        iterator = enumerate(real_people)
         for p in result:
-            idx = next(i for i, orig in enumerate(real_people[search_start:], start=search_start) if orig == p)
+            idx = next(i for i, orig in iterator if orig == p)
             indices.append(idx)
-            search_start = idx + 1
-        assert indices == sorted(indices), "Kolejność kandydatów rozjechała się z kolejnością w people.csv"
+        assert indices == sorted(indices), (
+            "Kolejność kandydatów rozjechała się z kolejnością w people.csv"
+        )
 
     def test_candidates_match_filter_criteria(self, real_people):
         """Każdy kandydat realnie spełnia kryteria (płeć/miasto/wiek) — nie tylko liczba się zgadza."""
@@ -186,6 +240,7 @@ class TestFilterCandidatesRealData:
 
 
 # ─── apply_tags ──────────────────────────────────────────────────────────────
+
 
 class TestApplyTags:
     def test_applies_tags_by_index(self):
@@ -211,6 +266,7 @@ class TestApplyTags:
 
 # ─── filter_by_tag ────────────────────────────────────────────────────────────
 
+
 class TestFilterByTag:
     def test_keeps_matching_tag(self):
         people = [
@@ -232,14 +288,33 @@ class TestFilterByTag:
 
 # ─── format_answer ────────────────────────────────────────────────────────────
 
+
 class TestFormatAnswer:
     def test_output_has_required_fields(self):
-        people = [{"name": "Jan", "surname": "K", "gender": "M", "born": "1990", "city": "Grudziądz", "tags": ["transport"]}]
+        people = [
+            {
+                "name": "Jan",
+                "surname": "K",
+                "gender": "M",
+                "born": "1990",
+                "city": "Grudziądz",
+                "tags": ["transport"],
+            }
+        ]
         result = format_answer(people)
         assert result[0].keys() == {"name", "surname", "gender", "born", "city", "tags"}
 
     def test_born_is_int(self):
-        people = [{"name": "Jan", "surname": "K", "gender": "M", "born": "1990", "city": "Grudziądz", "tags": []}]
+        people = [
+            {
+                "name": "Jan",
+                "surname": "K",
+                "gender": "M",
+                "born": "1990",
+                "city": "Grudziądz",
+                "tags": [],
+            }
+        ]
         result = format_answer(people)
         assert isinstance(result[0]["born"], int)
 
@@ -248,6 +323,7 @@ class TestFormatAnswer:
 
 
 # ─── Integration test ─────────────────────────────────────────────────────────
+
 
 @pytest.mark.integration
 def test_full_solution_against_hub():
@@ -268,6 +344,7 @@ def test_full_solution_against_hub():
     llm = LLMClient(provider)
 
     from tasks.s01e01_people.solution import PeopleTask
+
     task_instance = PeopleTask(hub, llm)
     flag = task_instance.run()
 
