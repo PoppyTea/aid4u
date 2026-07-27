@@ -15,7 +15,6 @@ import logfire
 import keyring
 import os
 import concurrent.futures
-from pathlib import Path
 from typing import Optional
 from functools import lru_cache
 
@@ -53,7 +52,7 @@ class SecretsManager:
             value = keyring.get_password(self.service, key)
             if value:
                 return value
-        except Exception as e:
+        except Exception:
             logfire.warning(f"Keyring error ({key})", exc_info=True)
 
         # 2. Spróbuj OS environment

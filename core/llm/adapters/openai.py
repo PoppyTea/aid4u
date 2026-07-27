@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel
 

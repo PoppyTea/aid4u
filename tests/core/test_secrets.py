@@ -90,5 +90,10 @@ def test_get_secrets_singleton():
 def test_get_from_env_file_fallback(secrets_manager):
     # Test step 3 fallback (it uses os.getenv again currently)
     with patch("keyring.get_password", return_value=None):
-        with patch("os.getenv", side_effect=[None, "env_file_secret"]):
+        original_getenv = os.getenv
+        def mock_getenv(key, default=None):
+            if key == "MY_KEY":
+                return "env_file_secret"
+            return original_getenv(key, default)
+        with patch("os.getenv", side_effect=mock_getenv):
             assert secrets_manager.get("MY_KEY") == "env_file_secret"

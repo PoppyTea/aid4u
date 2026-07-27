@@ -12,11 +12,11 @@ Dzięki temu zmiana providera = zmiana jednej linii w run.py:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel
 
-from core.llm.types import LLMMessage, LLMResponse, Tool, ToolResult
+from core.llm.types import LLMMessage, LLMResponse, Tool
 
 T = TypeVar("T", bound=BaseModel)
 
