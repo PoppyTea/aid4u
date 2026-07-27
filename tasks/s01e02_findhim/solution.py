@@ -10,7 +10,9 @@ from pydantic import BaseModel, Field, computed_field, field_validator
 from core.config import get_config
 from core.hub import HubClient
 from core.llm import LLMClient, LLMMessage, create_provider
+from core.llm.types import Tool
 from tasks.common.const import REFERENCE_YEAR
+from tasks.s01e02_findhim.prompts import SYSTEM_AGENT_FINDHIM, USER_AGENT_FINDHIM
 
 _llm_client: LLMClient | None = None
 
@@ -301,3 +303,111 @@ class Suspect(BaseModel):
                 raw_json = json.load(f)
                 return [GeoPoint(**data_point) for data_point in raw_json]
         return v if isinstance(v, list) else []
+
+
+# ─── Agent + Function Calling — narzędzia dla LLMClient.run_agent_loop ───────
+
+def resolve_all_power_plants(plants: list[PowerPlant]) -> list[PowerPlant]:
+    """
+    Geokoduje wszystkie elektrownie NA STARCIE (jednorazowo), zanim agent zacznie
+    działać — żeby model nie musiał podawać współrzędnych elektrowni przy każdym
+    wywołaniu narzędzia, i żeby to nie liczyło się do jego max_iterations.
+    """
+    for plant in plants:
+        if plant.location is None:
+            plant.resolve_coordinates()
+    return plants
+
+
+def find_nearest_plant_for_suspect(
+    hub: HubClient, plants: list[PowerPlant], name: str, surname: str, birth_year: int
+) -> dict:
+    """
+    Dla jednej osoby: pobiera jej historię lokalizacji i zwraca kod najbliższej
+    elektrowni + dystans w km. Jedno wywołanie HTTP (`/api/location`) + redukcja
+    w kodzie po wszystkich elektrowniach — agent nie woła osobnego narzędzia per
+    elektrownia.
+    """
+    locations = get_person_locations(hub, name, surname)
+    suspect = Suspect(name=name, surname=surname, born=birth_year, location_history=locations)
+
+    results = [
+        plant.nearest_suspect(suspect)
+        for plant in plants
+        if plant.location is not None
+    ]
+    results = [r for r in results if r is not None]
+
+    if not results:
+        return {"plant_code": None, "distance_km": None}
+
+    best = min(results, key=lambda r: r["distance"])
+    return {"plant_code": best["code"], "distance_km": round(best["distance"], 2)}
+
+
+FIND_NEAREST_PLANT_TOOL = Tool(
+    name="find_nearest_plant_for_suspect",
+    description=(
+        "Dla podanej osoby (imię, nazwisko, rok urodzenia) sprawdza jej historię "
+        "lokalizacji i zwraca kod najbliższej elektrowni oraz dystans w km. Użyj "
+        "dla KAŻDEJ osoby z listy podejrzanych, żeby znaleźć tę najbliżej elektrowni."
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": "Imię podejrzanego"},
+            "surname": {"type": "string", "description": "Nazwisko podejrzanego"},
+            "birth_year": {"type": "integer", "description": "Rok urodzenia podejrzanego"},
+        },
+        "required": ["name", "surname", "birth_year"],
+    },
+)
+
+GET_ACCESS_LEVEL_TOOL = Tool(
+    name="get_access_level",
+    description=(
+        "Zwraca poziom dostępu (accessLevel) danej osoby. Użyj TYLKO dla osoby, "
+        "która okazała się najbliżej elektrowni ze wszystkich sprawdzonych."
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": "Imię podejrzanego"},
+            "surname": {"type": "string", "description": "Nazwisko podejrzanego"},
+            "birth_year": {"type": "integer", "description": "Rok urodzenia podejrzanego"},
+        },
+        "required": ["name", "surname", "birth_year"],
+    },
+)
+
+FINDHIM_TOOLS = [FIND_NEAREST_PLANT_TOOL, GET_ACCESS_LEVEL_TOOL]
+
+
+def build_tool_executor(hub: HubClient, plants: list[PowerPlant]):
+    """
+    Domyka `hub`/`plants` w funkcji dispatchującej wywołania narzędzi —
+    dokładnie te dwa argumenty NIGDY nie są polami, które model wypełnia.
+    """
+    def tool_executor(name: str, args: dict) -> str:
+        if name == "find_nearest_plant_for_suspect":
+            result = find_nearest_plant_for_suspect(
+                hub, plants, args["name"], args["surname"], args["birth_year"]
+            )
+            return json.dumps(result, ensure_ascii=False)
+        if name == "get_access_level":
+            level = get_access_level(hub, args["name"], args["surname"], args["birth_year"])
+            return json.dumps({"accessLevel": level}, ensure_ascii=False)
+        raise ValueError(f"Unknown tool: {name}")
+
+    return tool_executor
+
+
+def build_initial_messages(suspects: list[Suspect]) -> list[LLMMessage]:
+    suspects_json = json.dumps(
+        [
+            {"name": s.name, "surname": s.surname, "birth_year": s.born}
+            for s in suspects
+        ],
+        ensure_ascii=False,
+    )
+    return [LLMMessage.user(USER_AGENT_FINDHIM.format(suspects_json=suspects_json))]

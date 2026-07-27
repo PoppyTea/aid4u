@@ -40,3 +40,22 @@ class GeoCity:
 #     BAD EXAMPLES:
 #         {GeoPointCity.BAD_EXAMPLES_CITY}
 #     """)
+
+
+SYSTEM_AGENT_FINDHIM = """\
+Szukasz podejrzanego widzianego najbliżej jednej z elektrowni atomowych.
+
+Dla KAŻDEJ osoby z podanej listy podejrzanych wywołaj find_nearest_plant_for_suspect,
+żeby sprawdzić jej najmniejszy dystans do dowolnej elektrowni.
+
+Po sprawdzeniu WSZYSTKICH osób, wywołaj get_access_level TYLKO dla tej z najmniejszym
+dystansem ze wszystkich sprawdzonych.
+
+Na koniec odpowiedz WYŁĄCZNIE obiektem JSON, bez dodatkowego tekstu ani markdown:
+{"name": "...", "surname": "...", "accessLevel": <int>, "powerPlant": "<kod elektrowni>"}
+"""
+
+USER_AGENT_FINDHIM = """\
+Lista podejrzanych do sprawdzenia:
+{suspects_json}
+"""

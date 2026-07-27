@@ -1,3 +1,4 @@
+import json
 from typing import Iterable
 from pathlib import Path
 
@@ -7,7 +8,10 @@ from solution import (
     GeoPoint,
     PowerPlant,
     Suspect,
+    build_initial_messages,
+    build_tool_executor,
     connecion_bruteforce,
+    find_nearest_plant_for_suspect,
     get_access_level,
     get_person_locations,
     parse_power_plants,
@@ -328,3 +332,65 @@ def test_get_access_level_sends_birth_year_as_int():
 def test_get_access_level_returns_just_the_level():
     hub = FakeHub(response={"name": "Wacław", "surname": "Jasiński", "accessLevel": 2})
     assert get_access_level(hub, "Wacław", "Jasiński", 1986) == 2
+
+
+### TDD CYCLE 06 — narzędzia agenta (find_nearest_plant_for_suspect, tool_executor) ###
+
+def test_find_nearest_plant_for_suspect_finds_true_minimum_across_plants():
+    # Podejrzany widziany dokładnie w Radomiu -> dystans 0 do elektrowni Radom,
+    # musi wygrać z pozostałymi 6, niezależnie od kolejności na liście.
+    hub = FakeHub(response=[{"latitude": RADOM.latitude, "longitude": RADOM.longitude}])
+    result = find_nearest_plant_for_suspect(hub, power_plants, "Testowy", "Podejrzany", 1990)
+
+    assert result["plant_code"] == "PWR8406PL"  # Elektrownia Radom
+    assert result["distance_km"] == pytest.approx(0.0, abs=0.01)
+
+
+def test_find_nearest_plant_for_suspect_returns_none_code_when_no_plant_resolved():
+    unresolved_plants = [
+        PowerPlant(location_name="Nieznane", location=None, code="PWR0000PL", power_level=1, active=True)
+    ]
+    hub = FakeHub(response=[{"latitude": WARSAW.latitude, "longitude": WARSAW.longitude}])
+    result = find_nearest_plant_for_suspect(hub, unresolved_plants, "Testowy", "Podejrzany", 1990)
+
+    assert result == {"plant_code": None, "distance_km": None}
+
+
+def test_tool_executor_dispatches_find_nearest_plant_for_suspect():
+    hub = FakeHub(response=[{"latitude": RADOM.latitude, "longitude": RADOM.longitude}])
+    executor = build_tool_executor(hub, power_plants)
+
+    result = json.loads(executor("find_nearest_plant_for_suspect", {
+        "name": "Testowy", "surname": "Podejrzany", "birth_year": 1990,
+    }))
+
+    assert result["plant_code"] == "PWR8406PL"
+
+
+def test_tool_executor_dispatches_get_access_level():
+    hub = FakeHub(response={"name": "Testowy", "surname": "Podejrzany", "accessLevel": 3})
+    executor = build_tool_executor(hub, power_plants)
+
+    result = json.loads(executor("get_access_level", {
+        "name": "Testowy", "surname": "Podejrzany", "birth_year": 1990,
+    }))
+
+    assert result == {"accessLevel": 3}
+
+
+def test_tool_executor_raises_on_unknown_tool():
+    hub = FakeHub(response={})
+    executor = build_tool_executor(hub, power_plants)
+
+    with pytest.raises(ValueError):
+        executor("mystery_tool", {})
+
+
+def test_build_initial_messages_embeds_all_suspects():
+    suspects = [Suspect(name="Jan", surname="Kowalski", born=1990, location_history=[])]
+    messages = build_initial_messages(suspects)
+
+    assert len(messages) == 1
+    assert "Jan" in messages[0].content
+    assert "Kowalski" in messages[0].content
+    assert "1990" in messages[0].content
