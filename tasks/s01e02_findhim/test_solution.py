@@ -2,7 +2,15 @@ from typing import Iterable
 from pathlib import Path
 
 import pytest
-from solution import GeoPoint, PowerPlant, Suspect
+from solution import (
+    GeoConnection,
+    GeoPoint,
+    PowerPlant,
+    Suspect,
+    connecion_bruteforce,
+    parse_power_plants,
+    shortest_conection,
+)
 from test_data import WARSAW
 
 from tasks.s01e02_findhim.test_data import (
@@ -184,3 +192,90 @@ def test_suspect_location_history_path():
     assert len(test_dude.location_history) == 2
     assert test_dude.location_history[1].latitude == WARSAW.latitude
     assert test_dude.location_history[1].longitude == WARSAW.longitude
+
+
+### TDD CYCLE 03 — GeoConnection, connecion_bruteforce, shortest_conection ###
+
+def test_geo_connection_shortest_distance():
+    connection = GeoConnection(alpha_point=WARSAW, beta_point=KRAKOW)
+    assert 248.5 <= connection.shortest_distance <= 253.5
+
+
+def test_geo_connection_equality_is_order_independent():
+    forward = GeoConnection(alpha_point=WARSAW, beta_point=KRAKOW)
+    backward = GeoConnection(alpha_point=KRAKOW, beta_point=WARSAW)
+    assert forward == backward
+
+
+def test_geo_connection_reversed_swaps_points():
+    connection = GeoConnection(alpha_point=WARSAW, beta_point=KRAKOW)
+    flipped = reversed(connection)
+    assert flipped.alpha_point == KRAKOW
+    assert flipped.beta_point == WARSAW
+
+
+def test_geo_connection_ordering_by_distance():
+    close = GeoConnection(alpha_point=WARSAW, beta_point=RADOM)
+    far = GeoConnection(alpha_point=WARSAW, beta_point=SZCZECIN)
+    assert close < far
+    assert far > close
+
+
+def test_connecion_bruteforce_pairs_every_point_with_every_collection_point():
+    connections = connecion_bruteforce([WARSAW], [KRAKOW, RADOM])
+    assert len(connections) == 2
+    assert GeoConnection(alpha_point=WARSAW, beta_point=KRAKOW) in connections
+    assert GeoConnection(alpha_point=WARSAW, beta_point=RADOM) in connections
+
+
+def test_connecion_bruteforce_flattens_multiple_collections():
+    connections = connecion_bruteforce([WARSAW], [KRAKOW], [RADOM, SZCZECIN])
+    assert len(connections) == 3
+
+
+def test_connecion_bruteforce_dedupes_equal_connections():
+    connections = connecion_bruteforce([WARSAW, WARSAW], [KRAKOW])
+    assert len(connections) == 1
+
+
+def test_shortest_conection_picks_the_minimum():
+    connections = connecion_bruteforce([WARSAW], [KRAKOW, RADOM, SZCZECIN])
+    winner = shortest_conection(connections)
+    assert winner == GeoConnection(alpha_point=WARSAW, beta_point=RADOM)
+
+
+### TDD CYCLE 04 — PowerPlant.nearest_suspect, parse_power_plants ###
+
+def test_nearest_suspect_returns_distance_and_identity():
+    plant = PowerPlant(location_name="Radom", location=RADOM, code="PWR8406PL", power_level=38, active=True)
+    result = plant.nearest_suspect(test_dude)
+    assert result is not None
+    assert result["code"] == "PWR8406PL"
+    assert result["name"] == test_dude.name
+    assert result["surname"] == test_dude.surname
+    assert result["distance"] == pytest.approx(RADOM.distance_to(WARSAW))
+
+
+def test_nearest_suspect_returns_none_when_location_unresolved():
+    plant = PowerPlant(location_name="Radom", location=None, code="PWR8406PL", power_level=38, active=True)
+    assert plant.nearest_suspect(test_dude) is None
+
+
+def test_parse_power_plants_builds_models_from_raw_json():
+    raw = {
+        "power_plants": {
+            "Zabrze": {"is_active": True, "power": "35 MW", "code": "PWR3847PL"},
+            "Żarnowiec": {"is_active": False, "power": "0 MW", "code": "PWR6132PL"},
+        }
+    }
+    plants = parse_power_plants(raw)
+    assert len(plants) == 2
+
+    zabrze = next(p for p in plants if p.location_name == "Zabrze")
+    assert zabrze.code == "PWR3847PL"
+    assert zabrze.power_level == 35
+    assert zabrze.active is True
+    assert zabrze.location is None  # geokodowanie robi resolve_coordinates() osobno
+
+    zarnowiec = next(p for p in plants if p.location_name == "Żarnowiec")
+    assert zarnowiec.active is False

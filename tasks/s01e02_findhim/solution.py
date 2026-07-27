@@ -167,9 +167,13 @@ def connecion_bruteforce(point: list[GeoPoint], *collection: list[GeoPoint]) -> 
     """
     Zwraca wszystkie pary punktów Geograficznych, unikalne punkty z zadanej puli punktów geograficznych.
     """
+    flattened: list[GeoPoint] = []
+    for group in collection:
+        flattened.extend(group)
+
     all_connections: list[GeoConnection] = []
     for p1 in point:
-        for p2 in collection:
+        for p2 in flattened:
             alfa_beta_conect:GeoConnection = GeoConnection(alpha_point=p1, beta_point=p2)
             if alfa_beta_conect not in all_connections:
                 all_connections.append(alfa_beta_conect)
@@ -179,7 +183,7 @@ def shortest_conection(connections: list[GeoConnection]) -> GeoConnection:
     """
     Zwraca połączenie z najmniejszą odległością.
     """
-    return min(connections, key=lambda c: c.shortest_distance())
+    return min(connections, key=lambda c: c.shortest_distance)
 
 class NamedPlace(GeoPoint):
     """Kształt odpowiedzi LLM dla pojedynczego zapytania o współrzędne miasta."""
@@ -192,13 +196,29 @@ class PowerPlant(BaseModel):
     power_level: Annotated[int | None, Field(default=None)]
     active: Annotated[bool | None, Field(default=None)]
 
-    def nearest_suspect(self, suspect: Suspect):
+    def nearest_suspect(self, suspect: Suspect) -> dict | None:
         """
         Oblicza po kolei odległości pomiędzy daną elektrownią,
         a wszystkimi GeoPoints z LocationHistory podejrzanego.
         Zwraca tylko elektrownię, ktra uzyskała najniższą
         odległość od podejrzanego i zwraca słownik z uuid elektrowni, imieniem, nazwiskiem podejrzanego i odległością
         """
+        if self.location is None or not suspect.location_history:
+            return None
+
+        nearest = self.location.is_nearest_to(suspect.location_history)
+        if nearest is None:
+            return None
+        # Remis (kilka lokalizacji w tej samej, najmniejszej odległości) -> bierzemy pierwszą,
+        # dystans i tak jest ten sam dla wszystkich w remisie.
+        nearest_point = nearest[0] if isinstance(nearest, list) else nearest
+
+        return {
+            "code": self.code,
+            "name": suspect.name,
+            "surname": suspect.surname,
+            "distance": self.location.distance_to(nearest_point),
+        }
 
     def _geocode_city(self, city_name: str | None)-> GeoPoint | None:
         """
@@ -221,6 +241,28 @@ class PowerPlant(BaseModel):
         korzystając z _geocode_city.
         """
         self.location = self._geocode_city(self.location_name)
+
+
+def parse_power_plants(raw: dict) -> list[PowerPlant]:
+    """
+    Parsuje surowy JSON z `findhim_locations.json` (klucz "power_plants": {nazwa: {...}})
+    na listę `PowerPlant`. `location` zostaje `None` — geokodowanie robi `resolve_coordinates()`
+    osobno, ta funkcja tylko przenosi dane strukturalne (nazwa/kod/moc/status).
+    """
+    plants: list[PowerPlant] = []
+    for city_name, details in raw.get("power_plants", {}).items():
+        power_raw = str(details.get("power", "0")).split()[0]
+        plants.append(
+            PowerPlant(
+                location_name=city_name,
+                location=None,
+                code=details.get("code"),
+                power_level=int(power_raw),
+                active=bool(details.get("is_active", False)),
+            )
+        )
+    return plants
+
 
 class Suspect(BaseModel):
     name: Annotated[str,Field(frozen=True)]
