@@ -32,6 +32,7 @@ SDK v4 — breaking changes względem v3:
 ⚠️  PRZED MODYFIKACJĄ TEGO PLIKU: użyj langfuse-docs MCP serwera.
     API Langfuse zmieniło się między v3 i v4. Wiedza treningowa może być nieaktualna.
 """
+
 from __future__ import annotations
 
 _initialized = False
@@ -106,4 +107,5 @@ def _setup_langfuse() -> None:
         )
     except Exception as e:
         import logfire
+
         logfire.warning(f"Langfuse init failed (non-fatal): {e}")

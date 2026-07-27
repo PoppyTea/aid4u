@@ -1,8 +1,9 @@
 """Adapter: OpenAI SDK → LLMProvider."""
+
 from __future__ import annotations
 
 import json
-from typing import Any, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel
 
@@ -15,6 +16,7 @@ T = TypeVar("T", bound=BaseModel)
 class OpenAIAdapter(LLMProvider):
     def __init__(self, api_key: str, model: str = "gpt-5.4-nano") -> None:
         import openai
+
         self._client = openai.OpenAI(api_key=api_key)
         self._model = model
 

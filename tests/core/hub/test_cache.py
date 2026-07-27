@@ -2,6 +2,7 @@ import pytest
 from pathlib import Path
 from core.hub.cache import LocalCache
 
+
 @pytest.fixture
 def temp_cache_dir(tmp_path, monkeypatch):
     """Fixture do patchowania _CACHE_ROOT."""
@@ -9,12 +10,14 @@ def temp_cache_dir(tmp_path, monkeypatch):
     monkeypatch.setattr("core.hub.cache._CACHE_ROOT", cache_root)
     return cache_root
 
+
 def test_init_creates_directory(temp_cache_dir):
     """Test inicjalizacji cache'a z utworzeniem katalogu."""
     LocalCache(subdir="test_dir")
     expected_dir = temp_cache_dir / "test_dir"
     assert expected_dir.exists()
     assert expected_dir.is_dir()
+
 
 def test_get_and_set(temp_cache_dir):
     """Testowanie metod get i set."""
@@ -32,6 +35,7 @@ def test_get_and_set(temp_cache_dir):
     cached_data = cache.get(key)
     assert cached_data == data
 
+
 def test_get_or_fetch(temp_cache_dir):
     """Testowanie metody get_or_fetch."""
     cache = LocalCache()
@@ -39,6 +43,7 @@ def test_get_or_fetch(temp_cache_dir):
     data = b"fetched_data"
 
     fetch_calls = 0
+
     def mock_fetch():
         nonlocal fetch_calls
         fetch_calls += 1
@@ -53,6 +58,7 @@ def test_get_or_fetch(temp_cache_dir):
     result2 = cache.get_or_fetch(key, mock_fetch)
     assert result2 == data
     assert fetch_calls == 1
+
 
 def test_get_or_fetch_tracks_last_key(temp_cache_dir):
     """last_key musi wskazywać ostatnio użyty klucz — używane przez BaseTask do nazwania pliku w data/outputs/."""

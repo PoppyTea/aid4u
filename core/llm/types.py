@@ -1,4 +1,5 @@
 """Wspólne typy danych warstwy LLM. Niezależne od providera."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -26,6 +27,7 @@ class LLMMessage:
 @dataclass
 class Tool:
     """Definicja narzędzia dla function calling."""
+
     name: str
     description: str
     parameters: dict[str, Any]  # JSON Schema
@@ -34,6 +36,7 @@ class Tool:
 @dataclass
 class ToolCall:
     """Wywołanie narzędzia przez model."""
+
     id: str
     name: str
     arguments: dict[str, Any]
@@ -42,6 +45,7 @@ class ToolCall:
 @dataclass
 class ToolResult:
     """Wynik wykonania narzędzia."""
+
     tool_call_id: str
     content: str
 

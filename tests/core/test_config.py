@@ -84,11 +84,14 @@ def test_properties_optional(clean_config):
 
 
 def test_properties_env_direct(clean_config):
-    with patch.dict(os.environ, {
-        "LANGFUSE_HOST": "https://custom.langfuse.com",
-        "LANGFUSE_TRACING_ENVIRONMENT": "prod",
-        "HUB_BASE_URL": "https://custom.hub.com"
-    }):
+    with patch.dict(
+        os.environ,
+        {
+            "LANGFUSE_HOST": "https://custom.langfuse.com",
+            "LANGFUSE_TRACING_ENVIRONMENT": "prod",
+            "HUB_BASE_URL": "https://custom.hub.com",
+        },
+    ):
         assert clean_config.langfuse_host == "https://custom.langfuse.com"
         assert clean_config.langfuse_environment == "prod"
         assert clean_config.hub_base_url == "https://custom.hub.com"
@@ -102,15 +105,23 @@ def test_properties_env_direct_defaults(clean_config):
 
 
 def test_gemini_key_for_tier_standard(clean_config):
-    with patch.object(Config, "gemini_key", new_callable=lambda: property(lambda self: "standard_key")):
-        with patch.object(Config, "gemini_key_premium", new_callable=lambda: property(lambda self: "premium_key")):
+    with patch.object(
+        Config, "gemini_key", new_callable=lambda: property(lambda self: "standard_key")
+    ):
+        with patch.object(
+            Config, "gemini_key_premium", new_callable=lambda: property(lambda self: "premium_key")
+        ):
             assert clean_config.gemini_key_for_tier("standard") == "standard_key"
             assert clean_config.gemini_key_for_tier() == "standard_key"
 
 
 def test_gemini_key_for_tier_premium(clean_config):
-    with patch.object(Config, "gemini_key", new_callable=lambda: property(lambda self: "standard_key")):
-        with patch.object(Config, "gemini_key_premium", new_callable=lambda: property(lambda self: "premium_key")):
+    with patch.object(
+        Config, "gemini_key", new_callable=lambda: property(lambda self: "standard_key")
+    ):
+        with patch.object(
+            Config, "gemini_key_premium", new_callable=lambda: property(lambda self: "premium_key")
+        ):
             assert clean_config.gemini_key_for_tier("premium") == "premium_key"
 
 
@@ -125,6 +136,7 @@ def test_get_config_singleton():
 
 def test_from_keyring_exception(clean_config):
     from unittest.mock import MagicMock
+
     mock_keyring = MagicMock()
     mock_keyring.get_password.side_effect = Exception("keyring error")
     with patch.dict("sys.modules", {"keyring": mock_keyring}):
@@ -133,6 +145,7 @@ def test_from_keyring_exception(clean_config):
 
 def test_from_keyring_success(clean_config):
     from unittest.mock import MagicMock
+
     mock_keyring = MagicMock()
     mock_keyring.get_password.return_value = "secret_key"
     with patch.dict("sys.modules", {"keyring": mock_keyring}):

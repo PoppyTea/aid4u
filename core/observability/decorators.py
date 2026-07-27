@@ -21,6 +21,7 @@ propagate_attrs()     → Shorthand do ustawiania user_id/session_id/metadata
 - NIE owijaj HTTP requestów do hubu — Logfire instrument_httpx() robi to auto.
 - NIE używaj update_current_trace() — to API v3, w v4 użyj propagate_attributes().
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -32,6 +33,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 # ─── Langfuse v4 ──────────────────────────────────────────────────────────────
+
 
 def langfuse_observe(name: str | None = None) -> Callable[[F], F]:
     """
@@ -47,9 +49,11 @@ def langfuse_observe(name: str | None = None) -> Callable[[F], F]:
         @langfuse_observe()  # użyje nazwy funkcji
         async def fetch_all_pages(): ...
     """
+
     def decorator(fn: F) -> F:
         try:
             from langfuse import observe as _lf_observe
+
             decorated = _lf_observe(name=name or fn.__name__)(fn)
         except ImportError:
             decorated = fn  # Langfuse niezainstalowany — no-op
@@ -112,6 +116,7 @@ def propagate_attrs(
 
 # ─── Logfire ──────────────────────────────────────────────────────────────────
 
+
 def logfire_span(name: str | None = None) -> Callable[[F], F]:
     """
     Owija funkcję ręcznym spanem Logfire.
@@ -126,22 +131,29 @@ def logfire_span(name: str | None = None) -> Callable[[F], F]:
         @logfire_span()  # użyje nazwy funkcji
         async def fetch_all_pages() -> list: ...
     """
+
     def decorator(fn: F) -> F:
         span_name = name or fn.__qualname__
 
         if asyncio.iscoroutinefunction(fn):
+
             @functools.wraps(fn)
             async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
                 import logfire
+
                 with logfire.span(span_name):
                     return await fn(*args, **kwargs)
+
             return async_wrapper  # type: ignore
         else:
+
             @functools.wraps(fn)
             def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
                 import logfire
+
                 with logfire.span(span_name):
                     return fn(*args, **kwargs)
+
             return sync_wrapper  # type: ignore
 
     return decorator

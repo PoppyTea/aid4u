@@ -1,4 +1,5 @@
 """Adapter: Anthropic SDK → LLMProvider."""
+
 from __future__ import annotations
 
 import json
@@ -15,9 +16,9 @@ T = TypeVar("T", bound=BaseModel)
 # Używaj przez LLMClient, nie bezpośrednio przez ten adapter.
 # Pełna strategia wyboru modelu: strategy/llm-selection.md
 ANTHROPIC_MODELS = {
-    "fast": "claude-haiku-4-5-20251001",   # szybki fallback gdy Gemini nie daje rady
-    "balanced": "claude-sonnet-4-6",        # złożone zadania, function calling, agenci
-    "powerful": "claude-opus-4-6",          # ostateczność — najwyższa jakość/koszt
+    "fast": "claude-haiku-4-5-20251001",  # szybki fallback gdy Gemini nie daje rady
+    "balanced": "claude-sonnet-4-6",  # złożone zadania, function calling, agenci
+    "powerful": "claude-opus-4-6",  # ostateczność — najwyższa jakość/koszt
 }
 
 
@@ -26,6 +27,7 @@ class AnthropicAdapter(LLMProvider):
 
     def __init__(self, api_key: str, model: str = ANTHROPIC_MODELS["fast"]) -> None:
         import anthropic
+
         self._client = anthropic.Anthropic(api_key=api_key)
         self._model = model
 
@@ -112,9 +114,7 @@ class AnthropicAdapter(LLMProvider):
             for block in response.content
             if block.type == "tool_use"
         ]
-        text = " ".join(
-            block.text for block in response.content if block.type == "text"
-        )
+        text = " ".join(block.text for block in response.content if block.type == "text")
 
         return LLMResponse(
             content=text,
