@@ -8,6 +8,7 @@ from typing import Annotated
 from pydantic import BaseModel, Field, computed_field, field_validator
 
 from core.config import get_config
+from core.hub import HubClient
 from core.llm import LLMClient, LLMMessage, create_provider
 from tasks.common.const import REFERENCE_YEAR
 
@@ -262,6 +263,21 @@ def parse_power_plants(raw: dict) -> list[PowerPlant]:
             )
         )
     return plants
+
+
+def get_person_locations(hub: HubClient, name: str, surname: str) -> list[GeoPoint]:
+    """POST /api/location — lista miejsc, w których widziano daną osobę."""
+    raw = hub.post_api("/api/location", {"name": name, "surname": surname})
+    return [GeoPoint(**point) for point in raw]
+
+
+def get_access_level(hub: HubClient, name: str, surname: str, birth_year: int) -> int:
+    """POST /api/accesslevel — wymaga birthYear jako int (rzutuj przed wywołaniem, jeśli źródło ma pełną datę)."""
+    raw = hub.post_api(
+        "/api/accesslevel",
+        {"name": name, "surname": surname, "birthYear": birth_year},
+    )
+    return raw["accessLevel"]
 
 
 class Suspect(BaseModel):

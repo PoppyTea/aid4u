@@ -8,6 +8,8 @@ from solution import (
     PowerPlant,
     Suspect,
     connecion_bruteforce,
+    get_access_level,
+    get_person_locations,
     parse_power_plants,
     shortest_conection,
 )
@@ -279,3 +281,50 @@ def test_parse_power_plants_builds_models_from_raw_json():
 
     zarnowiec = next(p for p in plants if p.location_name == "Żarnowiec")
     assert zarnowiec.active is False
+
+
+### TDD CYCLE 05 — adaptery HTTP (granica sieci zamockowana, jak w s01e01) ###
+
+class FakeHub:
+    """Zamiast prawdziwego HubClient — przechwytuje wywołania post_api bez sieci."""
+
+    def __init__(self, response):
+        self.response = response
+        self.calls: list[tuple[str, dict]] = []
+
+    def post_api(self, path: str, payload: dict):
+        self.calls.append((path, payload))
+        return self.response
+
+
+def test_get_person_locations_sends_name_and_surname():
+    hub = FakeHub(response=[{"latitude": 52.2297, "longitude": 21.0122}])
+    get_person_locations(hub, "Wacław", "Jasiński")
+
+    path, payload = hub.calls[0]
+    assert path == "/api/location"
+    assert payload == {"name": "Wacław", "surname": "Jasiński"}
+
+
+def test_get_person_locations_parses_response_into_geopoints():
+    hub = FakeHub(response=[
+        {"latitude": 52.2297, "longitude": 21.0122},
+        {"latitude": 50.0647, "longitude": 19.9450},
+    ])
+    result = get_person_locations(hub, "Wacław", "Jasiński")
+
+    assert result == [WARSAW, KRAKOW]
+
+
+def test_get_access_level_sends_birth_year_as_int():
+    hub = FakeHub(response={"name": "Wacław", "surname": "Jasiński", "accessLevel": 2})
+    get_access_level(hub, "Wacław", "Jasiński", 1986)
+
+    path, payload = hub.calls[0]
+    assert path == "/api/accesslevel"
+    assert payload == {"name": "Wacław", "surname": "Jasiński", "birthYear": 1986}
+
+
+def test_get_access_level_returns_just_the_level():
+    hub = FakeHub(response={"name": "Wacław", "surname": "Jasiński", "accessLevel": 2})
+    assert get_access_level(hub, "Wacław", "Jasiński", 1986) == 2
