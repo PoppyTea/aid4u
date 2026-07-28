@@ -7,32 +7,17 @@ from _collections_abc import Iterator
 from pathlib import Path
 from typing import Annotated, Any
 
+import httpx
 from pydantic import BaseModel, Field, computed_field, field_validator
 
-from core.config import get_config
 from core.hub import HubClient
-from core.llm import LLMClient, LLMMessage, create_provider
+from core.llm import LLMClient, LLMMessage
 from core.llm.types import Tool
 from core.tasks import BaseTask, task
 from tasks.common.const import REFERENCE_YEAR
 from tasks.s01e02_findhim.prompts import SYSTEM_AGENT_FINDHIM, USER_AGENT_FINDHIM
 
-_llm_client: LLMClient | None = None
-
-
-
-def _get_llm_client() -> LLMClient:
-    """
-    Leniwy singleton LLMClient (gemini-2.5-flash, tier standard — domyślny
-    model projektu). PowerPlant nie dostaje klienta wstrzykniętego z zewnątrz,
-    bo to zadanie nie ma jeszcze klasy @task(BaseTask) — do rewizji, gdy powstanie.
-    """
-    global _llm_client
-    if _llm_client is None:
-        provider = create_provider("gemini-2.5-flash", get_config())
-        _llm_client = LLMClient(provider)
-    return _llm_client
-
+_NOMINATIM_USER_AGENT = "aid4u-findhim-course-project/1.0"
 
 
 class GeoPoint(BaseModel):
@@ -67,6 +52,7 @@ class GeoPoint(BaseModel):
         else:
             raise ValueError("Neither latitude nor longitude can be None")
         return distance
+
 
 
 
@@ -200,16 +186,22 @@ def shortest_conection(connections: list[GeoConnection]) -> GeoConnection:
     """
     return min(connections, key=lambda c: c.shortest_distance)
 
-class NamedPlace(GeoPoint):
-    """Kształt odpowiedzi LLM dla pojedynczego zapytania o współrzędne miasta."""
-    city_name: str
-
 class PowerPlant(BaseModel):
     location_name: Annotated[str | None, Field(default=None)]
     location: Annotated[GeoPoint | None, Field(default=None)]
     code: Annotated[str | None, Field(default=None)]
-    power_level: Annotated[int | None, Field(default=None)]
+    power_level: Annotated[int | str | None, Field(default=None)]
     active: Annotated[bool | None, Field(default=None)]
+
+    @field_validator("power_level", mode="before")
+    @classmethod
+    def parse_power(cls, value: int | str | None) -> int | None:
+        if value is None or isinstance(value, int):
+            return value
+        # split() automatycznie dzieli po białych znakach.
+        # "35 MW" -> ["35", "MW"] -> bierze "35" i robi z tego int.
+        # Działa niezależnie od długości jednostki (MW, kW, W).
+        return int(str(value).split()[0])
 
     def nearest_suspect(self, suspect: Suspect) -> dict | None:
         """
@@ -235,20 +227,33 @@ class PowerPlant(BaseModel):
             "distance": self.location.distance_to(nearest_point),
         }
 
-    def _geocode_city(self, city_name: str | None)-> GeoPoint | None:
+    def _geocode_city(self, city_name: str | None) -> GeoPoint | None:
         """
-        Pyta LLM o współrzędne miasta (wiedza parametryczna modelu — bez web_search,
-        decyzja z 2026-07-20: dla znanych miast search nic nie dodaje, patrz notatka
-        w pamięci projektu). Seam do mockowania w testach jednostkowych.
+        Geokoduje przez Nominatim (OpenStreetMap) — realne API geograficzne,
+        nie zgadywanie przez LLM. Próbuje najpierw "Elektrownia Jądrowa {miasto}"
+        (żeby trafić w faktyczną elektrownię, jeśli istnieje — np. Żarnowiec,
+        jedyna realna elektrownia jądrowa w Polsce, myli się z inną miejscowością
+        o tej samej nazwie), potem fallback na samą nazwę miasta.
         """
-        result = _get_llm_client().structured(
-            messages=[LLMMessage.user(f"City: {city_name}")],
-            schema=NamedPlace,
-            system="Provide geographic coordinates for the given city. If unsure about a city, return null for latitude and longitude.",
-        )
-        if result.latitude is None or result.longitude is None:
+        if city_name is None:
             return None
-        return GeoPoint(latitude=result.latitude, longitude=result.longitude)
+
+        for query in (f"Elektrownia Jądrowa {city_name}, Poland", f"{city_name}, Poland"):
+            response = httpx.get(
+                "https://nominatim.openstreetmap.org/search",
+                params={"q": query, "format": "json", "limit": 1},
+                headers={"User-Agent": _NOMINATIM_USER_AGENT},
+                timeout=10.0,
+            )
+            response.raise_for_status()
+            results = response.json()
+            if results:
+                return GeoPoint(
+                    name=city_name,
+                    latitude=float(results[0]["lat"]),
+                    longitude=float(results[0]["lon"]),
+                )
+        return None
 
     def resolve_coordinates(self) -> None:
         """
@@ -319,15 +324,14 @@ class Suspect(BaseModel):
 
 # ─── Agent + Function Calling — narzędzia dla LLMClient.run_agent_loop ───────
 
-def resolve_all_power_plants(plants: list[PowerPlant], *, delay_seconds: float = 13.0) -> list[PowerPlant]:
+def resolve_all_power_plants(plants: list[PowerPlant], *, delay_seconds: float = 1.1) -> list[PowerPlant]:
     """
     Geokoduje wszystkie elektrownie NA STARCIE (jednorazowo), zanim agent zacznie
     działać — żeby model nie musiał podawać współrzędnych elektrowni przy każdym
     wywołaniu narzędzia, i żeby to nie liczyło się do jego max_iterations.
 
-    `delay_seconds` — throttling między wywołaniami LLM. Darmowy tier Gemini
-    (gemini-2.5-flash) pozwala na 5 zapytań/minutę; 7 elektrowni bez przerwy
-    w pętli od razu łapie 429 RESOURCE_EXHAUSTED (sprawdzone empirycznie).
+    `delay_seconds` — throttling między wywołaniami Nominatim (polityka usage:
+    max 1 zapytanie/sekundę).
     """
     to_resolve = [p for p in plants if p.location is None]
     for i, plant in enumerate(to_resolve):

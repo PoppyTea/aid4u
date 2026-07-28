@@ -303,6 +303,7 @@ class FakeHub:
 
 def test_get_person_locations_sends_name_and_surname():
     hub = FakeHub(response=[{"latitude": 52.2297, "longitude": 21.0122}])
+    # pyrefly: ignore [bad-argument-type]
     get_person_locations(hub, "Wacław", "Jasiński")
 
     path, payload = hub.calls[0]
@@ -315,6 +316,7 @@ def test_get_person_locations_parses_response_into_geopoints():
         {"latitude": 52.2297, "longitude": 21.0122},
         {"latitude": 50.0647, "longitude": 19.9450},
     ])
+    # pyrefly: ignore [bad-argument-type]
     result = get_person_locations(hub, "Wacław", "Jasiński")
 
     assert result == [WARSAW, KRAKOW]
@@ -322,6 +324,7 @@ def test_get_person_locations_parses_response_into_geopoints():
 
 def test_get_access_level_sends_birth_year_as_int():
     hub = FakeHub(response={"name": "Wacław", "surname": "Jasiński", "accessLevel": 2})
+    # pyrefly: ignore [bad-argument-type]
     get_access_level(hub, "Wacław", "Jasiński", 1986)
 
     path, payload = hub.calls[0]
@@ -330,7 +333,8 @@ def test_get_access_level_sends_birth_year_as_int():
 
 
 def test_get_access_level_returns_just_the_level():
-    hub = FakeHub(response={"name": "Wacław", "surname": "Jasiński", "accessLevel": 2})
+    hub: FakeHub = FakeHub(response={"name": "Wacław", "surname": "Jasiński", "accessLevel": 2})
+    # pyrefly: ignore [bad-argument-type]
     assert get_access_level(hub, "Wacław", "Jasiński", 1986) == 2
 
 
@@ -340,6 +344,7 @@ def test_search_suspect_history_for_nearest_power_plant_finds_true_minimum_acros
     # Podejrzany widziany dokładnie w Radomiu -> dystans 0 do elektrowni Radom,
     # musi wygrać z pozostałymi 6, niezależnie od kolejności na liście.
     hub = FakeHub(response=[{"latitude": RADOM.latitude, "longitude": RADOM.longitude}])
+    # pyrefly: ignore [bad-argument-type]
     result = search_suspect_history_for_nearest_power_plant(hub, power_plants, "Testowy", "Podejrzany", 1990)
 
     assert result["plant_code"] == "PWR8406PL"  # Elektrownia Radom
@@ -351,6 +356,7 @@ def test_search_suspect_history_for_nearest_power_plant_returns_none_code_when_n
         PowerPlant(location_name="Nieznane", location=None, code="PWR0000PL", power_level=1, active=True)
     ]
     hub = FakeHub(response=[{"latitude": WARSAW.latitude, "longitude": WARSAW.longitude}])
+    # pyrefly: ignore [bad-argument-type]
     result = search_suspect_history_for_nearest_power_plant(hub, unresolved_plants, "Testowy", "Podejrzany", 1990)
 
     assert result == {"plant_code": None, "distance_km": None}
@@ -358,6 +364,7 @@ def test_search_suspect_history_for_nearest_power_plant_returns_none_code_when_n
 
 def test_tool_executor_dispatches_search_suspect_history_for_nearest_power_plant():
     hub = FakeHub(response=[{"latitude": RADOM.latitude, "longitude": RADOM.longitude}])
+    # pyrefly: ignore [bad-argument-type]
     executor = build_tool_executor(hub, power_plants)
 
     result = json.loads(executor("search_suspect_history_for_nearest_power_plant", {
@@ -369,6 +376,7 @@ def test_tool_executor_dispatches_search_suspect_history_for_nearest_power_plant
 
 def test_tool_executor_dispatches_get_access_level():
     hub = FakeHub(response={"name": "Testowy", "surname": "Podejrzany", "accessLevel": 3})
+    # pyrefly: ignore [bad-argument-type]
     executor = build_tool_executor(hub, power_plants)
 
     result = json.loads(executor("get_access_level", {
@@ -380,6 +388,7 @@ def test_tool_executor_dispatches_get_access_level():
 
 def test_tool_executor_raises_on_unknown_tool():
     hub = FakeHub(response={})
+    # pyrefly: ignore [bad-argument-type]
     executor = build_tool_executor(hub, power_plants)
 
     with pytest.raises(ValueError):

@@ -3,8 +3,8 @@ from tasks.s01e02_findhim.solution import GeoPoint, PowerPlant, Suspect
 
 ZABRZE = GeoPoint(
     name="Zabrze",
-    latitude=50.3249,
-    longitude=18.7858
+    latitude=50.308615,
+    longitude=18.786375
 )
 PIOTRKOW_TRYBUNALSKI = GeoPoint(
     name="Piotrków Trybunalski",
