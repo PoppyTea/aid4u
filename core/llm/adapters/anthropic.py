@@ -11,13 +11,13 @@ from core.llm.types import LLMMessage, LLMResponse, Tool, ToolCall
 
 T = TypeVar("T", bound=BaseModel)
 
-# Modele Anthropic dostępne w kursie (kwiecień 2026)
+# Modele Anthropic — drabina eskalacji od 28.07.2026 (patrz strategy/llm-selection.md).
 # Używaj przez LLMClient, nie bezpośrednio przez ten adapter.
-# Pełna strategia wyboru modelu: strategy/llm-selection.md
 ANTHROPIC_MODELS = {
-    "fast": "claude-haiku-4-5-20251001",   # szybki fallback gdy Gemini nie daje rady
-    "balanced": "claude-sonnet-4-6",        # złożone zadania, function calling, agenci
-    "powerful": "claude-opus-4-6",          # ostateczność — najwyższa jakość/koszt
+    "fast": "claude-haiku-4-5-20251001",   # domyślny start — najtańszy w rodzinie
+    "balanced": "claude-sonnet-5",          # Haiku zawodzi — złożone zadania, function calling
+    "powerful": "claude-opus-5",             # Sonnet nie wystarcza
+    "flagship": "claude-fable-5",            # ostateczność w rodzinie Claude
 }
 
 

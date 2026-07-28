@@ -1,5 +1,5 @@
 """
-Prompty dla zadania S01E01.
+Prompty dla zadania S01E01 - people.
 
 Trzymane osobno od logiki żeby łatwo iterować nad treścią
 bez zagłębiania się w kod Pythona.
