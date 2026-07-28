@@ -71,13 +71,14 @@ Rodzina Gemini 3.x zmienia sposób sterowania "myśleniem" i samplingiem względ
 
 ---
 
-## Anthropic (płatny fallback)
+## Anthropic (od 28.07.2026: podstawowa drabina eskalacji — patrz `strategy/llm-selection.md`)
 
 | Identyfikator API | Użyj gdy |
 |---|---|
-| `claude-haiku-4-5-20251001` | szybki fallback gdy Gemini zawodzi |
-| `claude-sonnet-4-6` | złożona logika, function calling, agenci |
-| `claude-opus-4-6` | ostateczność — najwyższy koszt |
+| `claude-haiku-4-5-20251001` | domyślny start — najtańszy w rodzinie Claude |
+| `claude-sonnet-5` | Haiku konsekwentnie zawodzi — złożona logika, function calling, agenci |
+| `claude-opus-5` | Sonnet nie wystarcza, zadanie naprawdę trudne |
+| `claude-fable-5` | ostateczność w rodzinie Claude — najwyższy koszt |
 
 ---
 
