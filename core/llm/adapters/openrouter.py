@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from core.llm.adapters.openai import OpenAIAdapter
 
+
 class OpenRouterAdapter(OpenAIAdapter):
     def __init__(self, api_key: str, model: str) -> None:
         import openai
+
         self._client = openai.OpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=api_key,

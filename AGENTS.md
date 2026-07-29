@@ -4,12 +4,29 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 
 ---
 
-## 🚀 Szybki start
-- **Zadanie dnia:** `task focus` → znajdź folder w `/tasks` → `uv run run.py solve sXXeYY`
-- **Nowe zadanie kursowe:** zacznij od `writing-plans`, nie od kodu
-- **Modele LLM:** domyślnie `gemini-2.5-flash` — szczegóły w `strategy/llm-selection.md`
+> ⚡ **TRYB: EFFICIENCY MODE** (od 2026-07-29) — priorytet to WYŁĄCZNIE szybkość i skuteczność
+> zdobywania flag, aż do 20/25. Część edukacyjna świadomie zeszła na drugi plan. Sposób
+> rozwiązania NIE MUSI być zgodny z założeniem/duchem zadania — liczy się EFEKT, nie droga.
+> Stary tryb (nauka, TDD-first, pełne planowanie przed kodem) jest schowany, nie usunięty —
+> `.help/learning-vs-efficiency/learning-mode/` + `aid4u/scripts/learning_mode_on_off.py on`
+> przywraca go nieddestrukcyjnie. Kurs ma nadal służyć edukacyjnie po zdobyciu 20 flag —
+> to świadomy, tymczasowy kompromis, nie zmiana celu.
+
+## 🚀 Szybki start (efficiency mode)
+- **Zadanie dnia:** znajdź folder w `/tasks` → `uv run run.py solve sXXeYY`
+- **Nowe zadanie kursowe — PRZED pisaniem czegokolwiek:**
+  1. Sprawdź `4th-devs/` (fork: `github.com/PoppyTea/4th-devs-fork`) — jeśli jest gotowe demo
+     dla tego tematu, przepisz je na Python zamiast projektować od zera.
+  2. Skonsultuj NotebookLM (komentarze kursu + notatnik zadań) — nierzadko ktoś już opisał
+     jak przejść zadanie w godzinę-dwie. To pierwsze źródło, nie ostatnie.
+  3. Dopiero jeśli powyższe nic nie dają — projektuj sam, najkrótszą ścieżką do flagi.
+- **Modele LLM:** domyślnie `claude-haiku-4-5-20251001` (drabina Claude — szczegóły w
+  `strategy/llm-selection.md`). Jeśli zauważysz że zadanie skorzystałoby na mocniejszym
+  modelu (Sonnet 5 → Opus 5 → Fable 5) — zgłoś to natychmiast, nie męcz się słabszym.
+- **Subagenci / równoległość:** jeśli zadanie jest na tyle proste, że masz pewność iż
+  poradzi sobie Haiku 4.5 — zaproponuj zlecenie albo sam wyślij subagenta. Rozważ pracę nad
+  kilkoma zadaniami równolegle, jeśli to przyspieszy dojście do 20 flag.
 - **Observability:** `setup_observability()` musi być zawsze w pierwszej linii skryptu
-- **MCP:** używaj serwerów dokumentacji (`langfuse`, `logfire`, `context7`) zamiast bazować na treningu
 - **Nazewnictwo plików:** `strategy/naming-conventions.md` — czytaj przed tworzeniem nowych plików
 
 ---
@@ -20,35 +37,25 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 | :--- | :--- |
 | **Strategia LLM (wybór/eskalacja/tier)** | `strategy/llm-selection.md` |
 | **Modele LLM (referencja/ściągawka)** | `strategy/llm-models.md` |
-| **Dekompozycja zadań (JSON + TW)** | `strategy/tasks/task-decomposition.md` |
-| **Workflow implementacji + skille** | `strategy/tasks/workflow.md` |
-| **Aktywacja skillów / trigger rules** | `strategy/skills/skill-activation.md` |
-| **ADHD workflow + rescue patterns** | `strategy/tasks/adhd-workflow.md` |
+| **Protokół nauki (zarchiwizowany, efficiency mode)** | `strategy/learning-protocol.md` |
 | **Konwencje nazewnictwa plików** | `strategy/naming-conventions.md` |
 | **Struktura infrastruktury** | `README.md` |
 | **MCP serwery** | `.claude/settings.json` |
 
-> Migracja nazw w toku — stary plik `strategy_task_decomposition_v1.0.0.md`
-> działa do czasu przepisania na `strategy/tasks/task-decomposition.md`. Po migracji usuń tę notatkę.
-> (`strategy_llm_v1.0.0.md` → `strategy/llm-selection.md` + `strategy/llm-models.md`: zrobione.)
-
 ---
 
-## 🧰 Skille — roster
+## 🧰 Skille — roster (efficiency mode)
 
 | Skill | Kiedy |
 |---|---|
-| `writing-plans` | każde nowe zadanie — plan przed kodem |
-| `test-driven-development` | pisanie testów, TDD, nowy feature |
+| `verification-before-completion` | przed **każdym** `task done` — nawet szybko, sprawdź że faktycznie działa |
 | `systematic-debugging` | bug po 2+ próbach bez skutku |
-| `verification-before-completion` | przed **każdym** `task done` |
 | `langfuse-observability` | instrumentacja agenta, trace |
-| `promptfoo-evals` | output zły mimo zielonych testów |
 | `api-testing` | REST, hub.ag3nts.org patterns |
 | `001-jeremy` | **każda** operacja TW bez wyjątku |
-| `adhd-daily-planner` | start sesji, rytm dzienny |
-| `project-management-guru-adhd` | blokada >15 min, overwhelm |
-| *(więcej)* | pełna lista → `strategy/skills/skill-activation.md` |
+
+Pełny roster trybu nauki (`writing-plans`, `test-driven-development`, `adhd-daily-planner`
+itd.) jest w zarchiwizowanej wersji tego pliku — patrz baner na górze.
 
 ---
 
@@ -73,13 +80,16 @@ task focus                       # jedno zadanie — zawsze zaczynaj tutaj
 
 ---
 
-## ⚠️ Zasady pracy
+## ⚠️ Zasady pracy (efficiency mode)
 
-1. **TDD:** Testy PRZED implementacją. Napisałeś kod przed testem? Usuń kod, napisz test.
-2. **LLMClient:** Nie używaj bezpośrednio SDK — tylko `LLMClient` z `core/llm/`.
-3. **Observability:** `setup_observability()` zawsze jako pierwsza linia skryptu.
-4. **Rate Limit:** `503` → użyj `hub.get_data_503_tolerant()`.
-5. **Single focus:** Jeden task TW naraz. `task focus` — nie `task list`, nie pamięć.
+1. **Efekt > droga.** Sposób rozwiązania nie musi być zgodny z założeniem zadania — liczy
+   się zdobyta flaga. TDD/planowanie nie są zabronione, ale nie są już wymogiem wstępnym.
+2. **4th-devs najpierw.** Przed projektowaniem nowego rozwiązania sprawdź `4th-devs/`
+   (fork, TypeScript) — gotowe demo do przepisania na Python bije projektowanie od zera.
+3. **LLMClient:** Nie używaj bezpośrednio SDK — tylko `LLMClient` z `core/llm/`.
+4. **Observability:** `setup_observability()` zawsze jako pierwsza linia skryptu.
+5. **Rate Limit:** `503` → użyj `hub.get_data_503_tolerant()`.
+6. **Single focus:** Jeden task TW naraz. `task focus` — nie `task list`, nie pamięć.
 
 # DOX framework
 
@@ -171,4 +181,3 @@ When the user requests a durable behavior change, record it here or in the relev
 - `tests/`: Project test suite and verification logic.
 - `data/`: Task input datasets — safe-read rules per file.
 - `../misje-poboczne/`: Side missions and specific project artifacts.
-

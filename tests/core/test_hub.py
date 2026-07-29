@@ -233,3 +233,46 @@ class TestHubClientTeardown:
         hub2 = HubClient.__new__(HubClient)
         hub2._http = None
         hub2.__del__()
+
+
+class TestHubClientPostApi:
+    """Testy post_api() z zamockowanym HTTP."""
+
+    def setup_method(self):
+        self.hub = HubClient.__new__(HubClient)
+        self.hub._apikey = "test-key"
+        self.hub._base_url = "https://hub.ag3nts.org"
+        self.hub._http = httpx.Client()
+
+    def teardown_method(self):
+        self.hub._http.close()
+
+    @respx.mock
+    def test_post_api_success(self):
+        # Setup mock route
+        url = f"{self.hub._base_url}/api/test-endpoint"
+        # We expect a payload with "foo": "bar" and "apikey": "test-key"
+        route = respx.post(url).mock(
+            return_value=httpx.Response(200, json={"status": "ok", "result": 123})
+        )
+
+        result = self.hub.post_api("/api/test-endpoint", {"foo": "bar"})
+
+        assert result == {"status": "ok", "result": 123}
+        assert route.call_count == 1
+
+        # Verify the requested JSON body contained key and parameter
+        last_request = route.calls.last.request
+        import json
+        request_body = json.loads(last_request.content)
+        assert request_body == {"foo": "bar", "apikey": "test-key"}
+
+    @respx.mock
+    def test_post_api_raises_on_http_error(self):
+        url = f"{self.hub._base_url}/api/test-endpoint"
+        respx.post(url).mock(
+            return_value=httpx.Response(400, json={"error": "bad request"})
+        )
+
+        with pytest.raises(httpx.HTTPStatusError):
+            self.hub.post_api("/api/test-endpoint", {"foo": "bar"})
