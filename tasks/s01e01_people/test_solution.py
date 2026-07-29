@@ -220,7 +220,7 @@ class TestFilterCandidatesRealData:
         """filter_candidates nie może przestawiać wierszy względem kolejności w CSV."""
         result = filter_candidates(real_people)
         indices = []
-        iterator = enumerate(real_people)
+        search_start = 0
         for p in result:
             idx = next(
                 i
