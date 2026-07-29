@@ -14,6 +14,7 @@ Użycie w zadaniu:
 Wyczyszczenie cache:
     rm -rf .cache/
 """
+
 from __future__ import annotations
 
 import hashlib

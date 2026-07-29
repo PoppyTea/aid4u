@@ -50,6 +50,8 @@ class HubClient:
         logfire.info(f"Submitting task {task}", answer_preview=preview)
 
         response = self._http.post(f"{self._base_url}/verify", json=payload)
+        if response.status_code >= 400:
+            logfire.error("Hub rejected submission", status=response.status_code, body=response.text)
         response.raise_for_status()
         result = response.json()
 

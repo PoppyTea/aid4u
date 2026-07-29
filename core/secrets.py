@@ -9,6 +9,7 @@ CLI examples:
     uv run python -m keyring get aid4u OPENAI_API_KEY
     uv run python -m keyring delete aid4u OPENAI_API_KEY
 """
+
 from __future__ import annotations
 
 import logfire
@@ -19,7 +20,7 @@ from typing import Optional
 from functools import lru_cache
 
 # Lista kluczy domyślnie sprawdzanych w SecretsManager.list()
-default_keys:list[str] = [
+default_keys: list[str] = [
     "APIKEY",
     "ANTHROPIC_API_KEY",
     "OPENAI_API_KEY",
@@ -36,8 +37,9 @@ default_keys:list[str] = [
     "VPS_HOST",
     "VPS_PORT_SSH",
     "VPS_PORT_MOSH",
-    "VPS_PORT_TCP"
+    "VPS_PORT_TCP",
 ]
+
 
 class SecretsManager:
     """Menadżer sekreów z systemowego keyring + fallback do .env."""
@@ -81,8 +83,7 @@ class SecretsManager:
         except keyring.errors.PasswordDeleteError:
             logfire.warning(f"Key not found in keyring: {key}")
 
-
-    def list(self, keys_list: list[str]=default_keys) -> dict[str, bool]:
+    def list(self, keys_list: list[str] = default_keys) -> dict[str, bool]:
         """Wyświetl dostępne sekrety (bez wartości!)."""
         # Nie możemy wylistować, ale możemy sprawdzić znane klucze
 

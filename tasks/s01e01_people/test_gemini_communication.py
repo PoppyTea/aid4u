@@ -17,6 +17,7 @@ ją w trzech warstwach:
          GEMINI_API_KEY=... uv run pytest -m integration \\
              tasks/s01e01_people/test_gemini_communication.py -v
 """
+
 from __future__ import annotations
 
 import json
@@ -65,10 +66,13 @@ def real_candidates() -> list[dict]:
 # Czyste funkcje: sprawdzają, że request jest poprawnie zbudowany, zanim
 # w ogóle dotrze do adaptera/sieci.
 
+
 class TestBeforeSend:
     def test_prompt_has_no_unresolved_placeholders(self, real_candidates):
         prompt = build_tagging_prompt(real_candidates)
-        assert "{jobs_json}" not in prompt, "USER_TAGGING nie podstawił jobs_json — placeholder poszedłby do modelu"
+        assert "{jobs_json}" not in prompt, (
+            "USER_TAGGING nie podstawił jobs_json — placeholder poszedłby do modelu"
+        )
 
     def test_prompt_embeds_all_candidates_as_valid_json(self, real_candidates):
         jobs = _extract_jobs_json(build_tagging_prompt(real_candidates))
@@ -92,6 +96,7 @@ class TestBeforeSend:
 #
 # Mockuje `_client.models.generate_content` — bez sieci, bez prawdziwego
 # klucza. Weryfikuje dokładnie to, co faktycznie wychodzi z adaptera.
+
 
 class FakeResponse:
     def __init__(self, *, parsed=None, text=None, finish_reason=types.FinishReason.STOP):
@@ -123,7 +128,9 @@ class TestAdapterOutgoingCommunication:
         monkeypatch.setattr(adapter._client.models, "generate_content", fake_generate_content)
 
         adapter.complete_structured(
-            [LLMMessage.user("test prompt")], TaggingResponse, system=SYSTEM_TAGGING,
+            [LLMMessage.user("test prompt")],
+            TaggingResponse,
+            system=SYSTEM_TAGGING,
         )
 
         assert captured["model"] == "gemini-2.5-flash"
@@ -153,6 +160,7 @@ class TestAdapterOutgoingCommunication:
 
 # ─── 3. Komunikacja z adapterem — OUT (jak adapter parsuje odpowiedź) ────────
 
+
 class TestAdapterIncomingCommunication:
     @pytest.fixture
     def adapter(self):
@@ -161,7 +169,8 @@ class TestAdapterIncomingCommunication:
     def test_uses_native_parsed_response_when_available(self, adapter, monkeypatch):
         expected = TaggingResponse(results=[TaggedJob(index=0, tags=["transport"])])
         monkeypatch.setattr(
-            adapter._client.models, "generate_content",
+            adapter._client.models,
+            "generate_content",
             lambda **kw: FakeResponse(parsed=expected),
         )
 
@@ -171,7 +180,8 @@ class TestAdapterIncomingCommunication:
     def test_falls_back_to_manual_json_parse_when_parsed_missing(self, adapter, monkeypatch):
         raw_json = '{"results": [{"index": 0, "tags": ["medycyna"]}]}'
         monkeypatch.setattr(
-            adapter._client.models, "generate_content",
+            adapter._client.models,
+            "generate_content",
             lambda **kw: FakeResponse(parsed=None, text=raw_json),
         )
 
@@ -181,8 +191,11 @@ class TestAdapterIncomingCommunication:
     def test_raises_readable_error_on_truncated_response(self, adapter, monkeypatch):
         truncated_json = '{"results": [{"index": 0, "tags": ["medyc'  # urwany JSON
         monkeypatch.setattr(
-            adapter._client.models, "generate_content",
-            lambda **kw: FakeResponse(parsed=None, text=truncated_json, finish_reason=types.FinishReason.MAX_TOKENS),
+            adapter._client.models,
+            "generate_content",
+            lambda **kw: FakeResponse(
+                parsed=None, text=truncated_json, finish_reason=types.FinishReason.MAX_TOKENS
+            ),
         )
 
         with pytest.raises(ValueError, match="ucięty JSON"):
@@ -190,8 +203,11 @@ class TestAdapterIncomingCommunication:
 
     def test_raises_typeerror_when_no_text_and_no_parsed(self, adapter, monkeypatch):
         monkeypatch.setattr(
-            adapter._client.models, "generate_content",
-            lambda **kw: FakeResponse(parsed=None, text=None, finish_reason=types.FinishReason.SAFETY),
+            adapter._client.models,
+            "generate_content",
+            lambda **kw: FakeResponse(
+                parsed=None, text=None, finish_reason=types.FinishReason.SAFETY
+            ),
         )
 
         with pytest.raises(TypeError, match="Response text is None"):
@@ -199,6 +215,7 @@ class TestAdapterIncomingCommunication:
 
 
 # ─── 4. Przy odbiorze — prawdziwy round-trip (integration) ──────────────────
+
 
 @pytest.mark.integration
 class TestRealGeminiRoundtrip:
@@ -219,11 +236,15 @@ class TestRealGeminiRoundtrip:
     def test_real_tagging_call_covers_all_candidates(self, gemini_provider, real_candidates):
         prompt = build_tagging_prompt(real_candidates)
         result = gemini_provider.complete_structured(
-            [LLMMessage.user(prompt)], TaggingResponse, system=SYSTEM_TAGGING,
+            [LLMMessage.user(prompt)],
+            TaggingResponse,
+            system=SYSTEM_TAGGING,
         )
 
         assert isinstance(result, TaggingResponse)
         returned_indices = {r.index for r in result.results}
         expected_indices = set(range(len(real_candidates)))
         missing = expected_indices - returned_indices
-        assert not missing, f"Gemini nie otagował {len(missing)} kandydatów — indeksy: {sorted(missing)}"
+        assert not missing, (
+            f"Gemini nie otagował {len(missing)} kandydatów — indeksy: {sorted(missing)}"
+        )
