@@ -222,8 +222,13 @@ class TestFilterCandidatesRealData:
         indices = []
         iterator = enumerate(real_people)
         for p in result:
-            idx = next(i for i, orig in iterator if orig == p)
+            idx = next(
+                i
+                for i, orig in enumerate(real_people[search_start:], start=search_start)
+                if orig == p
+            )
             indices.append(idx)
+            search_start = idx + 1
         assert indices == sorted(indices), (
             "Kolejność kandydatów rozjechała się z kolejnością w people.csv"
         )

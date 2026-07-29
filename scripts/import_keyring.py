@@ -21,7 +21,7 @@ import keyring
 
 KEYRING_SERVICE = "aid4u"
 LIMITED_KEYS = False
-KEYRING_KEYS = [
+KEYRING_KEYS = {
     "APIKEY",
     "ANTHROPIC_API_KEY",
     "OPENAI_API_KEY",
@@ -31,7 +31,7 @@ KEYRING_KEYS = [
     "LANGFUSE_SECRET_KEY",
     "LOGFIRE_TOKEN",
     "VPS_HOST",
-]
+}
 
 KEYRING_SECTION_START = "# =========|> keyring aid4u |>"
 KEYRING_SECTION_END = "# =========<| keyring aid4u <|"

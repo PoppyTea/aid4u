@@ -36,6 +36,7 @@ def test_server_factory_create_middleware_logs_request() -> None:
 def test_server_factory_logfire_missing_on_create(monkeypatch: Any) -> None:
     """Test ServerFactory.create does not crash when logfire is not installed."""
     import sys
+
     # Simulate missing logfire
     monkeypatch.setitem(sys.modules, "logfire", None)
 

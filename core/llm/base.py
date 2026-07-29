@@ -6,17 +6,18 @@ Kod zadań operuje wyłącznie na LLMProvider — nie wie nic o konkretnym SDK.
 
 Dzięki temu zmiana providera = zmiana jednej linii w run.py:
     --model gemini-2.5-flash    →  GeminiAdapter
-    --model claude-sonnet-4-6   →  AnthropicAdapter
+    --model claude-sonnet-5     →  AnthropicAdapter
     --model gpt-5.4-nano        →  OpenAIAdapter
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel
 
-from core.llm.types import LLMMessage, LLMResponse, Tool, ToolResult
+from core.llm.types import LLMMessage, LLMResponse, Tool
 
 T = TypeVar("T", bound=BaseModel)
 

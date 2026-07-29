@@ -130,6 +130,7 @@ class CostTrackMiddleware(LLMMiddleware):
             )
         except Exception:
             import logfire
+
             logfire.warning("Failed to start Langfuse generation", exc_info=True)
             return None
 
@@ -150,6 +151,7 @@ class CostTrackMiddleware(LLMMiddleware):
             generation.end()
         except Exception:
             import logfire
+
             logfire.warning("Failed to finalize Langfuse generation", exc_info=True)
 
 

@@ -6,6 +6,7 @@ zanim run.py zapyta o dostępne zadania.
 
 Gdy dodajesz nowe zadanie, dodaj import tutaj.
 """
+
 import importlib
 import pkgutil
 from pathlib import Path
@@ -20,6 +21,7 @@ def _auto_import_tasks() -> None:
             importlib.import_module(f"tasks.{module_info.name}")
         except Exception as e:
             import warnings
+
             warnings.warn(f"Could not import task '{module_info.name}': {e}")
 
 
