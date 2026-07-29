@@ -15,6 +15,7 @@ Fallback do .env (przydatny na VPS gdzie keyring może być niedostępny):
 from __future__ import annotations
 
 import os
+import zoneinfo
 from functools import lru_cache
 from pathlib import Path
 
@@ -22,8 +23,10 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
-_KEYRING_SERVICE = "aid4u"
+# ─── Constants configuration ───────────────────────────────────────────────────
 
+_KEYRING_SERVICE = "aid4u"
+WARSAW_TZ = zoneinfo.ZoneInfo("Europe/Warsaw")
 
 class Config:
     """Singleton. Klucze z keyring, fallback do env."""

@@ -6,7 +6,7 @@ Kod zadań operuje wyłącznie na LLMProvider — nie wie nic o konkretnym SDK.
 
 Dzięki temu zmiana providera = zmiana jednej linii w run.py:
     --model gemini-2.5-flash    →  GeminiAdapter
-    --model claude-sonnet-4-6   →  AnthropicAdapter
+    --model claude-sonnet-5     →  AnthropicAdapter
     --model gpt-5.4-nano        →  OpenAIAdapter
 """
 
