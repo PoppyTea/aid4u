@@ -46,6 +46,7 @@ class ServerFactory:
         logfire_mod = None
         try:
             import logfire
+            logfire_mod = logfire
 
             logfire_mod = logfire
 
