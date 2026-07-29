@@ -13,6 +13,7 @@ Registry Pattern:
 
     TASK_REGISTRY["s01e01"] → PeopleTask
 """
+
 from __future__ import annotations
 
 import json
@@ -56,6 +57,7 @@ def task(name: str, *, hub_name: str | None = None):
         cls._task_name = name
         cls._hub_task_name = hub_name or name
         return cls
+
     return decorator
 
 
@@ -124,6 +126,7 @@ class BaseTask(ABC):
         """
         try:
             from langfuse import get_client
+
             get_client().flush()
         except Exception:
             pass

@@ -11,6 +11,7 @@ Ustawianie kluczy przez keyring:
 Fallback do .env (przydatny na VPS gdzie keyring może być niedostępny):
     cp .env.example .env && vim .env
 """
+
 from __future__ import annotations
 
 import os
@@ -48,6 +49,7 @@ class Config:
     def _from_keyring(self, key: str) -> str:
         try:
             import keyring
+
             return keyring.get_password(_KEYRING_SERVICE, key) or ""
         except Exception:
             return ""

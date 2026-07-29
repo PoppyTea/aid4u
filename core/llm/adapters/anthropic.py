@@ -1,4 +1,5 @@
 """Adapter: Anthropic SDK → LLMProvider."""
+
 from __future__ import annotations
 
 import json
@@ -26,6 +27,7 @@ class AnthropicAdapter(LLMProvider):
 
     def __init__(self, api_key: str, model: str = ANTHROPIC_MODELS["fast"]) -> None:
         import anthropic
+
         self._client = anthropic.Anthropic(api_key=api_key)
         self._model = model
 
@@ -112,9 +114,7 @@ class AnthropicAdapter(LLMProvider):
             for block in response.content
             if block.type == "tool_use"
         ]
-        text = " ".join(
-            block.text for block in response.content if block.type == "text"
-        )
+        text = " ".join(block.text for block in response.content if block.type == "text")
 
         return LLMResponse(
             content=text,

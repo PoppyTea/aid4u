@@ -1,4 +1,3 @@
-
 import os
 import sys
 from pydantic import BaseModel
@@ -12,9 +11,11 @@ from core.secrets import SecretsManager
 from core.llm.adapters.gemini import GeminiAdapter
 from core.llm.types import LLMMessage
 
+
 class UserSchema(BaseModel):
     name: str
     age: int
+
 
 def run_manual_test():
     secret = SecretsManager()
@@ -56,6 +57,7 @@ def run_manual_test():
         print("SUCCESS: system_instruction")
     else:
         print("FAILED: system_instruction")
+
 
 if __name__ == "__main__":
     run_manual_test()

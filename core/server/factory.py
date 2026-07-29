@@ -47,8 +47,9 @@ class ServerFactory:
         try:
             import logfire
 
-            logfire.instrument_fastapi(app)
             logfire_mod = logfire
+
+            logfire.instrument_fastapi(app)
         except Exception:
             pass  # Logfire opcjonalne — serwer działa bez niego
 

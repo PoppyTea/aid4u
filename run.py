@@ -12,6 +12,7 @@ Komendy:
 WAŻNE: setup_observability() musi być PIERWSZYM wywołaniem — przed importem
 jakichkolwiek modułów LLM. Dlatego jest na górze, przed importami core.*.
 """
+
 from __future__ import annotations
 
 # ─── Observability jako pierwsze ─────────────────────────────────────────────

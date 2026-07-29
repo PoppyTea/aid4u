@@ -50,7 +50,9 @@ class TestSaveOutput:
         task._save_output([{"name": "Jan", "tags": ["transport"]}])
 
         path = _written_file(outputs_dir)
-        assert json.loads(path.read_text(encoding="utf-8")) == [{"name": "Jan", "tags": ["transport"]}]
+        assert json.loads(path.read_text(encoding="utf-8")) == [
+            {"name": "Jan", "tags": ["transport"]}
+        ]
 
     def test_string_answer_written_as_plain_text(self, dummy_task):
         task, outputs_dir = dummy_task
