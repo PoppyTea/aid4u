@@ -6,6 +6,7 @@ Izoluje zadania od szczegółów HTTP, retry i parsowania flag.
 """
 
 from __future__ import annotations
+from core.observability.decorators import langfuse_observe
 
 import re
 from typing import Any
@@ -72,6 +73,7 @@ class HubClient:
         response.raise_for_status()
         return response.content
 
+    @langfuse_observe()
     @retry(stop=stop_after_attempt(8), wait=wait_exponential(min=3, max=60))
     def get_data_503_tolerant(self, path: str) -> bytes:
         """
