@@ -13,6 +13,7 @@ Registry Pattern:
 
     TASK_REGISTRY["s01e01"] → PeopleTask
 """
+
 from __future__ import annotations
 
 import json
@@ -25,6 +26,7 @@ from typing import Any
 import logfire
 from rich.console import Console
 
+from core.config import WARSAW_TZ
 from core.hub import HubClient, LocalCache
 from core.llm import LLMClient
 
@@ -32,7 +34,7 @@ _console = Console()
 _OUTPUTS_DIR = Path("data/outputs")
 
 # Registry: nazwa zadania → klasa
-TASK_REGISTRY: dict[str, type["BaseTask"]] = {}
+TASK_REGISTRY: dict[str, type[BaseTask]] = {}
 
 
 def task(name: str, *, hub_name: str | None = None):
@@ -50,11 +52,12 @@ def task(name: str, *, hub_name: str | None = None):
             def solve(self, data):
                 ...
     """
-    def decorator(cls: type["BaseTask"]) -> type["BaseTask"]:
+    def decorator(cls: type[BaseTask]) -> type[BaseTask]:
         TASK_REGISTRY[name] = cls
         cls._task_name = name
         cls._hub_task_name = hub_name or name
         return cls
+
     return decorator
 
 
@@ -123,6 +126,7 @@ class BaseTask(ABC):
         """
         try:
             from langfuse import get_client
+
             get_client().flush()
         except Exception:
             pass
@@ -138,7 +142,8 @@ class BaseTask(ABC):
         puste), pada na 'answer.json'.
         """
         task_name = self._task_name or self.__class__.__name__
-        timestamp = datetime.now().strftime("%m%d-%H%M%S")
+
+        timestamp = datetime.now(tz=WARSAW_TZ).strftime("%m%d-%H%M%S")
         org_name = self.cache.last_key or "answer.json"
 
         _OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)

@@ -20,6 +20,7 @@ Tier (tylko Gemini):
     koncepcji tier w tym projekcie, więc `tier` jest dla nich no-opem.
     Decyzja o wyborze klucza żyje TYLKO tutaj — adaptery o tier nic nie wiedzą.
 """
+
 from __future__ import annotations
 
 from core.config import Config
@@ -40,16 +41,19 @@ def create_provider(model: str, config: Config, *, tier: str = "standard") -> LL
 
     if model_lower.startswith("claude"):
         from core.llm.adapters.anthropic import AnthropicAdapter
+
         return AnthropicAdapter(api_key=config.anthropic_key, model=model)
 
     if model_lower.startswith(("gpt-", "o1-", "o3-", "o4-", "o3", "o4")):
         from core.llm.adapters.openai import OpenAIAdapter
+
         if not config.openai_key:
             raise ValueError("OPENAI_API_KEY nie jest ustawiony")
         return OpenAIAdapter(api_key=config.openai_key, model=model)
 
     if model_lower.startswith("gemini"):
         from core.llm.adapters.gemini import GeminiAdapter
+
         api_key = config.gemini_key_for_tier(tier)
         if not api_key:
             key_name = "GEMINI_API_KEY_PREMIUM" if tier == "premium" else "GEMINI_API_KEY"
@@ -58,6 +62,7 @@ def create_provider(model: str, config: Config, *, tier: str = "standard") -> LL
 
     if model_lower.startswith("openrouter/"):
         from core.llm.adapters.openrouter import OpenRouterAdapter
+
         if not config.openrouter_key:
             raise ValueError("OPENROUTER_API_KEY nie jest ustawiony")
         return OpenRouterAdapter(api_key=config.openrouter_key, model=model)

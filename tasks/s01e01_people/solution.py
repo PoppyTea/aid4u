@@ -7,6 +7,7 @@ otaguj zawody przez LLM i wyślij tych z tagiem 'transport'.
 
 Nazwa zadania w hubie: people
 """
+
 from __future__ import annotations
 
 import csv
@@ -17,9 +18,9 @@ from typing import Any
 from pydantic import BaseModel
 
 from core.tasks import BaseTask, task
+from tasks.common.const import REFERENCE_YEAR
 from tasks.s01e01_people.prompts import SYSTEM_TAGGING, USER_TAGGING
 
-REFERENCE_YEAR = 2026
 MIN_AGE, MAX_AGE = 20, 40
 TARGET_CITY = "Grudziądz"
 TARGET_GENDER = "M"
@@ -27,6 +28,7 @@ TARGET_TAG = "transport"
 
 
 # ─── Pydantic schema dla structured output ───────────────────────────────────
+
 
 class TaggedJob(BaseModel):
     index: int
@@ -38,6 +40,7 @@ class TaggingResponse(BaseModel):
 
 
 # ─── Czyste funkcje (łatwe do testowania jednostkowego) ──────────────────────
+
 
 def parse_csv(raw: bytes) -> list[dict]:
     """Parsuje surowe bajty CSV do listy słowników."""
@@ -88,10 +91,7 @@ def filter_candidates(people: list[dict]) -> list[dict]:
 
 def build_tagging_prompt(people: list[dict]) -> str:
     """Buduje JSON z zawodami do otagowania przez LLM."""
-    jobs = [
-        {"index": i, "job": p.get("job", "")}
-        for i, p in enumerate(people)
-    ]
+    jobs = [{"index": i, "job": p.get("job", "")} for i, p in enumerate(people)]
     return USER_TAGGING.format(jobs_json=json.dumps(jobs, ensure_ascii=False, indent=2))
 
 
@@ -126,9 +126,9 @@ def format_answer(people: list[dict]) -> list[dict]:
 
 # ─── Task ─────────────────────────────────────────────────────────────────────
 
+
 @task("s01e01", hub_name="people")
 class PeopleTask(BaseTask):
-
     def fetch_data(self) -> bytes:
         return self.cache.get_or_fetch(
             "people.csv",
@@ -146,6 +146,7 @@ class PeopleTask(BaseTask):
 
         # 3. Tag jobs via LLM (structured output)
         from core.llm import LLMMessage
+
         prompt = build_tagging_prompt(candidates)
         tagged_response = self.llm.structured(
             [LLMMessage.user(prompt)],
