@@ -1,30 +1,36 @@
 # Strategia wyboru providera LLM
 
-> Stan: 8 lipca 2026. Zastępuje `strategy_llm_v1.0.0.md` (v1.0.0, Obsidian).
+> Stan: 28 lipca 2026 (v2.0.0) — **zmiana kierunku**: podstawową drabiną eskalacji jest teraz
+> rodzina Claude, nie Gemini. Poprzednia wersja (8 lipca 2026, v1.1.0) zakładała odwrotnie —
+> Gemini zawsze jako pierwszy krok, Anthropic jako ostateczność. Zastępuje `strategy_llm_v1.0.0.md`
+> (v1.0.0, Obsidian).
 > Model referencyjny (pełna lista + parametry): `strategy/llm-models.md`.
 > Sekrety / klucze API: `strategy/secrets-management.md`.
 
 ---
 
-## Zasada nadrzędna: najpierw darmowe, potem tanie, drogie w ostateczności
+## Zasada nadrzędna: zacznij od najtańszego Claude, eskaluj w górę drabiny
 
-Każde zadanie zaczynamy od najtańszej opcji i eskalujemy tylko gdy model
-faktycznie sobie nie radzi — nie z góry.
+Każde zadanie zaczynamy od najtańszego modelu w rodzinie Claude (`claude-haiku-4-5-20251001`)
+i eskalujemy w górę drabiny tylko gdy model faktycznie sobie nie radzi — nie z góry. Gemini nie
+jest już domyślnym pierwszym krokiem dla każdego zadania — patrz "Gemini: kiedy sięgać" niżej.
 Obecnie eskalację przeprowadza użytkownik podczas uruchamiania zadania.
+
 ---
 
-## Dwa wymiary eskalacji
+## Dwa niezależne wymiary
 
-Od tej wersji strategia ma **dwa niezależne wymiary**, które łatwo pomylić:
+Strategia ma **dwa niezależne wymiary**, które łatwo pomylić:
 
-1. **Tier w obrębie Gemini** (`standard` / `premium`) — który *klucz API* jest
-   użyty. Sterowane flagą `--premium`/`-p` w `run.py`.
-2. **Provider** (Gemini → OpenAI → Anthropic) — który *dostawca/model* jest
-   użyty. Sterowane parametrem `--model`.
+1. **Ranga w drabinie Claude** (Haiku 4.5 → Sonnet 5 → Opus 5 → Fable 5) — który *model*
+   Anthropic jest użyty. Sterowane parametrem `--model`. To jest **podstawowa** ścieżka
+   eskalacji od 28.07.2026.
+2. **Tier w obrębie Gemini** (`standard` / `premium`) — który *klucz API* jest użyty, gdy
+   zadanie w ogóle korzysta z Gemini (patrz "Gemini: kiedy sięgać" niżej). Sterowane flagą
+   `--premium`/`-p` w `run.py`. Osobna, poboczna ścieżka — nie punkt startowy domyślnie.
 
-Te wymiary są ortogonalne: możesz użyć `gemini-2.5-pro` w tierze standard
-(darmowym) albo `gemini-3.5-flash` w tierze premium — wybór modelu i wybór
-tieru to dwie osobne decyzje.
+Te wymiary dotyczą różnych providerów — nie mieszaj ich w jednej decyzji: najpierw zdecyduj,
+czy zadanie w ogóle potrzebuje Gemini (modalność), dopiero potem — jeśli tak — który tier.
 
 ### Dlaczego dwa klucze Gemini, a nie jeden z przełącznikiem
 
@@ -44,7 +50,12 @@ nie robić przełączników wewnątrz adapterów.
 
 ---
 
-## Eskalacja w obrębie Gemini (tier standard → premium)
+## Gemini: kiedy sięgać, i eskalacja w obrębie tieru (standard → premium)
+
+Gemini nie jest już domyślnym pierwszym krokiem (patrz zmiana z 28.07.2026 wyżej) — sięgaj po
+niego świadomie, gdy zadanie ma **realny atut modalności Gemini** (obrazy/wideo, grounding
+Search/Maps, bardzo duży kontekst). Gdy tak — zaczynasz od tieru standard (darmowy), potem
+premium, dokładnie jak niżej.
 
 | Grupa | Flash-Lite | Flash | Pro |
 |---|---|---|---|
@@ -69,20 +80,28 @@ płatny Flash 3.x bywa tańszy i szybszy niż przeskok do innego providera.
 
 ---
 
-## Hierarchia providerów
+## Hierarchia providerów (od 28.07.2026)
 
 ```
-1. Gemini — standard (darmowy tier)   ← ZAWSZE zaczynamy tutaj
-2. Gemini — premium (płatny tier)     ← gdy standard nie daje rady, --premium
-3. OpenAI                             ← gdy cała rodzina Gemini zawodzi
-4. Anthropic                          ← złożone planowanie, ostateczność
+1. claude-haiku-4-5-20251001   ← domyślny start, najtańszy w rodzinie Claude
+2. claude-sonnet-5             ← Haiku konsekwentnie zawodzi (3+ próby)
+3. claude-opus-5               ← Sonnet nie wystarcza, zadanie naprawdę trudne
+4. claude-fable-5              ← ostateczność w rodzinie Claude / [narada nad tym co dalej —
+                                   nie ustalono jeszcze co po Fable]
+
+Gemini (standard → premium)    ← OSOBNA ścieżka, nie stopień tej drabiny — używana gdy
+                                   modalność Gemini jest realnym atutem zadania (patrz
+                                   "Gemini: kiedy sięgać" wyżej)
 ```
 
-> **Zmiana względem v1.0.0:** poprzednia wersja miała 5 stopni z dwoma
-> poziomami OpenRouter (free/paid) między Gemini a OpenAI. OpenRouter nie ma
-> dziś żadnej implementacji w kodzie (`OpenRouterAdapter` to `TODO` w
-> `factory.py`) — patrz sekcja "TODO" niżej po ustalenia co do jego przyszłej
-> roli.
+> **Zmiana względem poprzedniej wersji (8 lipca 2026):** hierarchia była odwrócona — Gemini
+> zawsze jako pierwszy krok, Anthropic jako ostateczność. Od 28.07.2026 jest odwrotnie: Claude
+> to podstawowa drabina, Gemini to świadomy wybór pod konkretną modalność.
+>
+> **OpenAI — poza podstawową drabiną od 28.07.2026.** Kod (`OpenAIAdapter`) i klucz zostają,
+> ale to już nie jest domyślny stopień pośredni — do rewizji, jeśli pojawi się konkretny powód
+> (np. model niedostępny gdzie indziej, koszt). Podobnie OpenRouter (patrz TODO niżej) —
+> nieużywany, `OpenRouterAdapter` to wciąż `TODO` w `factory.py`.
 
 ---
 
@@ -91,36 +110,34 @@ płatny Flash 3.x bywa tańszy i szybszy niż przeskok do innego providera.
 | Sygnał | Akcja |
 |---|---|
 | Model zwraca złe wyniki przy prostym zadaniu | Popraw prompt, spróbuj jeszcze raz — nie eskaluj od razu |
-| Model konsekwentnie myli się w logice (3+ próby) | Przejdź poziom wyżej w hierarchii |
-| `gemini-2.5-pro` (standard) nie radzi sobie, ale zadanie nie uzasadnia zmiany providera | `--premium` (Flash 3.x lub Pro 3.x płatny) zamiast skoku do OpenAI |
-| Zadanie wymaga function calling z wieloma narzędziami | Zacznij od `gemini-2.5-flash`, fallback `claude-sonnet-4-6` |
-| Zadanie z ostrym limitem czasu (np. windpower — 40s) | Od razu użyj szybkiego modelu (Flash / Flash-Lite) |
-| Zadanie agentowe z wieloma krokami | `gemini-2.5-flash` lub `claude-sonnet-4-6`, nie haiku |
-| Vision (obrazki, PNG planszy) | `gemini-2.5-flash` (darmowy, dobry multimodal) |
-| Złożone rozumowanie wieloetapowe | `gemini-2.5-pro` → `--premium` → `claude-sonnet-4-6` |
+| Model konsekwentnie myli się w logice (3+ próby) | Przejdź poziom wyżej w drabinie Claude (Haiku → Sonnet → Opus → Fable) |
+| Zadanie ma realną modalność Gemini (obrazy, grounding, ogromny kontekst) | Zacznij od `gemini-2.5-flash` (standard, darmowy), eskaluj do `--premium` zanim rozważysz cokolwiek innego |
+| Zadanie wymaga function calling z wieloma narzędziami | Zacznij od `claude-sonnet-5` (dobry function calling), eskaluj do `claude-opus-5` jeśli się gubi |
+| Zadanie z ostrym limitem czasu (np. windpower — 40s) | `claude-haiku-4-5-20251001` (szybki, tani) — albo `gemini-2.5-flash` jeśli modalność Gemini też gra rolę |
+| Zadanie agentowe z wieloma krokami | `claude-sonnet-5`, nie haiku — eskaluj do `claude-opus-5` przy problemach |
+| Vision (obrazki, PNG planszy) | `gemini-2.5-flash` (darmowy, dobry multimodal) — to jest właśnie sygnał "modalność Gemini ważna" |
+| Złożone rozumowanie wieloetapowe | `claude-sonnet-5` → `claude-opus-5` → `claude-fable-5` |
 
 ---
 
 ## Jak to wygląda w praktyce
 
 ```bash
-# Pierwsze podejście — zawsze Gemini standard (darmowy)
-uv run run.py solve s01e02 --model gemini-3.5-flash
+# Pierwsze podejście — zawsze najtańszy Claude
+uv run run.py solve s01e02 --model claude-haiku-4-5-20251001
 
-# Prostsze zadanie? Ultra lekki model, wciąż standard
-uv run run.py solve s01e02 --model gemini-3.1-flash-lite
+# Haiku konsekwentnie zawodzi (3+ próby) — poziom wyżej w drabinie Claude
+uv run run.py solve s01e02 --model claude-sonnet-5
 
-# Flash nie daje rady, ale nie chcemy jeszcze zmieniać providera?
-uv run run.py solve s01e02 --model gemini-2.5-pro
+# Sonnet nie wystarcza, zadanie naprawdę trudne
+uv run run.py solve s01e02 --model claude-opus-5
 
-# Pro (standard) też zawodzi — eskaluj do premium zamiast providera
-uv run run.py solve s01e02 --model gemini-3.5-flash --premium
+# Opus też zawodzi — ostateczność w rodzinie Claude
+uv run run.py solve s01e02 --model claude-fable-5
 
-# Cała rodzina Gemini zawodzi — dopiero teraz zmiana providera
-uv run run.py solve s01e02 --model gpt-5.4-mini
-
-# Złożone zadanie agentowe / wieloetapowe planowanie — ostateczność
-uv run run.py solve s04e03 --model claude-sonnet-4-6
+# Zadanie ma realną modalność Gemini (obrazy, grounding) — osobna ścieżka, nie eskalacja Claude
+uv run run.py solve s01e02 --model gemini-2.5-flash
+uv run run.py solve s01e02 --model gemini-2.5-flash --premium   # standard nie wystarcza
 ```
 
 ---

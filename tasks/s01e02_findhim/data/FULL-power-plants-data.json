@@ -1,0 +1,81 @@
+{
+    "power_plants": [
+        {
+            "location_name": "Zabrze",
+            "location": {
+                "name": true,
+                "latitude": 50.3086154,
+                "longitude": 18.7863749
+            },
+            "code": "PWR3847PL",
+            "power_level": 10,
+            "active": true
+        },
+        {
+            "location_name": "Piotrków Trybunalski",
+            "location": {
+                "name": "Piotrków Trybunalski",
+                "latitude": 51.4082625,
+                "longitude": 19.696167
+            },
+            "code": "PWR5921PL",
+            "power_level": 10,
+            "active": true
+        },
+        {
+            "location_name": "Grudziądz",
+            "location": {
+                "name": "Grudziądz",
+                "latitude": 53.4876477,
+                "longitude": 18.7557746
+            },
+            "code": "PWR7264PL",
+            "power_level": 10,
+            "active": true
+        },
+        {
+            "location_name": "Tczew",
+            "location": {
+                "name": "Tczew",
+                "latitude": 54.0869532,
+                "longitude": 18.8000293
+            },
+            "code": "PWR1593PL",
+            "power_level": 10,
+            "active": true
+        },
+        {
+            "location_name": "Radom",
+            "location": {
+                "name": "Radom",
+                "latitude": 51.4022557,
+                "longitude": 21.1541546
+            },
+            "code": "PWR8406PL",
+            "power_level": 10,
+            "active": true
+        },
+        {
+            "location_name":  "Chelmno",
+            "location": {
+                "name":  "Chelmno",
+                "latitude": 53.3493915,
+                "longitude": 18.4235473
+            },
+            "code": "PWR2758PL",
+            "power_level": 10,
+            "active": true
+        },
+        {
+            "location_name": "Żarnowiec",
+            "location": {
+                "name": "Żarnowiec",
+                "latitude": 50.4832713,
+                "longitude": 19.86242
+            },
+            "code": "PWR6132PL",
+            "power_level": 10,
+            "active": false
+        }
+    ]
+}
