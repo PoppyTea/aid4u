@@ -15,6 +15,7 @@ def _fake_config(**overrides) -> MagicMock:
     cfg.gemini_key_premium = overrides.get("gemini_key_premium", "premium_key")
     cfg.anthropic_key = overrides.get("anthropic_key", "anthropic_key")
     cfg.openai_key = overrides.get("openai_key", "openai_key")
+    cfg.openrouter_key = overrides.get("openrouter_key", "openrouter_key")
     # gemini_key_for_tier to prawdziwa metoda w Config (nie property) — MagicMock
     # domyślnie nie wie, że ma delegować do gemini_key/gemini_key_premium, więc
     # odtwarzamy tu jej rzeczywistą logikę.
@@ -60,6 +61,13 @@ class TestGeminiTierRouting:
             create_provider("gemini-2.5-flash", cfg)
 
 
+class TestOpenRouterRouting:
+    def test_openrouter_missing_key_raises(self):
+        cfg = _fake_config(openrouter_key="")
+        with pytest.raises(ValueError, match="OPENROUTER_API_KEY nie jest ustawiony"):
+            create_provider("openrouter/meta-llama/llama-3-8b", cfg)
+
+
 class TestTierIgnoredByOtherProviders:
     """tier dotyczy wyłącznie Gemini — inni providerzy mają jeden klucz, bez tier."""
 
@@ -80,3 +88,13 @@ class TestTierIgnoredByOtherProviders:
         ) as mock_init:
             create_provider("gpt-5.4-nano", cfg, tier="premium")
             mock_init.assert_called_once_with(api_key="openai_key", model="gpt-5.4-nano")
+
+    def test_openrouter_ignores_tier(self):
+        cfg = _fake_config()
+        with patch(
+            "core.llm.adapters.openrouter.OpenRouterAdapter.__init__", return_value=None
+        ) as mock_init:
+            create_provider("openrouter/meta-llama/llama-3-8b", cfg, tier="premium")
+            mock_init.assert_called_once_with(
+                api_key="openrouter_key", model="openrouter/meta-llama/llama-3-8b"
+            )
