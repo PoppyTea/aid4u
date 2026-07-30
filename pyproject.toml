@@ -36,6 +36,7 @@ dependencies = [
     "pydantic-ai>=2.18.0",
     "requests>=2.34.2",
     "types-requests>=2.33.0.20260712",
+    "mem0ai>=2.0.14",
 ]
 
 [dependency-groups]

@@ -58,3 +58,4 @@ uv.lock
 **/*-PR-*.md
 **/PR_*.md
 tasks/s01e02_findhim/tmp-quick-scripting-tests.py
+doc/
