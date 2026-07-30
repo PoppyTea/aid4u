@@ -172,6 +172,7 @@ Default section order:
 When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md
 
 - **Commit routing (soft guideline, not a hard gate):** any change to code files (`.py` — app or tests, including refactors and non-behavioral cleanups, not just logic fixes) goes through a feature branch + PR — this triggers Qodo (unit/integration test generation), CodeRabbit (PR overview), and occasionally Jules (refactor suggestions). Everything non-code (markdown docs, config files like `pyproject.toml`, symlinks, data files) commits straight to `main`. Trivial comment/docstring-only edits riding along inside an otherwise doc-focused commit are fine to leave on `main`. Override locally in a child AGENTS.md if a subtree needs different rules.
+- **Batch implementation workflow (2026-07-31):** when the user scopes a multi-part implementation as independent units (e.g. "one native tool per branch," "one feature per PR" — as with the Anthropic native-tools rollout), commit regularly during the work instead of only at the end, and give each unit its own feature branch + tests + PR, opening the PR before starting the next unit. This is the standing pattern whenever the user frames work this way; a single cohesive change still batches into one PR per the commit-routing rule above.
 
 ## Child DOX Index
 
@@ -180,4 +181,5 @@ When the user requests a durable behavior change, record it here or in the relev
 - `tasks/`: Task execution and course exercises.
 - `tests/`: Project test suite and verification logic.
 - `data/`: Task input datasets — safe-read rules per file.
+- `deploy/`: VPS deployment, systemd units, tunnel scripts.
 - `../misje-poboczne/`: Side missions and specific project artifacts.
