@@ -22,12 +22,31 @@ Użycie:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Any
 
+from core.llm.adapters.anthropic import ANTHROPIC_MODELS
 from core.llm.types import LLMMessage, LLMResponse
 
-_DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 _TOOL_TYPE = "code_execution_20260521"
+
+
+@lru_cache(maxsize=8)
+def _get_client(api_key: str) -> Any:
+    """Cache clients by API key — reuses the underlying HTTP transport across calls."""
+    import anthropic
+
+    return anthropic.Anthropic(api_key=api_key)
+
+
+def _build_messages(messages: list[LLMMessage]) -> list[dict[str, Any]]:
+    for m in messages:
+        if m.role == "system":
+            raise ValueError(
+                "LLMMessage(role='system') is not supported in `messages` here — "
+                "pass the system prompt via the `system=` parameter instead."
+            )
+    return [{"role": m.role, "content": m.content} for m in messages]
 
 
 @dataclass
@@ -49,20 +68,20 @@ def complete_with_code_execution(
     api_key: str,
     messages: list[LLMMessage],
     *,
-    model: str = _DEFAULT_MODEL,
+    model: str = ANTHROPIC_MODELS["fast"],
     system: str | None = None,
     max_tokens: int = 1024,
+    temperature: float = 0.0,
 ) -> CodeExecutionOutcome:
     """Jedno wywołanie z natywnym narzędziem code_execution."""
-    import anthropic
-
-    client = anthropic.Anthropic(api_key=api_key)
+    client = _get_client(api_key)
 
     kwargs: dict[str, Any] = {
         "model": model,
         "max_tokens": max_tokens,
+        "temperature": temperature,
         "tools": [{"type": _TOOL_TYPE, "name": "code_execution"}],
-        "messages": [{"role": m.role, "content": m.content} for m in messages],
+        "messages": _build_messages(messages),
     }
     if system:
         kwargs["system"] = system
