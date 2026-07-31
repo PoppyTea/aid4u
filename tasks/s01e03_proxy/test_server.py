@@ -109,3 +109,48 @@ def test_chat_does_not_log_flag_detection_when_no_flag_present(client):
 
     flag_calls = [c for c in mock_info.call_args_list if c.args[0] == "Flag detected in incoming message"]
     assert flag_calls == []
+
+
+def test_default_model_comes_from_anthropic_models_fast():
+    from core.llm.adapters.anthropic import ANTHROPIC_MODELS
+
+    assert server._MODEL == ANTHROPIC_MODELS["fast"]
+
+
+def test_session_evicted_when_max_sessions_exceeded(monkeypatch):
+    monkeypatch.setattr(server, "_MAX_SESSIONS", 2)
+    server._sessions.clear()
+
+    server._get_session("a")
+    server._get_session("b")
+    server._get_session("c")  # should evict "a", the oldest untouched session
+
+    assert "a" not in server._sessions
+    assert "b" in server._sessions
+    assert "c" in server._sessions
+
+
+def test_touching_a_session_refreshes_its_lru_order(monkeypatch):
+    monkeypatch.setattr(server, "_MAX_SESSIONS", 2)
+    server._sessions.clear()
+
+    server._get_session("a")
+    server._get_session("b")
+    server._get_session("a")  # touch "a" again — "b" is now the oldest
+    server._get_session("c")  # should evict "b", not "a"
+
+    assert "a" in server._sessions
+    assert "b" not in server._sessions
+    assert "c" in server._sessions
+
+
+def test_history_truncated_to_max_messages_per_session(client, monkeypatch):
+    monkeypatch.setattr(server, "_MAX_MESSAGES_PER_SESSION", 4)
+    fake_llm = MagicMock()
+    fake_llm.run_agent_loop.return_value = "ok"
+
+    with patch.object(server, "_get_llm", return_value=fake_llm):
+        for i in range(5):
+            client.post("/chat", json={"sessionID": "trunc", "msg": f"wiadomość {i}"})
+
+    assert len(server._sessions["trunc"]) <= 4

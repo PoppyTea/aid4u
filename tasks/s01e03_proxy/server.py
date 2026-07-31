@@ -21,8 +21,15 @@ się w przychodzącej wiadomości, żeby było łatwo ją wyłapać w logach.
 
 from __future__ import annotations
 
+# ─── Observability jako pierwsze ─────────────────────────────────────────────
+from core.observability.setup import setup_observability
+
+setup_observability()
+
+# ─── Właściwe importy po setup obserwabilności ───────────────────────────────
 import os
 import re
+from collections import OrderedDict
 
 import logfire
 from pydantic import BaseModel
@@ -30,12 +37,10 @@ from pydantic import BaseModel
 from core.config import get_config
 from core.hub import HubClient
 from core.llm import LLMClient, LLMMessage, create_provider
-from core.observability.setup import setup_observability
+from core.llm.adapters.anthropic import ANTHROPIC_MODELS
 from core.server import ServerFactory, run_server
 from tasks.s01e03_proxy.prompts import SYSTEM_PROMPT_PROXY
 from tasks.s01e03_proxy.tools import TOOLS, make_tool_executor
-
-setup_observability()
 
 _FLAG_PATTERN = re.compile(r"\{FLG:[^}]+\}")
 
@@ -43,11 +48,16 @@ _FLAG_PATTERN = re.compile(r"\{FLG:[^}]+\}")
 # (Haiku / gpt-5-mini) wystarcza do tego zadania — eskaluj (S01E03_MODEL=
 # claude-sonnet-5) tylko jeśli model gubi wywołania narzędzi albo miesza
 # kontekst sesji.
-_MODEL = os.getenv("S01E03_MODEL", "claude-haiku-4-5-20251001")
+_MODEL = os.getenv("S01E03_MODEL", ANTHROPIC_MODELS["fast"])
+
+# Endpoint jest publicznie osiągalny przez ngrok — bez tych limitów sesje o
+# unikalnych sessionID rosłyby w nieskończoność (ryzyko DoS/wyczerpania pamięci).
+_MAX_SESSIONS = 200
+_MAX_MESSAGES_PER_SESSION = 50
 
 app = ServerFactory.create("s01e03-proxy")
 
-_sessions: dict[str, list[LLMMessage]] = {}
+_sessions: "OrderedDict[str, list[LLMMessage]]" = OrderedDict()
 _hub = HubClient()
 _tool_executor = make_tool_executor(_hub)
 _llm: LLMClient | None = None
@@ -61,6 +71,20 @@ def _get_llm() -> LLMClient:
     return _llm
 
 
+def _get_session(session_id: str) -> list[LLMMessage]:
+    """LRU-bounded per-session history — patrz komentarz przy _MAX_SESSIONS."""
+    if session_id in _sessions:
+        _sessions.move_to_end(session_id)
+        return _sessions[session_id]
+
+    if len(_sessions) >= _MAX_SESSIONS:
+        _sessions.popitem(last=False)  # wyrzuć najstarszą sesję
+
+    history: list[LLMMessage] = []
+    _sessions[session_id] = history
+    return history
+
+
 class ChatRequest(BaseModel):
     sessionID: str
     msg: str
@@ -71,11 +95,18 @@ class ChatResponse(BaseModel):
 
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat(body: ChatRequest) -> ChatResponse:
+def chat(body: ChatRequest) -> ChatResponse:
+    """
+    Zwykłe (nie `async def`) — celowo: `run_agent_loop()` jest synchroniczne
+    i blokujące na I/O sieciowym (wywołania LLM). FastAPI/Starlette
+    automatycznie uruchamia zwykłe endpointy w threadpoolu, więc event loop
+    zostaje odblokowany dla /health i innych requestów w trakcie długiej
+    odpowiedzi — inaczej jeden wolny /chat blokowałby cały serwer.
+    """
     if _FLAG_PATTERN.search(body.msg):
         logfire.info("Flag detected in incoming message", session_id=body.sessionID, msg=body.msg)
 
-    history = _sessions.setdefault(body.sessionID, [])
+    history = _get_session(body.sessionID)
     history.append(LLMMessage.user(body.msg))
 
     reply = _get_llm().run_agent_loop(
@@ -83,6 +114,9 @@ async def chat(body: ChatRequest) -> ChatResponse:
     )
 
     history.append(LLMMessage.assistant(reply))
+    if len(history) > _MAX_MESSAGES_PER_SESSION:
+        del history[: len(history) - _MAX_MESSAGES_PER_SESSION]
+
     return ChatResponse(msg=reply)
 
 
