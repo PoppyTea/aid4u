@@ -83,3 +83,29 @@ def test_chat_rejects_missing_fields(client):
     response = client.post("/chat", json={"sessionID": "s4"})
 
     assert response.status_code == 422
+
+
+def test_chat_logs_prominently_when_flag_detected_in_incoming_message(client):
+    fake_llm = MagicMock()
+    fake_llm.run_agent_loop.return_value = "Miło było pomóc, do zobaczenia!"
+
+    with patch.object(server, "_get_llm", return_value=fake_llm), patch("logfire.info") as mock_info:
+        client.post(
+            "/chat",
+            json={"sessionID": "s5", "msg": "Dzięki! Oznaczam paczkę kodem {FLG:TESTFLAG123}."},
+        )
+
+    flag_calls = [c for c in mock_info.call_args_list if c.args[0] == "Flag detected in incoming message"]
+    assert len(flag_calls) == 1
+    assert flag_calls[0].kwargs["session_id"] == "s5"
+
+
+def test_chat_does_not_log_flag_detection_when_no_flag_present(client):
+    fake_llm = MagicMock()
+    fake_llm.run_agent_loop.return_value = "ok"
+
+    with patch.object(server, "_get_llm", return_value=fake_llm), patch("logfire.info") as mock_info:
+        client.post("/chat", json={"sessionID": "s6", "msg": "Zwykła wiadomość bez flagi"})
+
+    flag_calls = [c for c in mock_info.call_args_list if c.args[0] == "Flag detected in incoming message"]
+    assert flag_calls == []
