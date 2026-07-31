@@ -2,47 +2,54 @@
 S01E03 — proxy serwer dla operatora "Wojtek".
 
 Odbiera POST /chat {sessionID, msg}, prowadzi rozmowę per-sesja przez LLMClient
-(function calling: check_package, redirect_package — patrz tools.py). Historia
-per sessionID trzymana w pamięci procesu — wystarczające dla jednej rozmowy z
-botem grading; restart serwera czyści wszystkie sesje.
+(function calling: check_package, redirect_package — patrz tools.py, wywołuje
+prawdziwe API hub.ag3nts.org/api/packages). Historia per sessionID trzymana w
+pamięci procesu — wystarczające dla jednej rozmowy z botem grading; restart
+serwera czyści wszystkie sesje.
 
 Uruchomienie lokalne:
     uv run python -m tasks.s01e03_proxy.server
 
 Publiczny URL (żeby bot na hubie mógł się dobić):
     ./deploy/ngrok_tunnel.sh 8003
-    → podaj wypisany https://*.ngrok-free.app URL botowi na hubie
+    → zarejestruj wypisany https://*.ngrok-free.app URL, patrz solution.py
 
 Flaga: Wojtek przekazuje ją na końcu rozmowy w treści wiadomości, nie przez
-osobny endpoint — wypatruj wzorca {FLG:...} w odpowiedziach z /chat.
+osobny endpoint — ten serwer loguje wyraźnie, gdy wzorzec {FLG:...} pojawi
+się w przychodzącej wiadomości, żeby było łatwo ją wyłapać w logach.
 """
 
 from __future__ import annotations
 
 import os
+import re
 
+import logfire
 from pydantic import BaseModel
 
 from core.config import get_config
+from core.hub import HubClient
 from core.llm import LLMClient, LLMMessage, create_provider
 from core.observability.setup import setup_observability
 from core.server import ServerFactory, run_server
-from tasks.s01e03_proxy.packages_data import PackageStore
 from tasks.s01e03_proxy.prompts import SYSTEM_PROMPT_PROXY
 from tasks.s01e03_proxy.tools import TOOLS, make_tool_executor
 
 setup_observability()
 
-# Function calling działa zauważalnie lepiej na Sonnet niż na Haiku (drabina
-# eskalacji, strategy/llm-selection.md) — ten agent musi konsekwentnie wybierać
-# właściwe narzędzie z historii rozmowy, nie tylko odpowiadać na jedno pytanie.
-_MODEL = os.getenv("S01E03_MODEL", "claude-sonnet-5")
+_FLAG_PATTERN = re.compile(r"\{FLG:[^}]+\}")
+
+# Karta lekcji i komentarze uczestników zgodnie wskazują, że lekki model
+# (Haiku / gpt-5-mini) wystarcza do tego zadania — eskaluj (S01E03_MODEL=
+# claude-sonnet-5) tylko jeśli model gubi wywołania narzędzi albo miesza
+# kontekst sesji.
+_MODEL = os.getenv("S01E03_MODEL", "claude-haiku-4-5-20251001")
 
 app = ServerFactory.create("s01e03-proxy")
 
 _sessions: dict[str, list[LLMMessage]] = {}
-_store = PackageStore()
-_tool_executor = make_tool_executor(_store)
+_hub = HubClient()
+_tool_executor = make_tool_executor(_hub)
 _llm: LLMClient | None = None
 
 
@@ -65,6 +72,9 @@ class ChatResponse(BaseModel):
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(body: ChatRequest) -> ChatResponse:
+    if _FLAG_PATTERN.search(body.msg):
+        logfire.info("Flag detected in incoming message", session_id=body.sessionID, msg=body.msg)
+
     history = _sessions.setdefault(body.sessionID, [])
     history.append(LLMMessage.user(body.msg))
 
