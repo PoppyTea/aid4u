@@ -5,7 +5,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.llm.native_tool_text_editor import TextEditorToolExecutor, run_text_editor_tool_loop
+from core.llm.native_tool_text_editor import (
+    AgentLoopIncomplete,
+    TextEditorToolExecutor,
+    _get_client,
+    run_text_editor_tool_loop,
+)
 
 
 class FakeBlock(SimpleNamespace):
@@ -19,6 +24,13 @@ def _fake_response(blocks, model="claude-test", input_tokens=10, output_tokens=5
         model=model,
         usage=SimpleNamespace(input_tokens=input_tokens, output_tokens=output_tokens),
     )
+
+
+@pytest.fixture(autouse=True)
+def _clear_client_cache():
+    _get_client.cache_clear()
+    yield
+    _get_client.cache_clear()
 
 
 # ─── TextEditorToolExecutor ────────────────────────────────────────────────
@@ -77,11 +89,91 @@ def test_insert_adds_line_at_position(tmp_path):
     assert (tmp_path / "f.txt").read_text() == "a\nNEW\nb\nc\n"
 
 
+def test_insert_at_end_of_file_is_valid_boundary(tmp_path):
+    executor = TextEditorToolExecutor(root=str(tmp_path))
+    executor({"command": "create", "path": "f.txt", "file_text": "a\nb"})
+
+    executor({"command": "insert", "path": "f.txt", "insert_line": 2, "new_str": "c"})
+
+    assert (tmp_path / "f.txt").read_text() == "a\nb\nc\n"
+
+
+def test_insert_line_negative_raises(tmp_path):
+    executor = TextEditorToolExecutor(root=str(tmp_path))
+    executor({"command": "create", "path": "f.txt", "file_text": "a\nb"})
+
+    with pytest.raises(ValueError, match="poza zakresem"):
+        executor({"command": "insert", "path": "f.txt", "insert_line": -1, "new_str": "x"})
+
+
+def test_insert_line_beyond_end_raises(tmp_path):
+    executor = TextEditorToolExecutor(root=str(tmp_path))
+    executor({"command": "create", "path": "f.txt", "file_text": "a\nb"})
+
+    with pytest.raises(ValueError, match="poza zakresem"):
+        executor({"command": "insert", "path": "f.txt", "insert_line": 99, "new_str": "x"})
+
+
+def test_view_range_start_zero_raises_instead_of_negative_indexing(tmp_path):
+    executor = TextEditorToolExecutor(root=str(tmp_path))
+    executor({"command": "create", "path": "f.txt", "file_text": "a\nb\nc"})
+
+    with pytest.raises(ValueError, match="poza zakresem"):
+        executor({"command": "view", "path": "f.txt", "view_range": [0, 2]})
+
+
+def test_view_range_end_beyond_file_length_raises(tmp_path):
+    executor = TextEditorToolExecutor(root=str(tmp_path))
+    executor({"command": "create", "path": "f.txt", "file_text": "a\nb\nc"})
+
+    with pytest.raises(ValueError, match="poza zakresem"):
+        executor({"command": "view", "path": "f.txt", "view_range": [1, 99]})
+
+
+def test_view_range_start_after_end_raises(tmp_path):
+    executor = TextEditorToolExecutor(root=str(tmp_path))
+    executor({"command": "create", "path": "f.txt", "file_text": "a\nb\nc"})
+
+    with pytest.raises(ValueError, match="poza zakresem"):
+        executor({"command": "view", "path": "f.txt", "view_range": [3, 1]})
+
+
 def test_path_traversal_outside_root_is_blocked(tmp_path):
     executor = TextEditorToolExecutor(root=str(tmp_path))
 
     with pytest.raises(ValueError, match="poza dozwolonym katalogiem"):
         executor({"command": "view", "path": "../../etc/passwd"})
+
+
+def test_absolute_path_within_root_is_accepted(tmp_path):
+    executor = TextEditorToolExecutor(root=str(tmp_path))
+    absolute_path = str(tmp_path / "notes.txt")
+
+    executor({"command": "create", "path": absolute_path, "file_text": "hi"})
+    result = executor({"command": "view", "path": absolute_path})
+
+    assert result == "1: hi"
+
+
+def test_absolute_path_outside_root_is_blocked(tmp_path):
+    executor = TextEditorToolExecutor(root=str(tmp_path))
+
+    with pytest.raises(ValueError, match="poza dozwolonym katalogiem"):
+        executor({"command": "view", "path": "/etc/passwd"})
+
+
+def test_relative_path_is_not_silently_reinterpreted_as_root_path(tmp_path):
+    # Regression: `_resolve` used to lstrip("/") on every path, so an absolute
+    # path already containing the root (e.g. root itself) got nested under
+    # root again instead of resolving directly.
+    executor = TextEditorToolExecutor(root=str(tmp_path))
+    nested = tmp_path / "sub"
+    nested.mkdir()
+    (nested / "f.txt").write_text("content")
+
+    result = executor({"command": "view", "path": str(nested / "f.txt")})
+
+    assert result == "1: content"
 
 
 def test_view_directory_lists_names(tmp_path):
@@ -183,8 +275,68 @@ def test_stops_after_max_iterations(mock_anthropic_client):
     )
     mock_client.messages.create.return_value = _fake_response([tool_use])
 
-    run_text_editor_tool_loop(
-        "test-key", "loop forever", executor=lambda inp: "x", max_iterations=3
-    )
+    with pytest.raises(AgentLoopIncomplete, match="max_iterations=3"):
+        run_text_editor_tool_loop(
+            "test-key", "loop forever", executor=lambda inp: "x", max_iterations=3
+        )
 
     assert mock_client.messages.create.call_count == 3
+
+
+def test_missing_input_attribute_is_treated_as_empty_dict_not_a_crash(mock_anthropic_client):
+    mock_client = MagicMock()
+    mock_anthropic_client.return_value = mock_client
+    no_input = FakeBlock(type="tool_use", id="toolu_bad", name="str_replace_based_edit_tool")
+    mock_client.messages.create.side_effect = [
+        _fake_response([no_input]),
+        _fake_response([FakeBlock(type="text", text="done")]),
+    ]
+
+    executor = MagicMock(return_value="handled")
+    response = run_text_editor_tool_loop("test-key", "prompt", executor=executor)
+
+    assert response.content == "done"
+    executor.assert_called_once_with({})
+
+
+def test_default_model_comes_from_anthropic_models_fast(mock_anthropic_client):
+    from core.llm.adapters.anthropic import ANTHROPIC_MODELS
+
+    mock_client = MagicMock()
+    mock_anthropic_client.return_value = mock_client
+    mock_client.messages.create.return_value = _fake_response(
+        [FakeBlock(type="text", text="ok")]
+    )
+
+    run_text_editor_tool_loop("test-key", "prompt", executor=lambda inp: "unused")
+
+    call_kwargs = mock_client.messages.create.call_args.kwargs
+    assert call_kwargs["model"] == ANTHROPIC_MODELS["fast"]
+
+
+def test_temperature_defaults_to_zero_and_is_forwarded(mock_anthropic_client):
+    mock_client = MagicMock()
+    mock_anthropic_client.return_value = mock_client
+    mock_client.messages.create.return_value = _fake_response(
+        [FakeBlock(type="text", text="ok")]
+    )
+
+    run_text_editor_tool_loop(
+        "test-key", "prompt", executor=lambda inp: "unused", temperature=0.3
+    )
+
+    call_kwargs = mock_client.messages.create.call_args.kwargs
+    assert call_kwargs["temperature"] == 0.3
+
+
+def test_client_is_reused_across_calls_with_same_api_key(mock_anthropic_client):
+    mock_client = MagicMock()
+    mock_anthropic_client.return_value = mock_client
+    mock_client.messages.create.return_value = _fake_response(
+        [FakeBlock(type="text", text="ok")]
+    )
+
+    run_text_editor_tool_loop("same-key", "prompt 1", executor=lambda inp: "unused")
+    run_text_editor_tool_loop("same-key", "prompt 2", executor=lambda inp: "unused")
+
+    mock_anthropic_client.assert_called_once_with(api_key="same-key")

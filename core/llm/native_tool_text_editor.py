@@ -31,14 +31,27 @@ Użycie:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable
 
+from core.llm.adapters.anthropic import ANTHROPIC_MODELS
 from core.llm.types import LLMResponse
 
-_DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 _TOOL_TYPE = "text_editor_20250728"
 _TOOL_NAME = "str_replace_based_edit_tool"
+
+
+class AgentLoopIncomplete(RuntimeError):
+    """Raised when max_iterations is hit while the model still has pending tool calls."""
+
+
+@lru_cache(maxsize=8)
+def _get_client(api_key: str) -> Any:
+    """Cache clients by API key — reuses the underlying HTTP transport across calls."""
+    import anthropic
+
+    return anthropic.Anthropic(api_key=api_key)
 
 
 @dataclass
@@ -70,7 +83,16 @@ class TextEditorToolExecutor:
         raise ValueError(f"Nieznane polecenie text_editor: {command!r}")
 
     def _resolve(self, raw_path: str) -> Path:
-        candidate = (self._root / raw_path.lstrip("/")).resolve()
+        """
+        Ścieżki względne łączymy z `root`. Ścieżki absolutne akceptujemy TYLKO
+        jeśli po rozwiązaniu faktycznie leżą wewnątrz `root` (np. model podaje
+        pełną ścieżkę widoczną w komunikatach narzędzia) — nie są ślepo
+        przepisywane na root-relative przez ucięcie wiodącego "/", bo to
+        potrafiło po cichu zagnieździć ścieżkę pod inną lokalizacją niż model
+        zamierzał.
+        """
+        raw = Path(raw_path)
+        candidate = raw.resolve() if raw.is_absolute() else (self._root / raw_path).resolve()
         if candidate != self._root and self._root not in candidate.parents:
             raise ValueError(f"Ścieżka poza dozwolonym katalogiem: {raw_path!r}")
         return candidate
@@ -80,8 +102,17 @@ class TextEditorToolExecutor:
             names = sorted(p.name for p in path.iterdir())
             return "\n".join(names)
         lines = path.read_text().splitlines()
-        start, end = (view_range[0], view_range[1]) if view_range else (1, len(lines))
-        numbered = [f"{i}: {lines[i - 1]}" for i in range(start, min(end, len(lines)) + 1)]
+        if view_range is None:
+            start, end = 1, len(lines)
+        else:
+            if len(view_range) != 2:
+                raise ValueError(f"view_range musi mieć dokładnie 2 elementy: {view_range!r}")
+            start, end = view_range
+            if start < 1 or end < start or end > len(lines):
+                raise ValueError(
+                    f"view_range {view_range!r} poza zakresem pliku (1..{len(lines)})"
+                )
+        numbered = [f"{i}: {lines[i - 1]}" for i in range(start, end + 1)]
         return "\n".join(numbered)
 
     def _create(self, path: Path, file_text: str) -> str:
@@ -101,6 +132,10 @@ class TextEditorToolExecutor:
 
     def _insert(self, path: Path, insert_line: int, new_str: str) -> str:
         lines = path.read_text().splitlines()
+        if insert_line < 0 or insert_line > len(lines):
+            raise ValueError(
+                f"insert_line {insert_line} poza zakresem pliku (0..{len(lines)})"
+            )
         lines.insert(insert_line, new_str)
         path.write_text("\n".join(lines) + "\n")
         return f"Wstawiono tekst po linii {insert_line} w {path.name}."
@@ -111,9 +146,10 @@ def run_text_editor_tool_loop(
     prompt: str,
     *,
     executor: Callable[[dict[str, Any]], str],
-    model: str = _DEFAULT_MODEL,
+    model: str = ANTHROPIC_MODELS["fast"],
     system: str | None = None,
     max_tokens: int = 4096,
+    temperature: float = 0.0,
     max_iterations: int = 10,
 ) -> LLMResponse:
     """
@@ -123,10 +159,10 @@ def run_text_editor_tool_loop(
         podaj jawnie `TextEditorToolExecutor(root=...)`, patrz ostrzeżenie
         bezpieczeństwa w docstringu modułu.
     max_iterations: zabezpieczenie przed nieskończoną pętlą wywołań narzędzia.
+        Jeśli osiągnięte podczas gdy model wciąż zgłasza tool_use, funkcja
+        podnosi AgentLoopIncomplete zamiast cicho zwrócić niepełną odpowiedź.
     """
-    import anthropic
-
-    client = anthropic.Anthropic(api_key=api_key)
+    client = _get_client(api_key)
     tool = {"type": _TOOL_TYPE, "name": _TOOL_NAME}
     messages: list[dict[str, Any]] = [{"role": "user", "content": prompt}]
 
@@ -135,6 +171,7 @@ def run_text_editor_tool_loop(
         kwargs: dict[str, Any] = {
             "model": model,
             "max_tokens": max_tokens,
+            "temperature": temperature,
             "tools": [tool],
             "messages": messages,
         }
@@ -146,7 +183,7 @@ def run_text_editor_tool_loop(
         tool_use_blocks = [
             block
             for block in response.content
-            if getattr(block, "type", None) == "tool_use" and block.name == _TOOL_NAME
+            if getattr(block, "type", None) == "tool_use" and getattr(block, "name", None) == _TOOL_NAME
         ]
         if not tool_use_blocks:
             return _final_response(response)
@@ -156,8 +193,11 @@ def run_text_editor_tool_loop(
         )
         messages.append({"role": "user", "content": _run_tools(tool_use_blocks, executor)})
 
-    return _final_response(response) if response is not None else LLMResponse(
-        content="", model=model, input_tokens=0, output_tokens=0
+    if response is None:
+        return LLMResponse(content="", model=model, input_tokens=0, output_tokens=0)
+    raise AgentLoopIncomplete(
+        f"run_text_editor_tool_loop did not converge within max_iterations={max_iterations}; "
+        "the model still had pending tool calls when the loop stopped."
     )
 
 
@@ -166,14 +206,15 @@ def _run_tools(
 ) -> list[dict[str, Any]]:
     tool_results = []
     for block in tool_use_blocks:
+        block_id = getattr(block, "id", "unknown")
         try:
-            output = executor(block.input)
-            tool_results.append({"type": "tool_result", "tool_use_id": block.id, "content": output})
-        except Exception as exc:  # executor failures shouldn't kill the agent loop
+            output = executor(getattr(block, "input", None) or {})
+            tool_results.append({"type": "tool_result", "tool_use_id": block_id, "content": output})
+        except Exception as exc:  # executor/malformed-block failures shouldn't kill the loop
             tool_results.append(
                 {
                     "type": "tool_result",
-                    "tool_use_id": block.id,
+                    "tool_use_id": block_id,
                     "content": f"ERROR: {exc}",
                     "is_error": True,
                 }
