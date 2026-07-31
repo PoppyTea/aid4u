@@ -59,7 +59,6 @@ app = ServerFactory.create("s01e03-proxy")
 
 _sessions: "OrderedDict[str, list[LLMMessage]]" = OrderedDict()
 _hub = HubClient()
-_tool_executor = make_tool_executor(_hub)
 _llm: LLMClient | None = None
 
 
@@ -109,9 +108,13 @@ def chat(body: ChatRequest) -> ChatResponse:
     history = _get_session(body.sessionID)
     history.append(LLMMessage.user(body.msg))
 
-    reply = _get_llm().run_agent_loop(
-        history, TOOLS, _tool_executor, system=SYSTEM_PROMPT_PROXY
-    )
+    llm = _get_llm()
+    # Zbudowany per-request: executor musi widzieć BIEŻĄCĄ historię tej sesji,
+    # żeby redirect_package mogło sklasyfikować, czy ta konkretna paczka ma
+    # zostać podmieniona — patrz tools.py.
+    tool_executor = make_tool_executor(_hub, llm, history)
+
+    reply = llm.run_agent_loop(history, TOOLS, tool_executor, system=SYSTEM_PROMPT_PROXY)
 
     history.append(LLMMessage.assistant(reply))
     if len(history) > _MAX_MESSAGES_PER_SESSION:
