@@ -31,33 +31,55 @@ Użycie:
 from __future__ import annotations
 
 import subprocess
+import tempfile
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Callable
 
+from core.llm.adapters.anthropic import ANTHROPIC_MODELS
 from core.llm.types import LLMResponse
 
-_DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 _TOOL_TYPE = "bash_20250124"
+
+
+class AgentLoopIncomplete(RuntimeError):
+    """Raised when max_iterations is hit while the model still has pending tool calls."""
+
+
+@lru_cache(maxsize=8)
+def _get_client(api_key: str) -> Any:
+    """Cache clients by API key — reuses the underlying HTTP transport across calls."""
+    import anthropic
+
+    return anthropic.Anthropic(api_key=api_key)
 
 
 @dataclass
 class BashToolExecutor:
     """
-    Domyślny executor — uruchamia polecenia lokalnie przez `subprocess`.
+    Domyślny executor — uruchamia polecenia lokalnie przez `subprocess`, jawnie
+    przez `bash -c` (nie `shell=True`, które używa domyślnej powłoki systemu —
+    często `sh`/`dash`, nie gwarantuje semantyki bash mimo że narzędzie nazywa
+    się "bash").
 
-    cwd: katalog roboczy poleceń. Ustaw jawnie — domyślny `None` dziedziczy cwd
-        procesu Pythona, co zwykle NIE jest tym, czego chcesz w produkcji.
+    cwd: katalog roboczy poleceń. Jeśli nie podasz, tworzony jest świeży,
+        pusty katalog tymczasowy (`tempfile.mkdtemp`) — nigdy proces nie
+        dziedziczy prawdziwego cwd aplikacji (i sąsiadujących sekretów/.env)
+        jako niebezpiecznego domyślnego zachowania.
     timeout: limit czasu pojedynczego polecenia w sekundach.
     """
 
     cwd: str | None = None
     timeout: float = 30.0
 
+    def __post_init__(self) -> None:
+        if self.cwd is None:
+            self.cwd = tempfile.mkdtemp(prefix="aid4u-bash-tool-")
+
     def __call__(self, command: str) -> str:
         try:
             result = subprocess.run(
-                command,
-                shell=True,
+                ["bash", "-c", command],
                 cwd=self.cwd,
                 timeout=self.timeout,
                 capture_output=True,
@@ -65,6 +87,8 @@ class BashToolExecutor:
             )
         except subprocess.TimeoutExpired:
             return f"ERROR: command timed out after {self.timeout}s"
+        except OSError as exc:
+            return f"ERROR: failed to launch bash: {exc}"
 
         output = result.stdout
         if result.stderr:
@@ -79,9 +103,10 @@ def run_bash_tool_loop(
     prompt: str,
     *,
     executor: Callable[[str], str] | None = None,
-    model: str = _DEFAULT_MODEL,
+    model: str = ANTHROPIC_MODELS["fast"],
     system: str | None = None,
     max_tokens: int = 4096,
+    temperature: float = 0.0,
     max_iterations: int = 10,
 ) -> LLMResponse:
     """
@@ -91,11 +116,11 @@ def run_bash_tool_loop(
         — patrz ostrzeżenie bezpieczeństwa w docstringu modułu przed użyciem
         domyślnego executora bez jawnego `cwd`.
     max_iterations: zabezpieczenie przed nieskończoną pętlą wywołań narzędzia.
+        Jeśli osiągnięte podczas gdy model wciąż zgłasza tool_use, funkcja
+        podnosi AgentLoopIncomplete zamiast cicho zwrócić niepełną odpowiedź.
     """
-    import anthropic
-
     exec_fn = executor or BashToolExecutor()
-    client = anthropic.Anthropic(api_key=api_key)
+    client = _get_client(api_key)
     tool = {"type": _TOOL_TYPE, "name": "bash"}
     messages: list[dict[str, Any]] = [{"role": "user", "content": prompt}]
 
@@ -104,6 +129,7 @@ def run_bash_tool_loop(
         kwargs: dict[str, Any] = {
             "model": model,
             "max_tokens": max_tokens,
+            "temperature": temperature,
             "tools": [tool],
             "messages": messages,
         }
@@ -115,7 +141,7 @@ def run_bash_tool_loop(
         tool_use_blocks = [
             block
             for block in response.content
-            if getattr(block, "type", None) == "tool_use" and block.name == "bash"
+            if getattr(block, "type", None) == "tool_use" and getattr(block, "name", None) == "bash"
         ]
         if not tool_use_blocks:
             return _final_response(response)
@@ -125,27 +151,31 @@ def run_bash_tool_loop(
         )
         messages.append({"role": "user", "content": _run_tools(tool_use_blocks, exec_fn)})
 
-    return _final_response(response) if response is not None else LLMResponse(
-        content="", model=model, input_tokens=0, output_tokens=0
+    if response is None:
+        return LLMResponse(content="", model=model, input_tokens=0, output_tokens=0)
+    raise AgentLoopIncomplete(
+        f"run_bash_tool_loop did not converge within max_iterations={max_iterations}; "
+        "the model still had pending tool calls when the loop stopped."
     )
 
 
 def _run_tools(tool_use_blocks: list[Any], exec_fn: Callable[[str], str]) -> list[dict[str, Any]]:
     tool_results = []
     for block in tool_use_blocks:
-        command = block.input.get("command")
+        block_id = getattr(block, "id", "unknown")
         try:
+            command = (getattr(block, "input", None) or {}).get("command")
             output = (
                 exec_fn(command)
                 if command is not None
                 else "OK (no persistent shell session to restart in this executor)"
             )
-            tool_results.append({"type": "tool_result", "tool_use_id": block.id, "content": output})
-        except Exception as exc:  # executor failures shouldn't kill the agent loop
+            tool_results.append({"type": "tool_result", "tool_use_id": block_id, "content": output})
+        except Exception as exc:  # executor/malformed-block failures shouldn't kill the loop
             tool_results.append(
                 {
                     "type": "tool_result",
-                    "tool_use_id": block.id,
+                    "tool_use_id": block_id,
                     "content": f"ERROR: {exc}",
                     "is_error": True,
                 }
