@@ -23,6 +23,12 @@ wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENT
 - Sposób rozwiązania nie musi być zgodny z założeniem zadania — liczy się flaga.
 - Skonsultuj NotebookLM (komentarze + zadania kursu) jeśli utknąłeś lub szukasz
   najkrótszej drogi.
+- **Nie lekceważ fabuły.** To normalny, merytoryczny element treści zadania, nie
+  ozdobnik do pominięcia — czytaj ją tak samo uważnie jak specyfikację techniczną.
+  Potrafi zawierać konkretne dane potrzebne do rozwiązania (nazwy, słowa kluczowe,
+  kontekst rozstrzygający niejednoznaczność), a czasem fabuła jednego zadania
+  ujawnia informacje istotne dla innego (np. s01e03 pozwala wywnioskować element
+  odpowiedzi z s01e02). Potwierdzone dwukrotnie w praktyce (2026-08-01).
 
 ## Verification
 - Zadanie zwraca flagę z huba — to jest ostateczna weryfikacja, nie zielone testy.
