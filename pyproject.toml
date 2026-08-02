@@ -37,6 +37,7 @@ dependencies = [
     "requests>=2.34.2",
     "types-requests>=2.33.0.20260712",
     "mcp[cli]>=1.28.1",
+    "mem0ai>=2.0.14",
 ]
 
 [dependency-groups]
