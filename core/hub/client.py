@@ -87,6 +87,14 @@ class HubClient:
         response.raise_for_status()
         return response.content
 
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
+    def get_doc(self, path: str) -> bytes:
+        """GET /dane/doc/{path} — publiczne dokumenty zadań, bez apikey."""
+        url = f"{self._base_url}/dane/doc/{path}"
+        response = self._http.get(url)
+        response.raise_for_status()
+        return response.content
+
     def post_api(self, path: str, payload: dict) -> dict:
         """POST do dowolnego endpointu hubu (np. /api/zmail, /api/packages)."""
         payload = {**payload, "apikey": self._apikey}
