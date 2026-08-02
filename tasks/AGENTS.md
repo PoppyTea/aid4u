@@ -40,4 +40,4 @@ wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENT
 - Zadanie zwraca flagę z huba — to jest ostateczna weryfikacja, nie zielone testy.
 
 ## Child DOX Index
-- `s01e03_proxy/`: live-server task (public `/chat` endpoint) — see local exception above.
+- `s01e03_proxy/`: live-server task (public `/` endpoint) — see local exception above.

@@ -7,7 +7,7 @@ task. See `tasks/AGENTS.md`'s live-server exception for why `solve()` refuses in
 of running.
 
 ## Ownership
-- `server.py`: FastAPI app (`ServerFactory`), `POST /chat {sessionID, msg}`, per-session
+- `server.py`: FastAPI app (`ServerFactory`), `POST / {sessionID, msg}`, per-session
   history, model selection.
 - `tools.py`: `check_package`/`redirect_package` tool definitions + executor calling the
   real `hub.ag3nts.org/api/packages` API through `HubClient`.
@@ -22,7 +22,14 @@ of running.
   an empty/placeholder answer to the hub.
 - Env vars: `S01E03_MODEL` (default: `ANTHROPIC_MODELS["fast"]`), `S01E03_PORT`
   (default `8003`).
-- `/chat` MUST stay a sync (non-`async def`) handler — `run_agent_loop()` is
+- The chat endpoint MUST stay at `POST /` (root), not `/chat` or any other
+  subpath. Confirmed by live traffic (2026-08-02): the hub POSTs to whatever
+  exact URL you register via `register_with_hub()` — no path is appended. We
+  register the bare tunnel domain, so the handler has to live at `/`. A `/chat`
+  route gets silent 404s from the grading bot with no error surfaced anywhere
+  except the ngrok/access logs — check those first if the bot connects but
+  nothing happens.
+- `/` MUST stay a sync (non-`async def`) handler — `run_agent_loop()` is
   blocking, and FastAPI's automatic threadpool offload for sync endpoints keeps
   `/health` and concurrent requests responsive.
 - Per-session history is bounded (`_MAX_SESSIONS`, `_MAX_MESSAGES_PER_SESSION` in
@@ -33,8 +40,13 @@ of running.
 - Expose publicly: `./deploy/ngrok_tunnel.sh <port>`, then `register_with_hub()`
   with the printed `https://*.ngrok-free.app` URL (see `solution.py` docstring for
   the exact one-liner).
-- Flag arrives inline in a `/chat` message body from Wojtek, not via a separate
+- Flag arrives inline in a message body from Wojtek, not via a separate
   endpoint — the server logs prominently when the `{FLG:...}` pattern appears.
+- ngrok's local inspector (`http://127.0.0.1:4040/api/requests/http`) is more
+  reliable than the server's own log file for live debugging — Python's stdout
+  is block-buffered (not line-buffered) when redirected to a file via
+  `nohup ... > log 2>&1 &`, so request logs can lag well behind real traffic.
+  Query the inspector API directly instead of trusting `tail -f` on the log.
 
 ## Verification
 - `uv run pytest tasks/s01e03_proxy/` — endpoint, tool-executor, and safety-net

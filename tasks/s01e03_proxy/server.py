@@ -1,7 +1,7 @@
 """
 S01E03 — proxy serwer dla operatora "Wojtek".
 
-Odbiera POST /chat {sessionID, msg}, prowadzi rozmowę per-sesja przez LLMClient
+Odbiera POST / {sessionID, msg}, prowadzi rozmowę per-sesja przez LLMClient
 (function calling: check_package, redirect_package — patrz tools.py, wywołuje
 prawdziwe API hub.ag3nts.org/api/packages). Historia per sessionID trzymana w
 pamięci procesu — wystarczające dla jednej rozmowy z botem grading; restart
@@ -12,7 +12,9 @@ Uruchomienie lokalne:
 
 Publiczny URL (żeby bot na hubie mógł się dobić):
     ./deploy/ngrok_tunnel.sh 8003
-    → zarejestruj wypisany https://*.ngrok-free.app URL, patrz solution.py
+    → zarejestruj wypisany https://*.ngrok-free.app URL BEZ ścieżki (hub POSTuje
+      dokładnie na zarejestrowany URL, nie dokleja żadnego /chat czy podobnego —
+      stąd endpoint żyje pod "/", nie pod jakąś podścieżką), patrz solution.py
 
 Flaga: Wojtek przekazuje ją na końcu rozmowy w treści wiadomości, nie przez
 osobny endpoint — ten serwer loguje wyraźnie, gdy wzorzec {FLG:...} pojawi
@@ -93,14 +95,14 @@ class ChatResponse(BaseModel):
     msg: str
 
 
-@app.post("/chat", response_model=ChatResponse)
+@app.post("/", response_model=ChatResponse)
 def chat(body: ChatRequest) -> ChatResponse:
     """
     Zwykłe (nie `async def`) — celowo: `run_agent_loop()` jest synchroniczne
     i blokujące na I/O sieciowym (wywołania LLM). FastAPI/Starlette
     automatycznie uruchamia zwykłe endpointy w threadpoolu, więc event loop
     zostaje odblokowany dla /health i innych requestów w trakcie długiej
-    odpowiedzi — inaczej jeden wolny /chat blokowałby cały serwer.
+    odpowiedzi — inaczej jedno wolne żądanie tutaj blokowałoby cały serwer.
     """
     if _FLAG_PATTERN.search(body.msg):
         logfire.info("Flag detected in incoming message", session_id=body.sessionID, msg=body.msg)
