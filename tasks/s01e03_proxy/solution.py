@@ -20,7 +20,7 @@ Uruchomienie właściwe:
         print(register_with_hub(HubClient(), 'https://TWÓJ-URL.ngrok-free.app', 'test-session-1'))
     "
     # Centrala połączy się, przeprowadzi rozmowę przez Wojtka i przekaże
-    # flagę {FLG:...} w jednej z wiadomości do /chat — patrz logi serwera.
+    # flagę {FLG:...} w jednej z wiadomości — patrz logi serwera.
 """
 
 from __future__ import annotations
