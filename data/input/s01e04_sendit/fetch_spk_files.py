@@ -36,11 +36,11 @@ def _safe_rel_path(raw: Path) -> Path:
     return candidate.relative_to(root)
 
 
-def _read_file_list() -> list[Path]:
+def _read_file_list() -> set[Path]:
     if not FILE_LIST.exists():
-        return []
+        return set()
     lines = FILE_LIST.read_text(encoding="utf-8").splitlines()
-    return [_safe_rel_path(Path(line.strip())) for line in lines if line.strip()]
+    return {_safe_rel_path(Path(line.strip())) for line in lines if line.strip()}
 
 
 def _append_to_file_list(new_paths: list[Path]) -> None:
@@ -52,9 +52,9 @@ def _append_to_file_list(new_paths: list[Path]) -> None:
 def fetch_all() -> list[Path]:
     """Pobiera brakujące pliki i zwraca listę nowo pobranych ścieżek."""
     hub = HubClient()
-    original = _read_file_list()
-    known: set[Path] = set(original)
-    queue: list[Path] = list(original)
+    known: set[Path] = _read_file_list()
+    queue: list[Path] = list(known)
+    new_entries: list[Path] = []
     downloaded: list[Path] = []
 
     i = 0
@@ -81,8 +81,8 @@ def fetch_all() -> list[Path]:
             if ref not in known:
                 known.add(ref)
                 queue.append(ref)
+                new_entries.append(ref)
 
-    new_entries = queue[len(original) :]
     if new_entries:
         _append_to_file_list(new_entries)
 
