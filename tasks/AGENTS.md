@@ -6,9 +6,12 @@ s01e01, s01e02, s01e04, s01e05 zaliczone przez normalny `solve()→submit()` (fl
 `.flags.json`); s01e03 zaliczone przez żywą rozmowę (ngrok/proxy) — flaga poza
 `.flags.json`, patrz `s01e03_proxy/AGENTS.md`.
 
-**Sezon 2 w toku (od 2026-08-03)** — szkielety `s02e01`..`s02e05` utworzone
-(`AGENTS.md` + `doc/` + puste `__init__.py`), tematy jeszcze nierozpoznane. Foldery
-przyjmą sufiks tematyczny (`s02e0N_<temat>`) po analizie treści zadań. Wzorzec
+**Sezon 2 w toku (od 2026-08-03)** — tematy wszystkich 5 epizodów rozpoznane przez
+NotebookLM (`LLM_aid4u_tylko_zadania`) i foldery przemianowane z sufiksem
+tematycznym: `s02e01_categorize`, `s02e02_electricity`, `s02e03_failure`,
+`s02e04_mailbox`, `s02e05_drone`. Sposób zdobycia danych wejściowych dla
+wszystkich pięciu ustalony z wyprzedzeniem i zapisany w ich `AGENTS.md`
+(Ownership) — zanim ruszyliśmy z implementacją którejkolwiek `solve()`. Wzorzec
 skopiowany z dojrzałej wersji z sezonu 1 (e03–e05: `AGENTS.md`+`doc/`+`solution.py`
 od startu) celowo, żeby uniknąć przemeblowań jakie miały miejsce przy e01/e02
 (brak `AGENTS.md`/`doc/`, scratch pliki, niespójne nazwy danych).
@@ -41,6 +44,13 @@ wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENT
 - Sposób rozwiązania nie musi być zgodny z założeniem zadania — liczy się flaga.
 - Skonsultuj NotebookLM (komentarze + zadania kursu) jeśli utknąłeś lub szukasz
   najkrótszej drogi.
+- **Przy starcie nowego sezonu:** najpierw dla WSZYSTKICH epizodów ustal sposób
+  zdobycia danych wejściowych (endpoint, auth, statyczne czy żywe/mutowalne, cache
+  czy nie) i zapisz w ich `AGENTS.md` (Ownership) — dopiero potem implementuj
+  `solve()` dla kolejnych epizodów po kolei. Unika sytuacji gdzie zaczynasz kodować
+  jeden epizod bez wiedzy czy dane innego wymagają zupełnie innego podejścia
+  (statyczny plik vs żywe API vs `data/input/` z dokumentem referencyjnym).
+  Potwierdzone przy starcie S02 (2026-08-03).
 - **Nie lekceważ fabuły.** To normalny, merytoryczny element treści zadania, nie
   ozdobnik do pominięcia — czytaj ją tak samo uważnie jak specyfikację techniczną.
   Potrafi zawierać konkretne dane potrzebne do rozwiązania (nazwy, słowa kluczowe,
@@ -56,5 +66,13 @@ wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENT
 - `s01e04_sendit/`: deterministic SPK declaration builder, no LLM.
 - `s01e05_railway/`: multi-step hub API protocol (route activation), no LLM —
   503/429 resilience lives in `HubClient.submit()`, not here.
-- `s02e01/`..`s02e05/`: Season 2 scaffolding, topics TBD — each has its own
-  placeholder `AGENTS.md` to fill in once the task content is known.
+- `s02e01_categorize/`: prompt-only classification task (DNG/NEU, ≤100 tokens),
+  no LLM at runtime — reactor-part exception from the fabuła.
+- `s02e02_electricity/`: 3x3 pipe-rotation puzzle, image-driven, live/mutable
+  board state (re-fetch after every `rotate`).
+- `s02e03_failure/`: huge log file → ≤1500-token condensed summary, iterative
+  feedback loop with the hub.
+- `s02e04_mailbox/`: live `zmail` API search, protocol undiscovered — needs a
+  `help`-first step like `s01e05_railway`.
+- `s02e05_drone/`: static reference docs (HTML API doc + terrain map) — only S02
+  episode qualifying for a `data/input/` subfolder.
