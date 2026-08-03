@@ -4,7 +4,14 @@
 Execution environment for AI_Devs 4 course tasks. **Sezon 1 zamknięty (2026-08-03)** —
 s01e01, s01e02, s01e04, s01e05 zaliczone przez normalny `solve()→submit()` (flagi w
 `.flags.json`); s01e03 zaliczone przez żywą rozmowę (ngrok/proxy) — flaga poza
-`.flags.json`, patrz `s01e03_proxy/AGENTS.md`. Sezon 2 zaczyna się w nowym wątku.
+`.flags.json`, patrz `s01e03_proxy/AGENTS.md`.
+
+**Sezon 2 w toku (od 2026-08-03)** — szkielety `s02e01`..`s02e05` utworzone
+(`AGENTS.md` + `doc/` + puste `__init__.py`), tematy jeszcze nierozpoznane. Foldery
+przyjmą sufiks tematyczny (`s02e0N_<temat>`) po analizie treści zadań. Wzorzec
+skopiowany z dojrzałej wersji z sezonu 1 (e03–e05: `AGENTS.md`+`doc/`+`solution.py`
+od startu) celowo, żeby uniknąć przemeblowań jakie miały miejsce przy e01/e02
+(brak `AGENTS.md`/`doc/`, scratch pliki, niespójne nazwy danych).
 
 **EFFICIENCY MODE aktywny** (od 2026-07-29)
 — priorytet: szybkość i skuteczność zdobywania flag do 20/25, nie proces. Learning-mode
@@ -49,3 +56,5 @@ wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENT
 - `s01e04_sendit/`: deterministic SPK declaration builder, no LLM.
 - `s01e05_railway/`: multi-step hub API protocol (route activation), no LLM —
   503/429 resilience lives in `HubClient.submit()`, not here.
+- `s02e01/`..`s02e05/`: Season 2 scaffolding, topics TBD — each has its own
+  placeholder `AGENTS.md` to fill in once the task content is known.
