@@ -41,3 +41,4 @@ wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENT
 
 ## Child DOX Index
 - `s01e03_proxy/`: live-server task (public `/` endpoint) — see local exception above.
+- `s01e04_sendit/`: deterministic SPK declaration builder, no LLM.

@@ -25,11 +25,22 @@ FILE_LIST = DOCS_DIR / "SPK_files_list.csv"
 INCLUDE_PATTERN = re.compile(r'(?<=include file\=")(?P<file_name>.*?\..{1,4})(?=")', flags=re.MULTILINE)
 
 
-def _read_file_list() -> list[Path]:
+def _safe_rel_path(raw: Path) -> Path:
+    """Odrzuca ścieżki bezwzględne i próby wyjścia poza DOCS_DIR (np. `../../etc/passwd`)."""
+    if raw.is_absolute():
+        raise ValueError(f"Ścieżka bezwzględna niedozwolona w manifeście/include: {raw}")
+    root = DOCS_DIR.resolve()
+    candidate = (DOCS_DIR / raw).resolve()
+    if candidate != root and root not in candidate.parents:
+        raise ValueError(f"Ścieżka poza dozwolonym katalogiem: {raw}")
+    return candidate.relative_to(root)
+
+
+def _read_file_list() -> set[Path]:
     if not FILE_LIST.exists():
-        return []
+        return set()
     lines = FILE_LIST.read_text(encoding="utf-8").splitlines()
-    return [Path(line.strip()) for line in lines if line.strip()]
+    return {_safe_rel_path(Path(line.strip())) for line in lines if line.strip()}
 
 
 def _append_to_file_list(new_paths: list[Path]) -> None:
@@ -41,9 +52,9 @@ def _append_to_file_list(new_paths: list[Path]) -> None:
 def fetch_all() -> list[Path]:
     """Pobiera brakujące pliki i zwraca listę nowo pobranych ścieżek."""
     hub = HubClient()
-    original = _read_file_list()
-    known: set[Path] = set(original)
-    queue: list[Path] = list(original)
+    known: set[Path] = _read_file_list()
+    queue: list[Path] = list(known)
+    new_entries: list[Path] = []
     downloaded: list[Path] = []
 
     i = 0
@@ -56,7 +67,7 @@ def fetch_all() -> list[Path]:
             content = dest.read_bytes()
         else:
             dest.parent.mkdir(parents=True, exist_ok=True)
-            content = hub.get_doc(str(rel_path))
+            content = hub.get_doc(rel_path.as_posix())
             dest.write_bytes(content)
             downloaded.append(rel_path)
 
@@ -66,12 +77,12 @@ def fetch_all() -> list[Path]:
             continue  # plik binarny (np. .png) — nic do zregexowania
 
         for match in INCLUDE_PATTERN.finditer(text):
-            ref = Path(match.group("file_name"))
+            ref = _safe_rel_path(Path(match.group("file_name")))
             if ref not in known:
                 known.add(ref)
                 queue.append(ref)
+                new_entries.append(ref)
 
-    new_entries = queue[len(original) :]
     if new_entries:
         _append_to_file_list(new_entries)
 
