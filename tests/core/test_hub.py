@@ -96,6 +96,48 @@ class TestHubClientSubmit:
         mock_sleep.assert_called_once_with(15.0)
 
     @respx.mock
+    def test_submit_retries_on_429_with_missing_retry_after(self, mocker):
+        mock_sleep = mocker.patch("time.sleep")
+
+        route = respx.post("https://hub.ag3nts.org/verify")
+        route.side_effect = [
+            httpx.Response(429, json={"code": -985, "message": "rate limited"}),
+            httpx.Response(200, json={"message": "{FLG:OK}"}),
+        ]
+
+        result = self.hub.submit("railway", {"action": "help"})
+        assert result == {"message": "{FLG:OK}"}
+        mock_sleep.assert_called_once_with(7.0)  # default 5.0 + margin 2.0
+
+    @respx.mock
+    def test_submit_retries_on_429_with_non_json_body(self, mocker):
+        mock_sleep = mocker.patch("time.sleep")
+
+        route = respx.post("https://hub.ag3nts.org/verify")
+        route.side_effect = [
+            httpx.Response(429, content=b"not json"),
+            httpx.Response(200, json={"message": "{FLG:OK}"}),
+        ]
+
+        result = self.hub.submit("railway", {"action": "help"})
+        assert result == {"message": "{FLG:OK}"}
+        mock_sleep.assert_called_once_with(7.0)
+
+    @respx.mock
+    def test_submit_retries_on_429_with_non_numeric_retry_after(self, mocker):
+        mock_sleep = mocker.patch("time.sleep")
+
+        route = respx.post("https://hub.ag3nts.org/verify")
+        route.side_effect = [
+            httpx.Response(429, json={"retry_after": "soon"}),
+            httpx.Response(200, json={"message": "{FLG:OK}"}),
+        ]
+
+        result = self.hub.submit("railway", {"action": "help"})
+        assert result == {"message": "{FLG:OK}"}
+        mock_sleep.assert_called_once_with(7.0)
+
+    @respx.mock
     def test_submit_exhausts_retries_on_persistent_503(self, mocker):
         mocker.patch("time.sleep")
 

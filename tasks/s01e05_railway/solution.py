@@ -24,6 +24,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import logfire
+
 from core.tasks import BaseTask, task
 
 ROUTE = "X-01"
@@ -34,7 +36,11 @@ class RailwayTask(BaseTask):
     """Aktywacja trasy kolejowej przez wieloetapowe API hubu — bez LLM."""
 
     def _call(self, action: str, **params: Any) -> dict:
-        response = self.hub.submit("railway", {"action": action, **params})
+        answer = {"action": action, **params}
+        if self.dry_run:
+            logfire.info(f"DRY RUN — pomijam realne wywołanie hubu dla akcji '{action}'", answer=answer)
+            return {"ok": True, "dry_run": True}
+        response = self.hub.submit(self._hub_task_name, answer)
         if response.get("ok") is False:
             raise RuntimeError(f"Railway API odrzuciło akcję '{action}': {response.get('message')}")
         return response

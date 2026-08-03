@@ -94,7 +94,7 @@ class HubClient:
                 continue
 
             if response.status_code == 429:
-                wait_s = response.json().get("retry_after", _VERIFY_OUTAGE_WAIT_S) + _VERIFY_RATE_LIMIT_MARGIN_S
+                wait_s = self._parse_retry_after(response) + _VERIFY_RATE_LIMIT_MARGIN_S
                 logfire.info(f"Hub 429 rate limit dla {task}, czekam {wait_s}s", attempt=attempt)
                 time.sleep(wait_s)
                 continue
@@ -105,6 +105,20 @@ class HubClient:
             return response.json()
 
         raise RuntimeError(f"submit({task}): wyczerpano {_VERIFY_MAX_ATTEMPTS} prób (503/429)")
+
+    @staticmethod
+    def _parse_retry_after(response: httpx.Response) -> float:
+        """Odczytuje `retry_after` z ciała 429 — odpornie na nie-JSON/brakujące/nienumeryczne body."""
+        try:
+            body = response.json()
+        except ValueError:
+            return _VERIFY_OUTAGE_WAIT_S
+        if not isinstance(body, dict):
+            return _VERIFY_OUTAGE_WAIT_S
+        try:
+            return max(float(body.get("retry_after", _VERIFY_OUTAGE_WAIT_S)), 0.0)
+        except (TypeError, ValueError):
+            return _VERIFY_OUTAGE_WAIT_S
 
     # ─── Data fetching ───────────────────────────────────────────────────────
 
