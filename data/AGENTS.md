@@ -2,14 +2,22 @@
 
 ## Purpose
 
-Input datasets consumed by course tasks (`tasks/sXXeYY/`). Read this before
+Datasets and artifacts for course tasks (`tasks/sXXeYY/`). Read this before
 touching anything under `data/` — some files are too large to read in full
 and will blow out agent context if you `cat`/`Read` them whole.
+
+Three subtrees, three lifecycles:
+- `main_story/` — static datasets shipped with the course; never regenerated.
+- `input/` — reference doc trees fetched live from hub.ag3nts.org; regenerable
+  by re-running the task's fetch script. Own contract, see Child DOX Index.
+- `outputs/` — run artifacts written by solved tasks, named
+  `sXXeYY-MMDD-HHMMSS-<slug>.<ext>`. Disposable; never an input to another task.
 
 ## Ownership
 
 Owned by the course task(s) that consume each file. Add or update the table
-below whenever a file is added, removed, or its role changes.
+below whenever a file is added, removed, or its role changes. `outputs/` is
+append-only run history and isn't tracked file-by-file in the table.
 
 ## Local Contracts
 
@@ -33,4 +41,5 @@ is safe to read whole before you try.
 
 ## Child DOX Index
 
-(no child AGENTS.md under `data/`)
+- `input/`: Doc trees fetched live from hub.ag3nts.org, one folder per task —
+  fetch scripts, manifest format, NotebookLM mirroring.
