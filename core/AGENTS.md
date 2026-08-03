@@ -16,6 +16,12 @@ Contains the architectural heart of the system: LLM clients, task management bas
     going through `LLMClient`. These aren't portable across providers, so they're a
     deliberate, narrow exception — not a precedent for other bypasses.
 - Any new task MUST inherit from `core/tasks/base.py` and be decorated with `@task`.
+- `HubClient.submit()` retries transparently on `/verify` 503 (simulated outage) and
+  429 (rate limit) — for 429 it waits on the `retry_after` field from the JSON
+  response body (the hub does not set a standard `Retry-After` header). It raises
+  `RuntimeError` after exhausting attempts. Callers can invoke `submit()` more than
+  once per task run for multi-step hub protocols (e.g. `s01e05_railway`), not just
+  for the final answer — each call gets the same resilience.
 
 ## Work Guidance
 - Follow the Adapter pattern for new LLM providers.
