@@ -9,6 +9,7 @@ from __future__ import annotations
 from core.observability.decorators import langfuse_observe
 
 import re
+import time
 from typing import Any
 
 import httpx
@@ -18,6 +19,16 @@ from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponen
 from core.config import get_config
 
 _FLAG_PATTERN = re.compile(r"\{FLG:[^}]+\}")
+
+# /verify na niektórych zadaniach (np. "railway") celowo symuluje przeciążenie
+# (503, bez sensownego czasu oczekiwania) i egzekwuje bardzo restrykcyjny rate
+# limit (429). Hub NIE ustawia standardowego nagłówka Retry-After — czas
+# oczekiwania jest w polu `retry_after` ciała odpowiedzi. Zbyt wczesny kolejny
+# request dokłada rosnącą karę (`penalty_seconds`), więc margines jest ważniejszy
+# niż szybkość.
+_VERIFY_OUTAGE_WAIT_S = 5.0
+_VERIFY_RATE_LIMIT_MARGIN_S = 2.0
+_VERIFY_MAX_ATTEMPTS = 20
 
 
 def _is_retryable_http_error(exc: BaseException) -> bool:
@@ -41,7 +52,13 @@ class HubClient:
 
     def submit(self, task: str, answer: Any) -> dict:
         """
-        POST /verify — standardowe zgłoszenie odpowiedzi.
+        POST /verify — zgłoszenie odpowiedzi (finalnej albo jednego kroku
+        wieloetapowego protokołu, np. zadanie "railway" gdzie każda akcja
+        idzie przez ten sam endpoint).
+
+        Toleruje 503 (symulowane przeciążenie) i 429 (rate limit) — patrz
+        _post_verify_resilient(). Inne błędy HTTP (4xx/5xx) propagują się
+        natychmiast, bez retry.
 
         Returns:
             Pełna odpowiedź z hubu jako dict.
@@ -56,11 +73,7 @@ class HubClient:
         )
         logfire.info(f"Submitting task {task}", answer_preview=preview)
 
-        response = self._http.post(f"{self._base_url}/verify", json=payload)
-        if response.status_code >= 400:
-            logfire.error("Hub rejected submission", status=response.status_code, body=response.text)
-        response.raise_for_status()
-        result = response.json()
+        result = self._post_verify_resilient(payload, task)
 
         flag = self.get_flag(result)
         if flag:
@@ -69,6 +82,29 @@ class HubClient:
             logfire.warning(f"No flag in response for {task}", response=result)
 
         return result
+
+    def _post_verify_resilient(self, payload: dict, task: str) -> dict:
+        """POST /verify z retry na 503 (przeciążenie) i 429 (rate limit)."""
+        for attempt in range(1, _VERIFY_MAX_ATTEMPTS + 1):
+            response = self._http.post(f"{self._base_url}/verify", json=payload)
+
+            if response.status_code == 503:
+                logfire.info(f"Hub 503 (symulowane przeciążenie) dla {task}, retry", attempt=attempt)
+                time.sleep(_VERIFY_OUTAGE_WAIT_S)
+                continue
+
+            if response.status_code == 429:
+                wait_s = response.json().get("retry_after", _VERIFY_OUTAGE_WAIT_S) + _VERIFY_RATE_LIMIT_MARGIN_S
+                logfire.info(f"Hub 429 rate limit dla {task}, czekam {wait_s}s", attempt=attempt)
+                time.sleep(wait_s)
+                continue
+
+            if response.status_code >= 400:
+                logfire.error("Hub rejected submission", status=response.status_code, body=response.text)
+            response.raise_for_status()
+            return response.json()
+
+        raise RuntimeError(f"submit({task}): wyczerpano {_VERIFY_MAX_ATTEMPTS} prób (503/429)")
 
     # ─── Data fetching ───────────────────────────────────────────────────────
 
