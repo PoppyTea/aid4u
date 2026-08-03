@@ -13,11 +13,18 @@ from typing import Any
 
 import httpx
 import logfire
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from core.config import get_config
 
 _FLAG_PATTERN = re.compile(r"\{FLG:[^}]+\}")
+
+
+def _is_retryable_http_error(exc: BaseException) -> bool:
+    """4xx to trwały błąd (zły path) — nie ma sensu go powtarzać, w przeciwieństwie do 5xx/timeoutów."""
+    if isinstance(exc, httpx.TransportError):
+        return True
+    return isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code >= 500
 
 
 class HubClient:
@@ -87,9 +94,13 @@ class HubClient:
         response.raise_for_status()
         return response.content
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
+    @retry(
+        retry=retry_if_exception(_is_retryable_http_error),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(min=1, max=10),
+    )
     def get_doc(self, path: str) -> bytes:
-        """GET /dane/doc/{path} — publiczne dokumenty zadań, bez apikey."""
+        """GET /dane/doc/{path} — publiczne dokumenty zadań, bez apikey. Nie powtarza 4xx."""
         url = f"{self._base_url}/dane/doc/{path}"
         response = self._http.get(url)
         response.raise_for_status()

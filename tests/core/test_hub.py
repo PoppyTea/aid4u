@@ -188,6 +188,53 @@ class TestHubClientGetData:
         assert route.call_count == 3
 
 
+class TestHubClientGetDoc:
+    """Testy get_doc() — retry na 5xx/timeout, ale NIE na 4xx (path trwale błędny)."""
+
+    def setup_method(self):
+        self.hub = HubClient.__new__(HubClient)
+        self.hub._apikey = "test-key"
+        self.hub._base_url = "https://hub.ag3nts.org"
+        self.hub._http = httpx.Client()
+        self.url = f"{self.hub._base_url}/dane/doc/test-file.md"
+
+    def teardown_method(self):
+        self.hub._http.close()
+
+    @respx.mock
+    def test_get_doc_success_without_retry(self):
+        route = respx.get(self.url).mock(return_value=httpx.Response(200, content=b"doc content"))
+
+        result = self.hub.get_doc("test-file.md")
+        assert result == b"doc content"
+        assert route.call_count == 1
+
+    @respx.mock
+    def test_get_doc_success_after_5xx_retries(self, mocker):
+        mocker.patch("time.sleep")
+
+        route = respx.get(self.url)
+        route.side_effect = [
+            httpx.Response(500),
+            httpx.Response(503),
+            httpx.Response(200, content=b"recovered doc"),
+        ]
+
+        result = self.hub.get_doc("test-file.md")
+        assert result == b"recovered doc"
+        assert route.call_count == 3
+
+    @respx.mock
+    def test_get_doc_404_not_retried(self):
+        route = respx.get(self.url).mock(return_value=httpx.Response(404))
+
+        with pytest.raises(httpx.HTTPStatusError):
+            self.hub.get_doc("test-file.md")
+
+        # Kluczowa różnica względem get_data(): 4xx nie jest powtarzane.
+        assert route.call_count == 1
+
+
 class TestHubClientTeardown:
     """Testy dla metody __del__ HubClient."""
 
