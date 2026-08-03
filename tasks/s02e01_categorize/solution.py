@@ -42,8 +42,30 @@ _PROMPT_PREFIX = (
 )
 
 
+_EXPECTED_ITEM_COUNT = 10
+
+
 def _build_prompt(item: dict[str, str]) -> str:
-    return f"{_PROMPT_PREFIX}{item['code']} - {item['description']}"
+    code = item.get("code")
+    description = item.get("description")
+    if not code or not description:
+        raise ValueError(f"Item missing 'code'/'description': {item!r}")
+    return f"{_PROMPT_PREFIX}{code} - {description}"
+
+
+def _validate_items(data: list[dict[str, str]]) -> None:
+    """Sprawdza kształt CSV PRZED wysłaniem czegokolwiek do huba (w tym `reset`) —
+    złe dane lokalne nie powinny mutować stanu huba. CSV zmienia się co kilka
+    minut i zadanie zakłada dokładnie 10 towarów; więcej wierszy oznaczałoby
+    dodatkowe /verify calls i ryzyko przepalenia budżetu przed finalnym submitem."""
+    if not isinstance(data, list) or len(data) != _EXPECTED_ITEM_COUNT:
+        raise ValueError(
+            f"categorize.csv: oczekiwano {_EXPECTED_ITEM_COUNT} wierszy, dostano "
+            f"{len(data) if isinstance(data, list) else type(data).__name__}"
+        )
+    for item in data:
+        if not item.get("code") or not item.get("description"):
+            raise ValueError(f"categorize.csv: wiersz bez code/description: {item!r}")
 
 
 @task("s02e01", hub_name="categorize")
@@ -52,7 +74,7 @@ class CategorizeTask(BaseTask):
 
     def fetch_data(self) -> list[dict[str, str]]:
         raw = self.hub.get_data("categorize.csv")
-        reader = csv.DictReader(io.StringIO(raw.decode("utf-8")))
+        reader = csv.DictReader(io.StringIO(raw.decode("utf-8", errors="replace")))
         return list(reader)
 
     def _call(self, prompt: str, *, expected_code: int) -> dict:
@@ -68,6 +90,7 @@ class CategorizeTask(BaseTask):
         return response
 
     def solve(self, data: list[dict[str, str]]) -> dict:
+        _validate_items(data)
         self._call("reset", expected_code=2)
 
         *rest, last = data

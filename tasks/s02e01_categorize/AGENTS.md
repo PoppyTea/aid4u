@@ -10,8 +10,14 @@ zawsze klasyfikowane jako `NEU`, mimo że obiektywnie są niebezpieczne — to c
 
 ## Ownership
 - `solution.py`: `CategorizeTask` (`@task("s02e01", hub_name="categorize")`) —
-  `_PROMPT_PREFIX` (statyczny prefiks promptu), `_build_prompt()`, `_call()`
+  `_PROMPT_PREFIX` (statyczny prefiks promptu), `_build_prompt()` (defensywny —
+  raportuje brakujące `code`/`description`), `_validate_items()` (kształt CSV
+  sprawdzany PRZED jakimkolwiek wywołaniem huba, w tym `reset`), `_call()`
   (POST /verify wrapper z guardem na `expected_code`).
+- `test_solution.py`: pokrywa walidację (#wierszy, brakujące pola) i
+  `solve()` (reset→9×submit→10. jako `answer`, dry-run, błędny kod odpowiedzi)
+  z fake hubem — dodane po uwadze Qodo (PR #53) o braku testów dla nowego
+  taska.
 - Dane wejściowe: `GET /data/{apikey}/categorize.csv` przez `hub.get_data()` —
   **zawsze świeże, bez cache** (zawartość zmienia się co kilka minut;
   `self.cache.get_or_fetch()` serwowałby stare dane z dysku — patrz
