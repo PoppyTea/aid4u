@@ -12,6 +12,11 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 > przywraca go nieddestrukcyjnie. Kurs ma nadal służyć edukacyjnie po zdobyciu 20 flag —
 > to świadomy, tymczasowy kompromis, nie zmiana celu.
 
+> ✅ **Sezon 1 zamknięty (2026-08-03)** — s01e01–s01e05 rozwiązane (5/5). `run.py status`
+> pokaże 4/4 — `s01e03_proxy` (żywy serwer/ngrok) strukturalnie nie przechodzi przez
+> `solve()→submit()`, więc jego flaga nigdy nie trafia do `.flags.json`; to cecha tego typu
+> zadania, nie błąd. Sezon 2 startuje w nowym wątku.
+
 ## 🚀 Szybki start (efficiency mode)
 - **Zadanie dnia:** znajdź folder w `/tasks` → `uv run run.py solve sXXeYY`
 - **Nowe zadanie kursowe — PRZED pisaniem czegokolwiek:**

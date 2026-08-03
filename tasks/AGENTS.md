@@ -1,7 +1,12 @@
 # Tasks Module
 
 ## Purpose
-Execution environment for AI_Devs 4 course tasks. **EFFICIENCY MODE aktywny** (od 2026-07-29)
+Execution environment for AI_Devs 4 course tasks. **Sezon 1 zamknięty (2026-08-03)** —
+s01e01, s01e02, s01e04, s01e05 zaliczone przez normalny `solve()→submit()` (flagi w
+`.flags.json`); s01e03 zaliczone przez żywą rozmowę (ngrok/proxy) — flaga poza
+`.flags.json`, patrz `s01e03_proxy/AGENTS.md`. Sezon 2 zaczyna się w nowym wątku.
+
+**EFFICIENCY MODE aktywny** (od 2026-07-29)
 — priorytet: szybkość i skuteczność zdobywania flag do 20/25, nie proces. Learning-mode
 wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENTS.md`
 (przywróć przez `aid4u/scripts/learning_mode_on_off.py on`).
