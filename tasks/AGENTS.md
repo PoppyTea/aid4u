@@ -14,7 +14,9 @@ wszystkich pięciu ustalony z wyprzedzeniem i zapisany w ich `AGENTS.md`
 (Ownership) — zanim ruszyliśmy z implementacją którejkolwiek `solve()`. Wzorzec
 skopiowany z dojrzałej wersji z sezonu 1 (e03–e05: `AGENTS.md`+`doc/`+`solution.py`
 od startu) celowo, żeby uniknąć przemeblowań jakie miały miejsce przy e01/e02
-(brak `AGENTS.md`/`doc/`, scratch pliki, niespójne nazwy danych).
+(brak `AGENTS.md`/`doc/`, scratch pliki, niespójne nazwy danych). **s02e01
+zaliczone (2026-08-03)** — flaga `{FLG:SMUGGLER}` w `.flags.json`; e02–e05
+czekają, robimy po kolei.
 
 **EFFICIENCY MODE aktywny** (od 2026-07-29)
 — priorytet: szybkość i skuteczność zdobywania flag do 20/25, nie proces. Learning-mode
@@ -66,8 +68,11 @@ wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENT
 - `s01e04_sendit/`: deterministic SPK declaration builder, no LLM.
 - `s01e05_railway/`: multi-step hub API protocol (route activation), no LLM —
   503/429 resilience lives in `HubClient.submit()`, not here.
-- `s02e01_categorize/`: prompt-only classification task (DNG/NEU, ≤100 tokens),
-  no LLM at runtime — reactor-part exception from the fabuła.
+- `s02e01_categorize/`: **solved** — prompt-only classification task (DNG/NEU,
+  ≤100 tokens), no LLM at runtime. `answer` must be `{"prompt": ...}` (JSON
+  object, undocumented) and DNG must stay scoped to actual weapons, not
+  anything hazardous-sounding — see that folder's `AGENTS.md` for the live
+  failure that taught this.
 - `s02e02_electricity/`: 3x3 pipe-rotation puzzle, image-driven, live/mutable
   board state (re-fetch after every `rotate`).
 - `s02e03_failure/`: huge log file → ≤1500-token condensed summary, iterative
