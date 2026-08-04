@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8" />
+<title>electricity — manual clicker</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #1e1e1e; color: #eee; display: flex; flex-direction: column; align-items: center; padding: 24px; }
+  h1 { font-size: 18px; font-weight: 500; color: #aaa; }
+  #board-img { border: 2px solid #444; max-width: 480px; width: 100%; image-rendering: pixelated; }
+  .grid { display: grid; grid-template-columns: repeat(3, 64px); grid-template-rows: repeat(3, 64px); gap: 4px; margin-top: 16px; }
+  .grid button { font-size: 14px; border: 1px solid #555; background: #2b2b2b; color: #eee; cursor: pointer; border-radius: 4px; }
+  .grid button:hover { background: #3a3a3a; }
+  .grid button:active { background: #4caf50; }
+  .controls { margin-top: 14px; display: flex; gap: 8px; }
+  .controls button { padding: 6px 14px; border-radius: 4px; border: 1px solid #555; background: #333; color: #eee; cursor: pointer; }
+  .controls button:hover { background: #444; }
+  #status { margin-top: 14px; max-width: 480px; width: 100%; white-space: pre-wrap; font-family: monospace; font-size: 13px; background: #111; border: 1px solid #333; border-radius: 4px; padding: 10px; min-height: 40px; }
+  #flag { margin-top: 10px; font-size: 20px; font-weight: bold; color: #4caf50; }
+</style>
+</head>
+<body>
+  <h1>s02e02 electricity — obróć pole = klik</h1>
+  <img id="board-img" src="/api/image" alt="board" />
+  <div class="grid" id="grid"></div>
+  <div class="controls">
+    <button id="refresh-btn">Odśwież obraz</button>
+    <button id="reset-btn">Reset planszy</button>
+  </div>
+  <div id="flag"></div>
+  <div id="status">gotowe</div>
+
+<script>
+  const grid = document.getElementById("grid");
+  const img = document.getElementById("board-img");
+  const statusEl = document.getElementById("status");
+  const flagEl = document.getElementById("flag");
+
+  function refreshImage(reset = false) {
+    img.src = "/api/image?" + (reset ? "reset=1&" : "") + "t=" + Date.now();
+  }
+
+  function showStatus(obj) {
+    statusEl.textContent = JSON.stringify(obj, null, 2);
+    const text = JSON.stringify(obj);
+    const match = text.match(/\{FLG:[^}]+\}/);
+    if (match) flagEl.textContent = "FLAGA: " + match[0];
+  }
+
+  async function rotate(cell) {
+    statusEl.textContent = `obracam ${cell}...`;
+    try {
+      const res = await fetch("/api/rotate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cell }),
+      });
+      const data = await res.json();
+      showStatus(data);
+    } catch (err) {
+      showStatus({ error: String(err) });
+    }
+    refreshImage();
+  }
+
+  for (let row = 1; row <= 3; row++) {
+    for (let col = 1; col <= 3; col++) {
+      const cell = `${row}x${col}`;
+      const btn = document.createElement("button");
+      btn.textContent = cell;
+      btn.addEventListener("click", () => rotate(cell));
+      grid.appendChild(btn);
+    }
+  }
+
+  document.getElementById("refresh-btn").addEventListener("click", () => refreshImage());
+  document.getElementById("reset-btn").addEventListener("click", () => refreshImage(true));
+</script>
+</body>
+</html>

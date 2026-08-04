@@ -19,13 +19,17 @@ ze wspólnego źródła awaryjnego (lewy-dolny róg) do trzech elektrowni: `PWR6
 - **Cross-episode note:** `PWR6132PL` to ta sama elektrownia (Żarnowiec) co w
   fabule `s02e05_drone` — nie ignorować fabuły, może nieść kontekst między
   epizodami (potwierdzony wzorzec z S01, patrz `tasks/AGENTS.md`).
-- (reszta — uzupełnić po zaimplementowaniu `solution.py`)
+- **Zaliczone (2026-08-05)** — flaga `{FLG:ROTATEIT}` w `.flags.json`, zdobyta
+  ręcznie przez `webui/` (lokalny serwer + `index.html` do wizualnej rotacji
+  planszy w przeglądarce), nie przez `solve()→submit()`. `solution.py`
+  automatyzujący ten przepływ jeszcze nie istnieje — jeśli ktoś go doda,
+  `webui/` zostaje jako narzędzie pomocnicze do debugowania stanu planszy.
 
 ## Work Guidance
 - (uzupełnić po zaimplementowaniu `solution.py`)
 
 ## Verification
-- (uzupełnić po zaimplementowaniu `solution.py`)
+- Flaga potwierdzona przez hub: `{FLG:ROTATEIT}`.
 
 ## Child DOX Index
 - None.
