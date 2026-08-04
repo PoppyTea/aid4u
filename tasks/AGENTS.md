@@ -27,7 +27,12 @@ wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENT
 - Each folder (`sXXeYY`) acts as a domain for a specific task.
 
 ## Local Contracts
-- Every task solution MUST contain `solution.py`.
+- Every task solution MUST contain `solution.py`. **Exception during season kickoff:**
+  freshly-scaffolded episode folders (`AGENTS.md`+`doc/`+`__init__.py` only, `solution.py`
+  explicitly marked "do utworzenia") are intentional — we go episode-by-episode per the
+  acquisition-first workflow below, not all-at-once. Flagged by Qodo on PRs #52/#53
+  (rule 1518473) and confirmed as a false positive both times — don't re-raise without
+  new information.
 - `test_solution.py` opcjonalny — pisz go PO działającym rozwiązaniu, tylko jeśli faktycznie
   pomoże zweryfikować coś nietrywialnego. Weryfikacja przez realne uruchomienie
   (`--dry-run` / hub) liczy się bardziej niż testy jednostkowe.
