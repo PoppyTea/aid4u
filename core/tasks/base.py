@@ -31,7 +31,7 @@ from core.hub import HubClient, LocalCache
 from core.llm import LLMClient
 
 _console = Console()
-_OUTPUTS_DIR = Path("data/outputs")
+_OUTPUTS_DIR = Path("data/run-history")
 
 # Registry: nazwa zadania → klasa
 TASK_REGISTRY: dict[str, type[BaseTask]] = {}
@@ -133,9 +133,11 @@ class BaseTask(ABC):
 
     def _save_output(self, answer: Any) -> Path:
         """
-        Zapisuje odpowiedź agenta do data/outputs/ (trwały ślad, nie cache —
+        Zapisuje odpowiedź agenta do data/run-history/ (trwały ślad, nie cache —
         cache w .cache/ nadpisuje ten sam klucz przy każdym fetchu, tu zostaje
-        historia każdego uruchomienia).
+        historia każdego uruchomienia). Wyłącznie audit-trail per-run — nie mylić
+        z data/output/, gdzie trafiają dane faktycznie przydatne w kolejnych
+        zadaniach (patrz data/AGENTS.md).
 
         Nazwa: [nazwa zadania]-[MMDD-hhmmss]-[org. nazwa pliku z huba].
         Gdy zadanie nie pobierało pliku przez cache.get_or_fetch (last_key

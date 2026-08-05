@@ -25,8 +25,10 @@ agents/
 # Cache danych z hubu (nie commituj — każdy ma swój apikey)
 .cache/
 
-# Historia odpowiedzi agenta per-run (nie commituj — lokalny audit trail)
-data/outputs/
+# Historia odpowiedzi agenta per-run (nie commituj — lokalny audit trail).
+# Nie mylić z data/output/ (bez "s") — tam trafiają dane faktycznie przydatne
+# w kolejnych zadaniach, commitowane. Patrz data/AGENTS.md.
+data/run-history/
 
 # Flagi (opcjonalnie — możesz commitować żeby śledzić postępy)
 # .flags.json

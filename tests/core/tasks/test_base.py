@@ -13,7 +13,7 @@ class _DummyTask(BaseTask):
 
 @pytest.fixture
 def dummy_task(tmp_path, monkeypatch):
-    """BaseTask z podmienionym .cache/ i data/outputs/ na tmp_path — bez śmiecenia w repo."""
+    """BaseTask z podmienionym .cache/ i data/run-history/ na tmp_path — bez śmiecenia w repo."""
     monkeypatch.setattr("core.hub.cache._CACHE_ROOT", tmp_path / ".cache")
     outputs_dir = tmp_path / "outputs"
     monkeypatch.setattr("core.tasks.base._OUTPUTS_DIR", outputs_dir)

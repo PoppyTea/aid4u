@@ -5,8 +5,9 @@
 Raw reference material fetched live from hub.ag3nts.org for tasks whose input
 isn't a single API payload but a small document tree (e.g. `s01e04_sendit`'s
 SPK docs, cross-linked via `include file="..."` references). Sibling of
-`../main_story/` (static datasets shipped with the course) and `../outputs/`
-(run artifacts) — see `../AGENTS.md`.
+`../main_story/` (static datasets shipped with the course), `../output/`
+(data produced rather than fetched — mirror image of this folder), and
+`../run-history/` (disposable per-run audit trail) — see `../AGENTS.md`.
 
 ## Ownership
 

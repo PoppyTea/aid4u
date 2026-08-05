@@ -61,7 +61,7 @@ def test_get_or_fetch(temp_cache_dir):
 
 
 def test_get_or_fetch_tracks_last_key(temp_cache_dir):
-    """last_key musi wskazywać ostatnio użyty klucz — używane przez BaseTask do nazwania pliku w data/outputs/."""
+    """last_key musi wskazywać ostatnio użyty klucz — używane przez BaseTask do nazwania pliku w data/run-history/."""
     cache = LocalCache()
     assert cache.last_key is None
 

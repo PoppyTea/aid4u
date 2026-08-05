@@ -61,6 +61,14 @@ wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENT
   jeden epizod bez wiedzy czy dane innego wymagają zupełnie innego podejścia
   (statyczny plik vs żywe API vs `data/input/` z dokumentem referencyjnym).
   Potwierdzone przy starcie S02 (2026-08-03).
+- **Gdzie zapisywać dane zadania** (ujednolicone 2026-08-05, patrz `data/AGENTS.md`):
+  `.cache/` to WYŁĄCZNIE efemeryczny cache przyspieszający TDD (hash-named,
+  `rm -rf` bezpieczne, nigdy jedyne miejsce trzymania czegoś wartościowego).
+  Cokolwiek pobrane/wyprodukowane, co może przydać się w PÓŹNIEJSZYM epizodzie,
+  idzie do `data/input/sXXeYY_nazwa/` (pobrane) lub `data/output/sXXeYY_nazwa/`
+  (wyprodukowane/wyliczone) — commitowane, czytelne nazwy. `data/run-history/`
+  jest automatyczne (`BaseTask._save_output`) i jednorazowe — nigdy nie czytaj
+  go jako źródła danych dla innego zadania.
 - **Nie lekceważ fabuły.** To normalny, merytoryczny element treści zadania, nie
   ozdobnik do pominięcia — czytaj ją tak samo uważnie jak specyfikację techniczną.
   Potrafi zawierać konkretne dane potrzebne do rozwiązania (nazwy, słowa kluczowe,
@@ -72,6 +80,9 @@ wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENT
 - Zadanie zwraca flagę z huba — to jest ostateczna weryfikacja, nie zielone testy.
 
 ## Child DOX Index
+- `s01e02_findhim/`: solved — data entirely live (hub + Nominatim geocoding at
+  solve-time), no static input files; see that folder's `AGENTS.md` for the
+  2026-08-05 dead-scratch-data cleanup.
 - `s01e03_proxy/`: live-server task (public `/` endpoint) — see local exception above.
 - `s01e04_sendit/`: deterministic SPK declaration builder, no LLM.
 - `s01e05_railway/`: multi-step hub API protocol (route activation), no LLM —
@@ -89,4 +100,4 @@ wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENT
 - `s02e04_mailbox/`: live `zmail` API search, protocol undiscovered — needs a
   `help`-first step like `s01e05_railway`.
 - `s02e05_drone/`: static reference docs (HTML API doc + terrain map) — only S02
-  episode qualifying for a `data/input/` subfolder.
+  episode qualifying for a `data/input/` subfolder so far.
