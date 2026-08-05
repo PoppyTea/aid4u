@@ -32,8 +32,11 @@ from the hub).
 ## Ownership
 
 Owned by the course task(s) that consume each file. Add or update the table
-below whenever a file is added, removed, or its role changes. `run-history/`
-is append-only run history and isn't tracked file-by-file in the table.
+below whenever a **data** file is added, removed, or its role changes.
+`run-history/` is append-only run history and isn't tracked file-by-file in
+the table. `AGENTS.md`/DOX files themselves (e.g. `input/AGENTS.md`,
+`output/AGENTS.md`) aren't data and don't get a row either — their contract
+lives in the Child DOX Index above, not this table.
 
 ## Local Contracts
 
