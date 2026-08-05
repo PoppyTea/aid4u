@@ -47,10 +47,14 @@ class Config:
         return self._cache[key]
 
     def _from_keyring(self, key: str) -> str:
+        # Headless/VPS bez keyring daemon może WISIEĆ na get_password() zamiast
+        # rzucić wyjątek — _keyring_get_with_timeout() ogranicza to do kilku
+        # sekund (patrz jego docstring w core/secrets.py dla pełnego kontekstu
+        # zdarzenia z 2026-08-05: to zawieszało cały `uv run pytest`).
         try:
-            import keyring
+            from core.secrets import _keyring_get_with_timeout
 
-            return keyring.get_password(_KEYRING_SERVICE, key) or ""
+            return _keyring_get_with_timeout(_KEYRING_SERVICE, key) or ""
         except Exception:
             return ""
 
