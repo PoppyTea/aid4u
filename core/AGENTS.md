@@ -22,6 +22,16 @@ Contains the architectural heart of the system: LLM clients, task management bas
   `RuntimeError` after exhausting attempts. Callers can invoke `submit()` more than
   once per task run for multi-step hub protocols (e.g. `s01e05_railway`), not just
   for the final answer — each call gets the same resilience.
+- Both `Config._from_keyring()` and `SecretsManager.get()`/`list()` MUST read the
+  system keyring only through `core.secrets._keyring_get_with_timeout()`, never
+  `keyring.get_password()` directly. Headless/VPS environments without a D-Bus
+  secret service can make `keyring.get_password()` block forever instead of
+  raising (hit 2026-08-05 — hung the whole `uv run pytest` at collection time via
+  `setup_observability()` → `cfg.logfire_token`). The helper bounds each call to
+  `_KEYRING_TIMEOUT_SECONDS` (2s) on a daemon thread, and trips a circuit breaker
+  (`_KEYRING_BACKOFF_SECONDS`, 5min) after the first timeout so a permanently
+  broken keyring can't accumulate one abandoned thread per call — Python has no
+  safe way to kill a blocked thread, so every avoided call matters.
 
 ## Work Guidance
 - Follow the Adapter pattern for new LLM providers.
