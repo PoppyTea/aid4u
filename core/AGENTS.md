@@ -16,6 +16,12 @@ Contains the architectural heart of the system: LLM clients, task management bas
     going through `LLMClient`. These aren't portable across providers, so they're a
     deliberate, narrow exception — not a precedent for other bypasses.
 - Any new task MUST inherit from `core/tasks/base.py` and be decorated with `@task`.
+- `BaseTask._save_output()` writes every `solve()` run's submitted answer to
+  `data/run-history/` (`sXXeYY-MMDD-HHMMSS-<slug>.<ext>`), automatically, after
+  every run — disposable per-run audit trail, gitignored, never an input to
+  another task. Don't confuse with `data/output/` (no "s"), which is committed
+  and holds data deliberately kept because a later episode might need it — see
+  `data/AGENTS.md` for the full four-way split.
 - `HubClient.submit()` retries transparently on `/verify` 503 (simulated outage) and
   429 (rate limit) — for 429 it waits on the `retry_after` field from the JSON
   response body (the hub does not set a standard `Retry-After` header). It raises
