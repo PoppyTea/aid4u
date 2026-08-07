@@ -54,3 +54,29 @@ def test_run_server() -> None:
     with patch("uvicorn.run") as mock_run:
         run_server(app, port=9000, host="127.0.0.1")
         mock_run.assert_called_once_with(app, host="127.0.0.1", port=9000, log_level="warning")
+
+
+def test_server_factory_cors() -> None:
+    """Test if ServerFactory configures CORS middleware correctly."""
+    app = ServerFactory.create("test-cors-service")
+    client = TestClient(app)
+
+    # Test preflight request
+    response = client.options(
+        "/health",
+        headers={
+            "Origin": "https://example.com",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "Content-Type",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == "*"
+    assert "GET" in response.headers.get("access-control-allow-methods", "")
+    assert "access-control-allow-credentials" not in response.headers
+
+    # Test normal request with Origin header
+    response = client.get("/health", headers={"Origin": "https://example.com"})
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == "*"
+    assert "access-control-allow-credentials" not in response.headers

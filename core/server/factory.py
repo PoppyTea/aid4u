@@ -29,6 +29,7 @@ import time
 from typing import Any
 
 from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 
 
 class ServerFactory:
@@ -42,10 +43,19 @@ class ServerFactory:
         """
         app = FastAPI(title=service_name, docs_url="/docs")
 
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=False,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
         # Auto-instrumentacja Logfire — każdy request = span
         logfire_mod = None
         try:
             import logfire
+
             logfire_mod = logfire
 
             logfire_mod = logfire
