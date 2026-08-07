@@ -55,6 +55,27 @@ class TestZmailAction:
             (solution.ZMAIL_API_PATH, {"action": "search", "query": "from:proton.me"})
         ]
 
+    def test_explicit_action_wins_over_params_action_key(self, monkeypatch):
+        """params={'action': 'evil'} nie może po cichu podmienić wywołanej akcji."""
+        monkeypatch.setattr(solution.time, "sleep", lambda *_: None)
+        hub = _FakeHub()
+        executor, _ = solution.build_tool_executor(hub, dry_run=False)
+
+        executor("zmail_action", {"action": "help", "params": {"action": "evil", "page": 1}})
+
+        assert hub.post_api_calls == [(solution.ZMAIL_API_PATH, {"action": "help", "page": 1})]
+
+    def test_non_dict_params_returns_error_instead_of_raising(self, monkeypatch):
+        """params malformowany przez model (np. lista) daje strukturalny błąd, nie wyjątek."""
+        monkeypatch.setattr(solution.time, "sleep", lambda *_: None)
+        hub = _FakeHub()
+        executor, _ = solution.build_tool_executor(hub, dry_run=False)
+
+        result = executor("zmail_action", {"action": "help", "params": ["not", "a", "dict"]})
+
+        assert hub.post_api_calls == []
+        assert "params musi być obiektem" in result
+
     def test_surfaces_4xx_as_tool_result_instead_of_raising(self, monkeypatch):
         """400 z zmail wraca jako JSON-feedback dla agenta, nie jako wyjątek."""
         monkeypatch.setattr(solution.time, "sleep", lambda *_: None)
@@ -98,11 +119,23 @@ class TestSubmitAnswer:
 
         assert hub.submit_calls == []
         assert "Lokalna walidacja" in result
-        assert state["last_submission"] == {
-            "password": "x",
-            "date": "2026-03-23",
-            "confirmation_code": "SEC-tooshort",
-        }
+        assert state["last_submission"] is None
+
+    def test_rejects_code_with_non_alphanumeric_characters(self, monkeypatch):
+        """32 znaki po prefiksie muszą być ASCII alfanumeryczne, nie tylko odpowiedniej długości."""
+        monkeypatch.setattr(solution.time, "sleep", lambda *_: None)
+        hub = _FakeHub()
+        executor, state = solution.build_tool_executor(hub, dry_run=False)
+        bad_code = "SEC-" + ("!" * 32)
+
+        result = executor(
+            "submit_answer",
+            {"password": "x", "date": "2026-03-23", "confirmation_code": bad_code},
+        )
+
+        assert hub.submit_calls == []
+        assert "Lokalna walidacja" in result
+        assert state["last_submission"] is None
 
     def test_valid_answer_calls_hub_submit_and_captures_flag(self, monkeypatch):
         """Poprawny format trafia do hub.submit(), a zwrócona flaga ląduje w stanie."""
@@ -166,3 +199,28 @@ class TestWaitSeconds:
 
         assert '"ok": true' in first
         assert "wyczerpany" in second
+
+
+class TestSubmitDedup:
+    """MailboxTask._submit() musi pominąć redundantny drugi /verify po sukcesie w pętli."""
+
+    def test_skips_hub_submit_when_flag_already_captured(self):
+        """Gdy submit_answer już złapał flagę, BaseTask.run()'s finalny _submit nie dubluje wywołania."""
+        hub = _FakeHub(submit_response={"ok": True, "flag": "{FLG:SHOULD_NOT_BE_CALLED}"})
+        mailbox_task = solution.MailboxTask(hub=hub, llm=None, dry_run=False)
+        mailbox_task._captured_flag = "{FLG:TRAITOR}"
+
+        result = mailbox_task._submit("mailbox", {"password": "x", "date": "y", "confirmation_code": "z"})
+
+        assert result == "{FLG:TRAITOR}"
+        assert hub.submit_calls == []
+
+    def test_calls_hub_submit_when_no_flag_was_captured(self):
+        """Bez wcześniej złapanej flagi _submit działa jak domyślny BaseTask._submit."""
+        hub = _FakeHub(submit_response={"ok": True, "flag": "{FLG:TRAITOR}"})
+        mailbox_task = solution.MailboxTask(hub=hub, llm=None, dry_run=False)
+
+        result = mailbox_task._submit("mailbox", {"password": "x", "date": "y", "confirmation_code": "z"})
+
+        assert result == "{FLG:TRAITOR}"
+        assert hub.submit_calls == [("mailbox", {"password": "x", "date": "y", "confirmation_code": "z"})]

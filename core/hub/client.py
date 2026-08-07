@@ -171,13 +171,16 @@ class HubClient:
         retry=retry_if_exception(_is_retryable_api_error),
         stop=stop_after_attempt(6),
         wait=wait_exponential(min=3, max=30),
+        reraise=True,
     )
     def post_api(self, path: str, payload: dict) -> dict:
         """POST do dowolnego endpointu hubu (np. /api/zmail, /api/packages).
 
         Retry na 429/5xx/transport errors z exponential backoffem — patrz
         _is_retryable_api_error(). 4xx inne niż 429 (np. zły parametr akcji) propagują się
-        natychmiast, tak jak wcześniej.
+        natychmiast, tak jak wcześniej. `reraise=True` — po wyczerpaniu prób woła się
+        oryginalny httpx.HTTPStatusError/TransportError, nie tenacity.RetryError, żeby
+        wywołujący (np. zmail_action) mógł dalej rozróżniać typy błędów po except.
         """
         payload = {**payload, "apikey": self._apikey}
         response = self._http.post(f"{self._base_url}{path}", json=payload)

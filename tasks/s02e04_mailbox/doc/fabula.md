@@ -1,6 +1,6 @@
 ## Fabuła
 
-![https://vimeo.com/1171929842](https://vimeo.com/1171929842)
+[Film na Vimeo](https://vimeo.com/1171929842)
 
 ## Transkrypcja filmu z Fabułą
 

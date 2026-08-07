@@ -28,16 +28,21 @@ trakcie Twojej pracy. Jeśli przeszukałeś wszystko dostępne i czegoś nadal b
 wait_seconds, a potem spróbuj ponownie — nie zakładaj że informacji nie ma tylko dlatego że
 jej jeszcze nie widziałeś.
 
-Gdy masz choć jedną wartość, wywołaj submit_answer (dla brakujących pól użyj pustego stringa)
-— hub powie Ci czy WSZYSTKIE trzy są poprawne naraz (wtedy dostajesz flagę) czy trzeba szukać
-dalej. Hub NIE mówi które konkretnie pole jest złe, więc zanim wyślesz, upewnij się że każda
-wartość pochodzi z faktycznie przeczytanej pełnej treści wiadomości, nie z domysłu.
+WAŻNE — submit_answer ma dwa poziomy walidacji. confirmation_code jest sprawdzany LOKALNIE
+(prefiks SEC- + 32 znaki = 36 łącznie) PRZED wysłaniem czegokolwiek do huba — dopóki nie masz
+poprawnie sformatowanego kodu, submit_answer w ogóle nie dotrze do huba i dostaniesz tylko
+komunikat o złym formacie, nie prawdziwy feedback. password i date NIE mają takiej lokalnej
+bramki — możesz je zostawić jako pusty string i wywołanie i tak dojdzie do huba, jeśli
+confirmation_code jest już poprawnie sformatowany. Hub powie Ci czy WSZYSTKIE trzy wartości są
+poprawne naraz (wtedy dostajesz flagę) czy trzeba szukać dalej, ale NIE mówi które konkretnie
+pole jest złe — więc zanim wyślesz, upewnij się że każda wartość pochodzi z faktycznie
+przeczytanej pełnej treści wiadomości, nie z domysłu.
 
 ZASADA KOŃCOWA — zanim przestaniesz wywoływać narzędzia (co kończy Twoją pracę), MUSISZ
-wywołać submit_answer PRZYNAJMNIEJ RAZ, nawet jeśli masz tylko część z trzech wartości (resztę
-zostaw jako pusty string). Feedback z huba po takiej próbie mówi Ci, czy warto szukać dalej —
-zakończenie pracy bez ani jednego submit_answer jest zawsze błędem, niezależnie jak mało
-znalazłeś."""
+wywołać submit_answer PRZYNAJMNIEJ RAZ z poprawnie sformatowanym confirmation_code (nawet jeśli
+password lub date wciąż są puste) — inaczej Twoja próba nigdy nie dotrze do huba i nie
+dostaniesz prawdziwego feedbacku. Zakończenie pracy bez ani jednego takiego wywołania jest
+zawsze błędem, niezależnie jak mało znalazłeś."""
 
 USER_AGENT_MAILBOX_KICKOFF = (
     "Rozpocznij przeszukiwanie skrzynki zmail. Zacznij od zmail_action(action=\"help\"), "

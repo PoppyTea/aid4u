@@ -30,20 +30,34 @@ systemu pracowniczego), `confirmation_code` (format `SEC-` + 32 znaki = 36 razem
 - **Rate limit jest realny**, mimo że treść zadania go nie wspomina — potwierdzone
   empirycznie (`{"code": -9999, "message": "Za często wykonujesz zapytania. Zwolnij."}`,
   HTTP 429, bez `retry_after` w body). `HubClient.post_api()` ma teraz wbudowany retry z
-  exponential backoffem na 429/5xx (patrz `core/CLAUDE.md`) — `zmail_action` w
-  `solution.py` dodatkowo throttluje wywołania w kodzie (nie zostawione modelowi) jako
+  exponential backoffem na 429/5xx, `reraise=True` (patrz `core/AGENTS.md`) — `zmail_action`
+  w `solution.py` dodatkowo throttluje wywołania w kodzie (nie zostawione modelowi) jako
   drugą linię obrony.
 - **Narzędzia agenta** (`LLMClient.run_agent_loop`, wzorzec z `s01e02_findhim`):
-  `zmail_action(action, params)` — cienki, generyczny wrapper na `post_api`, nic
-  zahardkodowanego poza tym co agent odkryje przez `help`; 4xx (np. zła akcja) trafia do
-  agenta jako feedback zamiast wywalać wyjątek, 5xx wciąż propaguje się (po wyczerpaniu
-  retry w `HubClient`). `submit_answer(password, date, confirmation_code)` — lokalna
-  walidacja formatu kodu PRZED siecią, potem `hub.submit("mailbox", ...)`; respektuje
-  `self.dry_run` (nie wysyła do `/verify` w dry-run). `wait_seconds(seconds)` — per-call
-  clamp 5-60s + globalny budżet 300s na całe `solve()`, oba wymuszone w kodzie.
+  `zmail_action(action, params)` — cienki, generyczny wrapper na `post_api`; `action` jawnie
+  wygrywa nad ewentualnym `params["action"]`, `params` nie-dict zwraca błąd zamiast wywalać
+  wyjątek. 4xx (np. zła akcja) trafia do agenta jako ustrukturyzowany feedback; 5xx po
+  wyczerpaniu retry w `HubClient` NIE przerywa całego `solve()` — `run_agent_loop()` łapie
+  wyjątek na poziomie wykonania narzędzia i zamienia go w generyczny komunikat błędu widoczny
+  dla agenta (patrz `core/llm/client.py`), więc to "twardy sygnał że coś nie działa", nie
+  wyjątek przerywający `solve()`. `submit_answer(password, date, confirmation_code)` —
+  `confirmation_code` ma LOKALNĄ bramkę walidacji formatu (SEC- + 32 znaki ASCII
+  alfanumeryczne) przed jakąkolwiek siecią; dopóki nie przejdzie, wywołanie w ogóle nie
+  dociera do huba i `state["last_submission"]` NIE jest ustawiane (żeby niepoprawna próba
+  nigdy nie stała się fallbackiem dla finalnego submit). `password`/`date` nie mają takiej
+  bramki — mogą być puste, byle kod był poprawny. Respektuje `self.dry_run`. `wait_seconds
+  (seconds)` — per-call clamp 5-60s + globalny budżet 300s na całe `solve()`, oba wymuszone
+  w kodzie.
+- **Bez duplikatu `/verify` na ścieżce sukcesu** — `submit_answer` woła `hub.submit()`
+  naprawdę wewnątrz pętli; `MailboxTask` nadpisuje `_submit()` żeby pominąć redundantny
+  drugi POST z automatycznego finału `BaseTask.run()`, jeśli flaga została już złapana w
+  pętli (zamiast dublować żywe wywołanie na hubie, który i tak rate-limituje).
 - **System prompt musi jawnie nakazywać wywołanie `submit_answer` przed zakończeniem
   pracy** — bez tej instrukcji obserwowano (2026-08-07, Haiku) agenta kończącego pętlę bez
-  ani jednej próby wysyłki, mimo że miał już poprawne wartości w kontekście.
+  ani jednej próby wysyłki, mimo że miał już poprawne wartości w kontekście. Prompt musi też
+  jasno rozróżniać, że tylko `confirmation_code` ma lokalną bramkę — wcześniejsza wersja
+  sugerowała że każde pole można zostawić puste i i tak dostać feedback z huba, co było
+  nieprawdą dla `confirmation_code` (złapane w code review PR #57, poprawione).
 
 ## Work Guidance
 - **Rewizja wyboru modelu (2026-08-07):** treść zadania sugeruje tani model

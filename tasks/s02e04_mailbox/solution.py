@@ -20,6 +20,7 @@ młóceniu żywego API, jak i nieskończonej/kosztownej pętli.
 from __future__ import annotations
 
 import json
+import re
 import time
 from typing import Any, Callable
 
@@ -42,6 +43,7 @@ _WAIT_BUDGET_TOTAL_S = 300.0
 
 _CONFIRMATION_CODE_PREFIX = "SEC-"
 _CONFIRMATION_CODE_LENGTH = 36
+_CONFIRMATION_CODE_PATTERN = re.compile(r"^SEC-[A-Za-z0-9]{32}$")
 
 
 # ─── Narzędzia — definicje dla LLMClient.run_agent_loop ──────────────────────
@@ -119,8 +121,8 @@ MAILBOX_TOOLS = [ZMAIL_ACTION_TOOL, SUBMIT_ANSWER_TOOL, WAIT_TOOL]
 
 
 def _is_valid_confirmation_code(code: str) -> bool:
-    """Sprawdza format kodu (SEC- + 32 znaki = 36 łącznie) bez wywołania sieciowego."""
-    return code.startswith(_CONFIRMATION_CODE_PREFIX) and len(code) == _CONFIRMATION_CODE_LENGTH
+    """Sprawdza format kodu (SEC- + 32 znaki ASCII alfanumeryczne) bez wywołania sieciowego."""
+    return bool(_CONFIRMATION_CODE_PATTERN.match(code))
 
 
 def build_tool_executor(
@@ -134,9 +136,9 @@ def build_tool_executor(
     - `flag` — flaga złapana przez submit_answer wewnątrz pętli, jeśli się udało wcześniej.
 
     Throttle na zmail_action i budżet wait_seconds są WYMUSZONE tutaj w kodzie, nie zależą
-    od tego czy model "zdecyduje się" grzecznie czekać — zapobiega to młóceniu żywego API
-    (post_api() w HubClient, w odróżnieniu od submit(), nie ma dziś żadnej wbudowanej
-    odporności/throttlingu na 429) niezależnie od zachowania modelu.
+    od tego czy model "zdecyduje się" grzecznie czekać — dodatkowa linia obrony obok
+    wbudowanego retry na 429/5xx w HubClient.post_api() (patrz core/AGENTS.md), nie substytut
+    dla niego.
     """
     state: dict[str, Any] = {"last_submission": None, "flag": None}
     last_zmail_call_at = 0.0
@@ -145,13 +147,21 @@ def build_tool_executor(
     def zmail_action(action: str, params: dict | None = None) -> str:
         """Throttlowany POST /api/zmail; 4xx wraca jako feedback dla agenta zamiast wyjątku."""
         nonlocal last_zmail_call_at
+        if params is not None and not isinstance(params, dict):
+            return json.dumps(
+                {"ok": False, "message": "params musi być obiektem/słownikiem, nie listą/stringiem."},
+                ensure_ascii=False,
+            )
+
         elapsed = time.monotonic() - last_zmail_call_at
         if elapsed < _ZMAIL_MIN_INTERVAL_S:
             time.sleep(_ZMAIL_MIN_INTERVAL_S - elapsed)
         last_zmail_call_at = time.monotonic()
 
+        # `action` jawnie wygrywa nad ewentualnym params["action"] — model nie powinien móc
+        # po cichu podmienić akcji przez parametry.
         try:
-            response = hub.post_api(ZMAIL_API_PATH, {"action": action, **(params or {})})
+            response = hub.post_api(ZMAIL_API_PATH, {**(params or {}), "action": action})
         except httpx.HTTPStatusError as exc:
             # 4xx z zmail zwykle niesie realny powód (zła akcja/parametr) — pokaż go
             # agentowi zamiast dać mu tylko generyczny "ERROR: Tool execution failed"
@@ -169,13 +179,12 @@ def build_tool_executor(
         return json.dumps(response, ensure_ascii=False)
 
     def submit_answer(password: str, date: str, confirmation_code: str) -> str:
-        """Waliduje kod lokalnie, potem POST /verify (albo dry-run stub); zapisuje flagę do stanu."""
-        state["last_submission"] = {
-            "password": password,
-            "date": date,
-            "confirmation_code": confirmation_code,
-        }
+        """Waliduje kod lokalnie, potem POST /verify (albo dry-run stub); zapisuje flagę do stanu.
 
+        `state["last_submission"]` jest ustawiane TYLKO gdy confirmation_code przejdzie lokalną
+        walidację — inaczej niepoprawna, nigdy niewysłana odpowiedź mogłaby zostać potraktowana
+        jako fallback dla automatycznego finalnego submit w BaseTask.run().
+        """
         if not _is_valid_confirmation_code(confirmation_code):
             return json.dumps(
                 {
@@ -183,20 +192,20 @@ def build_tool_executor(
                     "message": (
                         f"Lokalna walidacja (bez wysyłki do huba): confirmation_code musi "
                         f"zaczynać się od '{_CONFIRMATION_CODE_PREFIX}' i mieć "
-                        f"{_CONFIRMATION_CODE_LENGTH} znaków łącznie, masz "
-                        f"{len(confirmation_code)}."
+                        f"{_CONFIRMATION_CODE_LENGTH} znaków łącznie (32 ASCII alfanumeryczne po "
+                        f"prefiksie), masz {len(confirmation_code)} znaków."
                     ),
                 },
                 ensure_ascii=False,
             )
 
-        if dry_run:
-            return json.dumps(
-                {"ok": True, "dry_run": True, "would_submit": state["last_submission"]},
-                ensure_ascii=False,
-            )
+        submission = {"password": password, "date": date, "confirmation_code": confirmation_code}
+        state["last_submission"] = submission
 
-        response = hub.submit(HUB_TASK_NAME, state["last_submission"])
+        if dry_run:
+            return json.dumps({"ok": True, "dry_run": True, "would_submit": submission}, ensure_ascii=False)
+
+        response = hub.submit(HUB_TASK_NAME, submission)
         flag = hub.get_flag(response)
         if flag:
             state["flag"] = flag
@@ -241,6 +250,8 @@ def build_tool_executor(
 class MailboxTask(BaseTask):
     """Agentowe przeszukanie żywej skrzynki zmail — function calling, bez statycznych danych wejściowych."""
 
+    _captured_flag: str | None = None
+
     def solve(self, data: Any) -> dict:
         """Uruchamia agenta na żywej skrzynce zmail i zwraca ostatnią próbę submit_answer."""
         executor, state = build_tool_executor(self.hub, dry_run=self.dry_run)
@@ -254,6 +265,8 @@ class MailboxTask(BaseTask):
             max_iterations=_MAX_ITERATIONS,
         )
 
+        self._captured_flag = state["flag"]
+
         if state["last_submission"] is None:
             raise RuntimeError(
                 "Agent nie wywołał ani razu submit_answer w ciągu "
@@ -261,3 +274,9 @@ class MailboxTask(BaseTask):
             )
 
         return state["last_submission"]
+
+    def _submit(self, task_name: str, answer: Any) -> str | None:
+        """Pomija redundantny finalny POST /verify, jeśli submit_answer już złapał flagę w pętli."""
+        if self._captured_flag:
+            return self._captured_flag
+        return super()._submit(task_name, answer)
