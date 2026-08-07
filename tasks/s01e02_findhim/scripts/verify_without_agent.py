@@ -12,6 +12,7 @@ Uruchom:
     uv run python tasks/s01e02_findhim/scripts/verify_without_agent.py --dry-run
     uv run python tasks/s01e02_findhim/scripts/verify_without_agent.py          # wysyła realnie
 """
+
 from __future__ import annotations
 
 from core.observability.setup import setup_observability
@@ -52,16 +53,24 @@ def main(*, submit: bool) -> None:
     suspects = load_suspects()
 
     print("=== Dystanse per podejrzany (wszystkie elektrownie brane pod uwagę) ===")
-    results = []
-    for s in suspects:
+    import concurrent.futures
+
+    def fetch_result(s: dict) -> dict:
         result = search_suspect_history_for_nearest_power_plant(
             hub, plants, s["name"], s["surname"], s["birthYear"]
         )
-        results.append({**s, **result})
-        print(f"  {s['name']:<10} {s['surname']:<12} -> {result['plant_code']}  ({result['distance_km']} km)")
+        return {**s, **result}
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        results = list(executor.map(fetch_result, suspects))
+
+    for r in results:
+        print(f"  {r['name']:<10} {r['surname']:<12} -> {r['plant_code']}  ({r['distance_km']} km)")
 
     winner = min(results, key=lambda r: r["distance_km"])
-    print(f"\nZwycięzca: {winner['name']} {winner['surname']} -> {winner['plant_code']} ({winner['distance_km']} km)")
+    print(
+        f"\nZwycięzca: {winner['name']} {winner['surname']} -> {winner['plant_code']} ({winner['distance_km']} km)"
+    )
 
     access_level = get_access_level(hub, winner["name"], winner["surname"], winner["birthYear"])
     answer = {
