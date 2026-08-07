@@ -21,7 +21,12 @@ przez lokalny `webui/` (rotacja planszy przez przeglądarkę), `solution.py`
 automatyzujący `solve()→submit()` jeszcze nie istnieje. **s02e03 zaliczone
 (2026-08-07)** — flaga `{FLG:SQUASHIT}` w `.flags.json`, przez normalny
 `solve()→submit()` z pętlą iteracji wbudowaną w `solve()` (patrz
-`s02e03_failure/AGENTS.md`). e04–e05 czekają, robimy po kolei.
+`s02e03_failure/AGENTS.md`). **s02e04 zaliczone (2026-08-07)** — flaga
+`{FLG:TRAITOR}` w `.flags.json`, agentowa pętla function-calling (`LLMClient.run_agent_loop`)
+przeszukująca żywe API `zmail`; `claude-haiku-4-5` zawiódł 3x pod rząd, `claude-sonnet-5`
+rozwiązał od razu — patrz `s02e04_mailbox/AGENTS.md` dla realnego protokołu `zmail` (odkrytego
+na żywo, różni się od tego co sugerowały komentarze kursu) i dla poprawki 429-resilience w
+`HubClient.post_api()`. e05 czeka.
 
 **EFFICIENCY MODE aktywny** (od 2026-07-29)
 — priorytet: szybkość i skuteczność zdobywania flag do 20/25, nie proces. Learning-mode
@@ -103,7 +108,10 @@ wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENT
   accept/reject feedback loop lives inside `solve()` itself, not in
   `BaseTask.run()` — see that folder's `AGENTS.md` for the `/verify` HTTP 400
   contract and the token-budget-instruction-doesn't-work lesson.
-- `s02e04_mailbox/`: live `zmail` API search, protocol undiscovered — needs a
-  `help`-first step like `s01e05_railway`.
+- `s02e04_mailbox/`: **solved** — agentowa `run_agent_loop()` przeszukuje żywe API `zmail`
+  (protokół odkryty na żywo przez `help`: help/getInbox/getThread/getMessages/search/reset).
+  `claude-sonnet-5` wymagany — `claude-haiku-4-5` konsekwentnie kończył pętlę bez wysyłki
+  odpowiedzi. Zobacz też `HubClient.post_api()` 429-retry (`core/AGENTS.md`), dodany bo zmail
+  faktycznie rate-limituje mimo że treść zadania tego nie wspominała.
 - `s02e05_drone/`: static reference docs (HTML API doc + terrain map) — only S02
   episode qualifying for a `data/input/` subfolder so far.
