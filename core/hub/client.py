@@ -38,10 +38,21 @@ def _is_retryable_http_error(exc: BaseException) -> bool:
     return isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code >= 500
 
 
+def _is_retryable_api_error(exc: BaseException) -> bool:
+    """Jak _is_retryable_http_error, plus 429 — endpointy /api/* (np. zmail) rate-limitują
+    (potwierdzone empirycznie: `{"code": -9999, "message": "Za często wykonujesz zapytania."}`)
+    i w odróżnieniu od /verify NIE zwracają `retry_after` w ciele odpowiedzi, więc backoff tu
+    jest ślepy (rosnący margines), nie odczytany z serwera jak w _post_verify_resilient()."""
+    if _is_retryable_http_error(exc):
+        return True
+    return isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 429
+
+
 class HubClient:
     """Repozytorium — wszystkie zapytania do hubu przez tę klasę."""
 
     def __init__(self) -> None:
+        """Ładuje apikey/base_url z configu i tworzy współdzielony klient httpx."""
         cfg = get_config()
         self._apikey = cfg.apikey
         self._base_url = cfg.hub_base_url
@@ -156,8 +167,21 @@ class HubClient:
         response.raise_for_status()
         return response.content
 
+    @retry(
+        retry=retry_if_exception(_is_retryable_api_error),
+        stop=stop_after_attempt(6),
+        wait=wait_exponential(min=3, max=30),
+        reraise=True,
+    )
     def post_api(self, path: str, payload: dict) -> dict:
-        """POST do dowolnego endpointu hubu (np. /api/zmail, /api/packages)."""
+        """POST do dowolnego endpointu hubu (np. /api/zmail, /api/packages).
+
+        Retry na 429/5xx/transport errors z exponential backoffem — patrz
+        _is_retryable_api_error(). 4xx inne niż 429 (np. zły parametr akcji) propagują się
+        natychmiast, tak jak wcześniej. `reraise=True` — po wyczerpaniu prób woła się
+        oryginalny httpx.HTTPStatusError/TransportError, nie tenacity.RetryError, żeby
+        wywołujący (np. zmail_action) mógł dalej rozróżniać typy błędów po except.
+        """
         payload = {**payload, "apikey": self._apikey}
         response = self._http.post(f"{self._base_url}{path}", json=payload)
         response.raise_for_status()
@@ -180,6 +204,7 @@ class HubClient:
         return match.group() if match else None
 
     def __del__(self) -> None:
+        """Zamyka klienta httpx przy garbage-collection, tłumiąc błędy zamknięcia."""
         http = getattr(self, "_http", None)
         if http is not None:
             try:

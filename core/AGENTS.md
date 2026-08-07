@@ -28,6 +28,14 @@ Contains the architectural heart of the system: LLM clients, task management bas
   `RuntimeError` after exhausting attempts. Callers can invoke `submit()` more than
   once per task run for multi-step hub protocols (e.g. `s01e05_railway`), not just
   for the final answer — each call gets the same resilience.
+- `HubClient.post_api()` (used for `/api/*` endpoints, e.g. `zmail`) retries on 429 and
+  5xx/transport errors with exponential backoff (`tenacity`, 6 attempts, 3-30s). Added
+  2026-08-07 after `s02e04_mailbox` hit real rate limiting on `/api/zmail`
+  (`{"code": -9999, "message": "Za często wykonujesz zapytania. Zwolnij."}`) even though
+  the task's own docs never mentioned one — unlike `/verify`, these endpoints don't return
+  a `retry_after` field, so the backoff here is blind/exponential, not server-directed.
+  Other 4xx (e.g. an unknown action name) still propagate immediately — only 429 is treated
+  as transient.
 - Both `Config._from_keyring()` and `SecretsManager.get()`/`list()` MUST read the
   system keyring only through `core.secrets._keyring_get_with_timeout()`, never
   `keyring.get_password()` directly. Headless/VPS environments without a D-Bus
