@@ -38,6 +38,7 @@ dependencies = [
     "types-requests>=2.33.0.20260712",
     "mcp[cli]>=1.28.1",
     "mem0ai>=2.0.14",
+    "tiktoken>=0.13.0",
 ]
 
 [dependency-groups]
