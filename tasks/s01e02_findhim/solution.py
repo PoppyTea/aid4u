@@ -11,7 +11,7 @@ import httpx
 from pydantic import BaseModel, Field, computed_field, field_validator
 
 from core.hub import HubClient
-from core.llm import LLMClient, LLMMessage
+from core.llm import LLMMessage
 from core.llm.types import Tool
 from core.tasks import BaseTask, task
 from tasks.common.const import REFERENCE_YEAR
@@ -22,8 +22,24 @@ _NOMINATIM_USER_AGENT = "aid4u-findhim-course-project/1.0"
 
 class GeoPoint(BaseModel):
     name: Annotated[None | str, Field(default=None, description="")] = None
-    latitude: Annotated[float | None, Field(ge=-90, le=90, default=None, description="Decimal degrees, up to 6 decimal places. Null if unknown.")]
-    longitude: Annotated[float | None, Field(ge=-180, le=180, default=None, description="Decimal degrees, up to 6 decimal places. Null if unknown.")]
+    latitude: Annotated[
+        float | None,
+        Field(
+            ge=-90,
+            le=90,
+            default=None,
+            description="Decimal degrees, up to 6 decimal places. Null if unknown.",
+        ),
+    ]
+    longitude: Annotated[
+        float | None,
+        Field(
+            ge=-180,
+            le=180,
+            default=None,
+            description="Decimal degrees, up to 6 decimal places. Null if unknown.",
+        ),
+    ]
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, GeoPoint):
@@ -33,9 +49,9 @@ class GeoPoint(BaseModel):
     def __add__(self: GeoPoint, other: GeoPoint) -> GeoConnection:
         return GeoConnection(alpha_point=self, beta_point=other)
 
-    def distance_to(self, target:GeoPoint):
+    def distance_to(self, target: GeoPoint):
         if self == target:
-            distance:float = 0.0
+            distance: float = 0.0
         elif self.latitude and self.longitude and target.latitude and target.longitude is not None:
             # Promień Ziemi w kilometrach
             R: float = 6356.4445
@@ -46,15 +62,12 @@ class GeoPoint(BaseModel):
             dlat = lat2 - lat1
             dlon = lon2 - lon1
 
-            a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
+            a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
             c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
             distance = R * c
         else:
             raise ValueError("Neither latitude nor longitude can be None")
         return distance
-
-
-
 
     def is_nearest_to(self, *other: GeoPoint | list[GeoPoint]) -> GeoPoint | list[GeoPoint] | None:
         """
@@ -95,6 +108,7 @@ class GeoConnection(BaseModel):
     """
     Reprezentuje połączenie dwóch punktów geograficznych.
     """
+
     alpha_point: GeoPoint
     beta_point: GeoPoint
 
@@ -111,12 +125,15 @@ class GeoConnection(BaseModel):
         yield self.beta_point
         yield self.alpha_point
 
-
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, GeoConnection):
             return False
-        standard_eq: bool = self.alpha_point == other.alpha_point and self.beta_point == other.beta_point
-        reverse_eq: bool = self.alpha_point == other.beta_point and self.beta_point == other.alpha_point
+        standard_eq: bool = (
+            self.alpha_point == other.alpha_point and self.beta_point == other.beta_point
+        )
+        reverse_eq: bool = (
+            self.alpha_point == other.beta_point and self.beta_point == other.alpha_point
+        )
         return standard_eq or reverse_eq
 
     def __lt__(self, other: object) -> bool:
@@ -129,7 +146,6 @@ class GeoConnection(BaseModel):
             return False
         return self.shortest_distance > other.shortest_distance
 
-
     @property
     def points_dict(self) -> dict[str, GeoPoint]:
         """Zwraca punkty jako słownik, umożliwiając wygodną iterację."""
@@ -138,19 +154,21 @@ class GeoConnection(BaseModel):
             "beta_point": self.beta_point,
         }
 
-
-
     @computed_field
     @property
     def name(self) -> str:
         if self.alpha_point.name:
             name_prefix: str = f"{self.alpha_point.name}"
         else:
-            name_prefix: str = f"<alpha [lat:{self.alpha_point.latitude}, lon:{self.alpha_point.longitude}]>"
+            name_prefix: str = (
+                f"<alpha [lat:{self.alpha_point.latitude}, lon:{self.alpha_point.longitude}]>"
+            )
         if self.beta_point.name:
             name_suffix: str = f"{self.beta_point.name}"
         else:
-            name_suffix: str = f"<beta [lat:{self.beta_point.latitude}, lon:{self.beta_point.longitude}]>"
+            name_suffix: str = (
+                f"<beta [lat:{self.beta_point.latitude}, lon:{self.beta_point.longitude}]>"
+            )
         if self.shortest_distance:
             name: str = f"{name_prefix!r}|<--{self.shortest_distance!r}[km]-->|{name_suffix!r}"
             return name
@@ -160,8 +178,6 @@ class GeoConnection(BaseModel):
     @property
     def shortest_distance(self) -> float:
         return self.alpha_point.distance_to(self.beta_point)
-
-
 
 
 def connecion_bruteforce(point: list[GeoPoint], *collection: list[GeoPoint]) -> list[GeoConnection]:
@@ -175,16 +191,18 @@ def connecion_bruteforce(point: list[GeoPoint], *collection: list[GeoPoint]) -> 
     all_connections: list[GeoConnection] = []
     for p1 in point:
         for p2 in flattened:
-            alfa_beta_conect:GeoConnection = GeoConnection(alpha_point=p1, beta_point=p2)
+            alfa_beta_conect: GeoConnection = GeoConnection(alpha_point=p1, beta_point=p2)
             if alfa_beta_conect not in all_connections:
                 all_connections.append(alfa_beta_conect)
     return all_connections
+
 
 def shortest_conection(connections: list[GeoConnection]) -> GeoConnection:
     """
     Zwraca połączenie z najmniejszą odległością.
     """
     return min(connections, key=lambda c: c.shortest_distance)
+
 
 class PowerPlant(BaseModel):
     location_name: Annotated[str | None, Field(default=None)]
@@ -300,8 +318,8 @@ def get_access_level(hub: HubClient, name: str, surname: str, birth_year: int) -
 
 
 class Suspect(BaseModel):
-    name: Annotated[str,Field(frozen=True)]
-    surname: Annotated[str,Field(frozen=True)]
+    name: Annotated[str, Field(frozen=True)]
+    surname: Annotated[str, Field(frozen=True)]
     born: Annotated[int, Field(le=REFERENCE_YEAR, ge=1900)]
     location_history: list[GeoPoint]
     access_lvl: Annotated[int | None, Field(ge=0, le=10)] = None
@@ -316,7 +334,11 @@ class Suspect(BaseModel):
     def parse_location_history(cls, v) -> list[GeoPoint]:
         if isinstance(v, Path):
             path = Path(v)
-            with open(path, mode="r", encoding="utf-8") as f:
+            base_dir = (Path(__file__).parent / "data").resolve()
+            resolved_path = path.resolve()
+            if not resolved_path.is_relative_to(base_dir):
+                raise ValueError(f"Path traversal detected: {path} is not in {base_dir}")
+            with open(resolved_path, mode="r", encoding="utf-8") as f:
                 raw_json = json.load(f)
                 return [GeoPoint(**data_point) for data_point in raw_json]
         return v if isinstance(v, list) else []
@@ -324,7 +346,10 @@ class Suspect(BaseModel):
 
 # ─── Agent + Function Calling — narzędzia dla LLMClient.run_agent_loop ───────
 
-def resolve_all_power_plants(plants: list[PowerPlant], *, delay_seconds: float = 1.1) -> list[PowerPlant]:
+
+def resolve_all_power_plants(
+    plants: list[PowerPlant], *, delay_seconds: float = 1.1
+) -> list[PowerPlant]:
     """
     Geokoduje wszystkie elektrownie NA STARCIE (jednorazowo), zanim agent zacznie
     działać — żeby model nie musiał podawać współrzędnych elektrowni przy każdym
@@ -353,11 +378,7 @@ def search_suspect_history_for_nearest_power_plant(
     locations = get_person_locations(hub, name, surname)
     suspect = Suspect(name=name, surname=surname, born=birth_year, location_history=locations)
 
-    results = [
-        plant.nearest_suspect(suspect)
-        for plant in plants
-        if plant.location is not None
-    ]
+    results = [plant.nearest_suspect(suspect) for plant in plants if plant.location is not None]
     results = [r for r in results if r is not None]
 
     if not results:
@@ -410,6 +431,7 @@ def build_tool_executor(hub: HubClient, plants: list[PowerPlant]):
     Domyka `hub`/`plants` w funkcji dispatchującej wywołania narzędzi —
     dokładnie te dwa argumenty NIGDY nie są polami, które model wypełnia.
     """
+
     def tool_executor(name: str, args: dict) -> str:
         if name == "search_suspect_history_for_nearest_power_plant":
             result = search_suspect_history_for_nearest_power_plant(
@@ -426,10 +448,7 @@ def build_tool_executor(hub: HubClient, plants: list[PowerPlant]):
 
 def build_initial_messages(suspects: list[Suspect]) -> list[LLMMessage]:
     suspects_json = json.dumps(
-        [
-            {"name": s.name, "surname": s.surname, "birth_year": s.born}
-            for s in suspects
-        ],
+        [{"name": s.name, "surname": s.surname, "birth_year": s.born} for s in suspects],
         ensure_ascii=False,
     )
     return [LLMMessage.user(USER_AGENT_FINDHIM.format(suspects_json=suspects_json))]
@@ -446,9 +465,9 @@ def _extract_json(text: str) -> dict:
 
 # ─── Task ─────────────────────────────────────────────────────────────────────
 
+
 @task("s01e02", hub_name="findhim")
 class FindhimTask(BaseTask):
-
     def fetch_data(self) -> bytes:
         return self.cache.get_or_fetch(
             "findhim_locations.json",
