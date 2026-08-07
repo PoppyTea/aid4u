@@ -67,6 +67,7 @@ def parse_log(raw: bytes) -> list[dict]:
 
 
 def _components_in(text: str) -> frozenset[str]:
+    """Wyciąga zbiór identyfikatorów podzespołów (WIELKIE LITERY) z tekstu."""
     return frozenset(_COMPONENT_RE.findall(text))
 
 
@@ -106,14 +107,17 @@ def distill(events: list[dict]) -> list[dict]:
 
 
 def render_line(e: dict) -> str:
+    """Formatuje jedno zdarzenie z powrotem do postaci linii logu."""
     return f"[{e['date']} {e['time']}] [{e['level']}] {e['desc']}"
 
 
 def render_log(events: list[dict]) -> str:
+    """Łączy zdarzenia w finalny string `logs` wysyłany do huba."""
     return "\n".join(render_line(e) for e in events)
 
 
 def count_tokens(text: str) -> int:
+    """Liczy tokeny wg tokenizera o200k_base — przybliżenie tokenizera huba."""
     return len(_ENCODING.encode(text))
 
 
@@ -121,11 +125,15 @@ def count_tokens(text: str) -> int:
 
 
 class CompressedEntry(BaseModel):
+    """Jeden skompresowany wpis zwrócony przez LLM."""
+
     index: int
     text: str
 
 
 class CompressionResponse(BaseModel):
+    """Odpowiedź LLM ze strukturyzowaną listą skompresowanych wpisów."""
+
     entries: list[CompressedEntry]
 
 
@@ -193,6 +201,7 @@ def _hard_trim(events: list[dict], total_budget: int) -> list[dict]:
 
 
 def _looks_like_token_overflow(message: str) -> bool:
+    """Rozpoznaje feedback huba o przekroczeniu limitu tokenów."""
     lowered = message.lower()
     return "token" in lowered or "context window" in lowered
 
@@ -202,13 +211,17 @@ def _looks_like_token_overflow(message: str) -> bool:
 
 @task("s02e03", hub_name="failure")
 class FailureTask(BaseTask):
+    """Kompresuje log awarii elektrowni i iteruje z hubem aż do zdobycia flagi."""
+
     def fetch_data(self) -> bytes:
+        """Pobiera surowy `failure.log` z huba (cache'owane lokalnie)."""
         return self.cache.get_or_fetch(
             "failure.log",
             lambda: self.hub.get_data("failure.log"),
         )
 
     def solve(self, data: bytes) -> dict:
+        """Dystyluje log, kompresuje do budżetu tokenów i iteruje z hubem aż do flagi."""
         events = distill(parse_log(data))
         if not events:
             raise ValueError("Brak istotnych zdarzeń po dedup+filtrze [INFO] — sprawdź parser/dane")
