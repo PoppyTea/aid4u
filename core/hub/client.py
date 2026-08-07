@@ -52,6 +52,7 @@ class HubClient:
     """Repozytorium — wszystkie zapytania do hubu przez tę klasę."""
 
     def __init__(self) -> None:
+        """Ładuje apikey/base_url z configu i tworzy współdzielony klient httpx."""
         cfg = get_config()
         self._apikey = cfg.apikey
         self._base_url = cfg.hub_base_url
@@ -200,6 +201,7 @@ class HubClient:
         return match.group() if match else None
 
     def __del__(self) -> None:
+        """Zamyka klienta httpx przy garbage-collection, tłumiąc błędy zamknięcia."""
         http = getattr(self, "_http", None)
         if http is not None:
             try:

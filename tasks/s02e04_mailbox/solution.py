@@ -119,6 +119,7 @@ MAILBOX_TOOLS = [ZMAIL_ACTION_TOOL, SUBMIT_ANSWER_TOOL, WAIT_TOOL]
 
 
 def _is_valid_confirmation_code(code: str) -> bool:
+    """Sprawdza format kodu (SEC- + 32 znaki = 36 łącznie) bez wywołania sieciowego."""
     return code.startswith(_CONFIRMATION_CODE_PREFIX) and len(code) == _CONFIRMATION_CODE_LENGTH
 
 
@@ -142,6 +143,7 @@ def build_tool_executor(
     wait_budget_remaining = _WAIT_BUDGET_TOTAL_S
 
     def zmail_action(action: str, params: dict | None = None) -> str:
+        """Throttlowany POST /api/zmail; 4xx wraca jako feedback dla agenta zamiast wyjątku."""
         nonlocal last_zmail_call_at
         elapsed = time.monotonic() - last_zmail_call_at
         if elapsed < _ZMAIL_MIN_INTERVAL_S:
@@ -167,6 +169,7 @@ def build_tool_executor(
         return json.dumps(response, ensure_ascii=False)
 
     def submit_answer(password: str, date: str, confirmation_code: str) -> str:
+        """Waliduje kod lokalnie, potem POST /verify (albo dry-run stub); zapisuje flagę do stanu."""
         state["last_submission"] = {
             "password": password,
             "date": date,
@@ -200,6 +203,7 @@ def build_tool_executor(
         return json.dumps(response, ensure_ascii=False)
 
     def wait_seconds(seconds: int) -> str:
+        """Czeka `seconds` (przycięte do zakresu) sekund, odliczając ze skumulowanego budżetu."""
         nonlocal wait_budget_remaining
         clamped = max(_WAIT_MIN_S, min(_WAIT_MAX_S, int(seconds)))
         if clamped > wait_budget_remaining:
@@ -218,6 +222,7 @@ def build_tool_executor(
         )
 
     def tool_executor(name: str, args: dict[str, Any]) -> str:
+        """Dispatcher przekazywany do LLMClient.run_agent_loop — routuje po nazwie narzędzia."""
         if name == "zmail_action":
             return zmail_action(args["action"], args.get("params"))
         if name == "submit_answer":
@@ -237,6 +242,7 @@ class MailboxTask(BaseTask):
     """Agentowe przeszukanie żywej skrzynki zmail — function calling, bez statycznych danych wejściowych."""
 
     def solve(self, data: Any) -> dict:
+        """Uruchamia agenta na żywej skrzynce zmail i zwraca ostatnią próbę submit_answer."""
         executor, state = build_tool_executor(self.hub, dry_run=self.dry_run)
         messages = [LLMMessage.user(USER_AGENT_MAILBOX_KICKOFF)]
 
