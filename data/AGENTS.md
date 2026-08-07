@@ -6,18 +6,37 @@ Datasets and artifacts for course tasks (`tasks/sXXeYY/`). Read this before
 touching anything under `data/` — some files are too large to read in full
 and will blow out agent context if you `cat`/`Read` them whole.
 
-Three subtrees, three lifecycles:
+Four subtrees, four lifecycles:
 - `main_story/` — static datasets shipped with the course; never regenerated.
-- `input/` — reference doc trees fetched live from hub.ag3nts.org; regenerable
-  by re-running the task's fetch script. Own contract, see Child DOX Index.
-- `outputs/` — run artifacts written by solved tasks, named
-  `sXXeYY-MMDD-HHMMSS-<slug>.<ext>`. Disposable; never an input to another task.
+- `input/` — data fetched from hub.ag3nts.org at the start of a task, kept
+  because it might matter to a *later* task (cross-episode continuity has
+  bitten us before — see `tasks/AGENTS.md`). Committed. Own contract, see
+  Child DOX Index.
+- `output/` (no "s") — data *produced* while solving a task (derived/cleaned,
+  not just re-saved raw input) that might matter to a later task. Committed.
+  Sibling of `input/` — same "might be useful later" bar, opposite direction
+  (in vs. produced). Own contract, see Child DOX Index.
+- `run-history/` — every `solve()` run's submitted answer, named
+  `sXXeYY-MMDD-HHMMSS-<slug>.<ext>`, written automatically by
+  `BaseTask._save_output()`. Gitignored, disposable, **never** an input to
+  another task — this is debug history ("what did we send and when"), not
+  curated data. Don't confuse with `output/`.
+
+**Rule of thumb:** if the answer to "would a later episode want this?" is
+yes, it's `input/` or `output/`, gets a human-readable name, and is committed.
+If it's "just so I can see what happened on this run," it's `run-history/`
+(automatic) or `.cache/` (see `../core/hub/cache.py` — pure dev-speed cache,
+hash-named, safe to `rm -rf` any time, never holds anything not re-fetchable
+from the hub).
 
 ## Ownership
 
 Owned by the course task(s) that consume each file. Add or update the table
-below whenever a file is added, removed, or its role changes. `outputs/` is
-append-only run history and isn't tracked file-by-file in the table.
+below whenever a **data** file is added, removed, or its role changes.
+`run-history/` is append-only run history and isn't tracked file-by-file in
+the table. `AGENTS.md`/DOX files themselves (e.g. `input/AGENTS.md`,
+`output/AGENTS.md`) aren't data and don't get a row either — their contract
+lives in the Child DOX Index above, not this table.
 
 ## Local Contracts
 
@@ -43,3 +62,5 @@ is safe to read whole before you try.
 
 - `input/`: Doc trees fetched live from hub.ag3nts.org, one folder per task —
   fetch scripts, manifest format, NotebookLM mirroring.
+- `output/`: Data produced while solving a task, kept because a later episode
+  might need it — one folder per task, mirrors `input/`'s shape.
