@@ -18,8 +18,10 @@ od startu) celowo, żeby uniknąć przemeblowań jakie miały miejsce przy e01/e
 zaliczone (2026-08-03)** — flaga `{FLG:SMUGGLER}` w `.flags.json`. **s02e02
 zaliczone (2026-08-05)** — flaga `{FLG:ROTATEIT}` w `.flags.json`, zdobyta ręcznie
 przez lokalny `webui/` (rotacja planszy przez przeglądarkę), `solution.py`
-automatyzujący `solve()→submit()` jeszcze nie istnieje. e03–e05 czekają, robimy
-po kolei.
+automatyzujący `solve()→submit()` jeszcze nie istnieje. **s02e03 zaliczone
+(2026-08-07)** — flaga `{FLG:SQUASHIT}` w `.flags.json`, przez normalny
+`solve()→submit()` z pętlą iteracji wbudowaną w `solve()` (patrz
+`s02e03_failure/AGENTS.md`). e04–e05 czekają, robimy po kolei.
 
 **EFFICIENCY MODE aktywny** (od 2026-07-29)
 — priorytet: szybkość i skuteczność zdobywania flag do 20/25, nie proces. Learning-mode
@@ -95,8 +97,12 @@ wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENT
 - `s02e02_electricity/`: **solved** (manually, via local `webui/`) — 3x3
   pipe-rotation puzzle, image-driven, live/mutable board state (re-fetch after
   every `rotate`). `solve()` automation still outstanding.
-- `s02e03_failure/`: huge log file → ≤1500-token condensed summary, iterative
-  feedback loop with the hub.
+- `s02e03_failure/`: **solved** — huge log file → ≤1500-token condensed
+  summary. Mostly deterministic (dedup + `[INFO]` filter in code collapses
+  2137 raw lines to 55 before any LLM call); the hub's iterative
+  accept/reject feedback loop lives inside `solve()` itself, not in
+  `BaseTask.run()` — see that folder's `AGENTS.md` for the `/verify` HTTP 400
+  contract and the token-budget-instruction-doesn't-work lesson.
 - `s02e04_mailbox/`: live `zmail` API search, protocol undiscovered — needs a
   `help`-first step like `s01e05_railway`.
 - `s02e05_drone/`: static reference docs (HTML API doc + terrain map) — only S02
