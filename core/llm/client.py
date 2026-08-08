@@ -22,6 +22,7 @@ from pydantic import BaseModel
 from core.llm.base import LLMProvider
 from core.llm.middleware import CostTrackMiddleware, ProviderCallMiddleware, RateLimitMiddleware
 from core.llm.types import LLMMessage, Tool
+from core.runtime import AbortRun, check_abort, truncate_tool_result
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -110,6 +111,7 @@ class LLMClient:
 
         with logfire.span("agent_loop", tools=[t.name for t in tools]):
             for iteration in range(max_iterations):
+                check_abort()
                 logfire.info(f"Agent iteration {iteration + 1}/{max_iterations}")
 
                 response = self._provider.complete_with_tools(history, tools, system=system)
@@ -126,11 +128,19 @@ class LLMClient:
                 # Wykonaj narzędzia i dodaj wyniki do historii
                 for tool_call in response.tool_calls:
                     with logfire.span(f"tool.{tool_call.name}", args=tool_call.arguments):
+                        check_abort()
                         try:
                             result = tool_executor(tool_call.name, tool_call.arguments)
+                        except AbortRun:
+                            # Kill switch, nie awaria narzędzia — propaguj, nie połykaj.
+                            raise
                         except Exception:
                             result = "ERROR: Tool execution failed."
                             logfire.exception(f"Tool {tool_call.name} failed")
+                        else:
+                            # Warstwa 2 (per-call): ucina nienormalnie duży wynik zanim
+                            # zaleje kontekst — np. `cat` dużego pliku (patrz core/AGENTS.md).
+                            result = truncate_tool_result(result)
 
                         logfire.info(f"Tool {tool_call.name} result", result=result[:200])
                         history.append(

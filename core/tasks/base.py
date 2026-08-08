@@ -29,6 +29,7 @@ from rich.console import Console
 from core.config import WARSAW_TZ
 from core.hub import HubClient, LocalCache
 from core.llm import LLMClient
+from core.runtime import AbortRun, check_abort, end_run, start_run
 
 _console = Console()
 _OUTPUTS_DIR = Path("data/run-history")
@@ -78,11 +79,13 @@ class BaseTask(ABC):
         llm: LLMClient,
         *,
         dry_run: bool = False,
+        max_seconds: float | None = None,
     ) -> None:
         self.hub = hub
         self.llm = llm
         self.cache = LocalCache(self._task_name or self.__class__.__name__)
         self.dry_run = dry_run
+        self._max_seconds = max_seconds
 
     # ─── Template Method — nie nadpisuj ──────────────────────────────────────
 
@@ -93,6 +96,11 @@ class BaseTask(ABC):
         """
         task_name = self._task_name or self.__class__.__name__
         _console.print(f"\n[bold]Running task:[/] [cyan]{task_name}[/]")
+        start_run(max_seconds=self._max_seconds)
+        _console.print(
+            "[dim]Kill switch: `bash scripts/panic.sh` (twardy, gwarantowany) albo "
+            "`uv run run.py panic --graceful` (czyste zamknięcie).[/]"
+        )
 
         try:
             with logfire.span(f"task.{task_name}"):
@@ -103,6 +111,10 @@ class BaseTask(ABC):
                     answer = self.solve(data)
                     self._save_output(answer)
                     flag = self._submit(self._hub_task_name or task_name, answer)
+                except AbortRun as abort:
+                    logfire.warning(f"Task {task_name} aborted", reason=str(abort))
+                    _console.print(f"[yellow]⏹ Przerwano:[/] {abort}")
+                    return None
                 except Exception:
                     logfire.exception(f"Task {task_name} failed")
                     raise
@@ -115,6 +127,7 @@ class BaseTask(ABC):
             return flag
         finally:
             self._flush_langfuse()
+            end_run()
 
     @staticmethod
     def _flush_langfuse() -> None:
@@ -162,6 +175,7 @@ class BaseTask(ABC):
         return path
 
     def _submit(self, task_name: str, answer: Any) -> str | None:
+        check_abort()
         if self.dry_run:
             _console.print(f"[yellow]DRY RUN — answer would be:[/] {str(answer)[:300]}")
             return None

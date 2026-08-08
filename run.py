@@ -8,6 +8,8 @@ Komendy:
     uv run run.py solve s01e01 --model gemini-3.5-flash --premium  # płatny tier Gemini
     uv run run.py list                      # lista dostępnych zadań
     uv run run.py status                    # pokaż zdobyte flagi
+    uv run run.py panic                     # awaryjny stop — patrz scripts/panic.sh
+    uv run run.py panic --graceful          # czyste zamknięcie na najbliższym checkpoint
 
 WAŻNE: setup_observability() musi być PIERWSZYM wywołaniem — przed importem
 jakichkolwiek modułów LLM. Dlatego jest na górze, przed importami core.*.
@@ -22,6 +24,7 @@ setup_observability()
 
 # ─── Właściwe importy po setup obserwabilności ───────────────────────────────
 import json
+import subprocess
 from pathlib import Path
 
 import typer
@@ -32,6 +35,7 @@ import tasks  # noqa: F401 — uruchamia auto-import → rejestruje wszystkie @t
 from core.config import get_config
 from core.hub import HubClient
 from core.llm import LLMClient, create_provider
+from core.runtime import request_stop
 from core.tasks import TASK_REGISTRY
 
 app = typer.Typer(
@@ -81,6 +85,14 @@ def solve(
         ),
     ),
     dry_run: bool = typer.Option(False, "--dry-run", help="Pokaż odpowiedź bez wysyłania do hubu"),
+    max_seconds: float | None = typer.Option(
+        None,
+        "--max-seconds",
+        help=(
+            "Twardy budżet wall-clock na cały przebieg (Warstwa 2 kill switcha) — "
+            "przekroczenie przerywa solve() czysto (AbortRun), bez ubijania procesu."
+        ),
+    ),
 ) -> None:
     """Rozwiąż jedno zadanie."""
     if task_name not in TASK_REGISTRY:
@@ -92,7 +104,7 @@ def solve(
     hub = HubClient()
     llm = _make_llm(model, premium=premium)
     task_cls = TASK_REGISTRY[task_name]
-    task_instance = task_cls(hub, llm, dry_run=dry_run)
+    task_instance = task_cls(hub, llm, dry_run=dry_run, max_seconds=max_seconds)
 
     try:
         flag = task_instance.run()
@@ -103,6 +115,37 @@ def solve(
     if flag and not dry_run:
         _save_flag(task_name, flag)
         console.print(f"\n[dim]Flaga zapisana w {_FLAGS_FILE}[/]")
+
+
+@app.command()
+def panic(
+    graceful: bool = typer.Option(
+        False,
+        "--graceful",
+        "-g",
+        help=(
+            "Zapisz .run/STOP zamiast zabijać proces — bieżący przebieg zatrzyma się "
+            "czysto na najbliższym bezpiecznym punkcie (może potrwać kilka sekund)."
+        ),
+    ),
+) -> None:
+    """
+    Awaryjny wyłącznik. Domyślnie: twardy kill całej grupy procesów bieżącego
+    przebiegu (SIGTERM→SIGKILL po 2s) przez scripts/panic.sh.
+
+    UWAGA — jeśli środowisko Pythona jest niesprawne (np. rozwalony venv), ta
+    komenda może się nie uruchomić. Gwarantowana ścieżka to bezpośrednio:
+        bash scripts/panic.sh
+    (czysty bash, zero zależności) — patrz core/AGENTS.md.
+    """
+    if graceful:
+        request_stop()
+        console.print("[yellow]Zapisano .run/STOP — przebieg zatrzyma się na najbliższym bezpiecznym punkcie.[/]")
+        return
+
+    script = Path(__file__).parent / "scripts" / "panic.sh"
+    result = subprocess.run(["bash", str(script)])
+    raise typer.Exit(result.returncode)
 
 
 @app.command(name="list")
