@@ -39,6 +39,8 @@ dependencies = [
     "mcp[cli]>=1.28.1",
     "mem0ai>=2.0.14",
     "tiktoken>=0.13.0",
+    # Image decoding — deterministyczna analiza mapy w s02e05_drone (grid/sektor bez LLM/vision)
+    "pillow>=11.0",
 ]
 
 [dependency-groups]

@@ -55,3 +55,9 @@ Owned by the course task(s) that consume each subfolder. One subfolder per
   `spk-network-graph.md` (built from the `index.md` route tables), **not**
   `zalacznik-F.md` — that ASCII schematic omits 6 routes and mislabels 9.
 - `s01e05_railway/`: package placeholder only, no content fetched yet.
+- `s02e05_drone/`: `drone.html` (API doc) + `drone.png` (terrain map, static —
+  unlike `s02e02_electricity`'s mutable `electricity.png`) — fetched via
+  `fetch_drone_assets.py`, content validated with `core.net.expect_binary()`
+  before writing (the hub returns HTTP 200 with error text instead of a real
+  404 for a bad binary-file URL — confirmed empirically on the wrong map URL
+  this task's own `AGENTS.md` originally guessed).
