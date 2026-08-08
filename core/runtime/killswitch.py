@@ -65,13 +65,22 @@ _active_budget: RunBudget | None = None
 
 def start_run(*, max_seconds: float | None = None) -> None:
     """
-    Wywoływane raz na początku `BaseTask.run()`. Instaluje grupę procesów (Warstwa 0)
-    i, jeśli podano, aktywuje budżet wall-clock (Warstwa 2) sprawdzany przy każdym
-    `check_abort()`.
+    Wywoływane raz na początku `BaseTask.run()`. Instaluje grupę procesów (Warstwa 0),
+    czyści wartownika `.run/STOP` z ewentualnego poprzedniego przebiegu (patrz
+    ostrzeżenie w docstringu `request_stop()` — bez tego nowy przebieg mógłby ubić się
+    natychmiast na pierwszym `check_abort()`) i, jeśli podano, aktywuje budżet
+    wall-clock (Warstwa 2).
+
+    `max_seconds` sprawdzane przez `is not None`, nie przez truthy-check — `0` to
+    poprawny (choć ekstremalny) budżet "przerwij natychmiast", nie "brak budżetu".
+    Ujemne wartości nie mają sensu i są odrzucane.
     """
     global _active_budget
     _install_process_group()
-    _active_budget = RunBudget(max_seconds=max_seconds) if max_seconds else None
+    _STOP_FILE.unlink(missing_ok=True)
+    if max_seconds is not None and max_seconds < 0:
+        raise ValueError(f"max_seconds musi być >= 0, dostano {max_seconds}.")
+    _active_budget = RunBudget(max_seconds=max_seconds) if max_seconds is not None else None
 
 
 def end_run() -> None:
@@ -83,7 +92,15 @@ def end_run() -> None:
 
 
 def request_stop() -> None:
-    """Warstwa 1 — zapisuje wartownika `.run/STOP`. Wywoływane przez `run.py panic --graceful`."""
+    """
+    Warstwa 1 — zapisuje wartownika `.run/STOP`. Wywoływane przez `run.py panic
+    --graceful`.
+
+    ⚠️ Jeśli wywołane gdy żaden przebieg nie jest aktywny (np. podwójne wywołanie,
+    albo `panic --graceful` bez uruchomionego zadania), plik zostaje osierocony —
+    `start_run()` czyści go na starcie KOLEJNEGO przebiegu właśnie z tego powodu,
+    żeby stary wartownik nie ubił nowego zadania na pierwszym `check_abort()`.
+    """
     _RUN_DIR.mkdir(exist_ok=True)
     _STOP_FILE.touch()
 
@@ -110,12 +127,20 @@ def truncate_tool_result(result: str, *, max_bytes: int = DEFAULT_MAX_TOOL_RESUL
     Warstwa 2, zasięg per-call — koryguje pojedynczy wynik narzędzia, NIE przerywa
     przebiegu. Ucina wynik przekraczający `max_bytes` i jawnie to oznacza dla modelu
     (zamiast po cichu zalewać kontekst pełną treścią).
+
+    Zwrócony string mieści się w `max_bytes` CAŁKOWICIE, licząc znacznik obcięcia —
+    znacznik jest budowany najpierw, a treść przycinana do pozostałego miejsca, nie
+    doklejana po fakcie (inaczej `max_bytes` byłby limitem tylko na samą treść, nie
+    na realny rozmiar tego co trafia do kontekstu modelu).
     """
     encoded = result.encode("utf-8", errors="replace")
     if len(encoded) <= max_bytes:
         return result
-    truncated = encoded[:max_bytes].decode("utf-8", errors="ignore")
-    return f"{truncated}\n\n[OBCIĘTO: wynik miał {len(encoded)} B, limit {max_bytes} B]"
+
+    marker = f"\n\n[OBCIĘTO: wynik miał {len(encoded)} B, limit {max_bytes} B]".encode("utf-8")
+    budget_for_content = max(0, max_bytes - len(marker))
+    truncated = encoded[:budget_for_content].decode("utf-8", errors="ignore")
+    return truncated + marker.decode("utf-8")
 
 
 def _install_process_group() -> None:

@@ -50,18 +50,21 @@ _FLAGS_FILE = Path(".flags.json")
 
 
 def _load_flags() -> dict[str, str]:
+    """Wczytuje `.flags.json` (mapa zadanie→flaga); pusty słownik jeśli plik jeszcze nie istnieje."""
     if _FLAGS_FILE.exists():
         return json.loads(_FLAGS_FILE.read_text())
     return {}
 
 
 def _save_flag(task_name: str, flag: str) -> None:
+    """Dopisuje zdobytą flagę do `.flags.json`, zachowując wcześniej zapisane."""
     flags = _load_flags()
     flags[task_name] = flag
     _FLAGS_FILE.write_text(json.dumps(flags, indent=2, ensure_ascii=False))
 
 
 def _make_llm(model: str, *, premium: bool = False) -> LLMClient:
+    """Buduje LLMClient dla podanego modelu (i tieru Gemini standard/premium, jeśli dotyczy)."""
     cfg = get_config()
     tier = "premium" if premium else "standard"
     provider = create_provider(model, cfg, tier=tier)

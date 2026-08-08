@@ -54,6 +54,7 @@ def task(name: str, *, hub_name: str | None = None):
                 ...
     """
     def decorator(cls: type[BaseTask]) -> type[BaseTask]:
+        """Rejestruje `cls` w TASK_REGISTRY pod `name` i zapisuje na klasie jej nazwę CLI/hub."""
         TASK_REGISTRY[name] = cls
         cls._task_name = name
         cls._hub_task_name = hub_name or name
@@ -81,6 +82,7 @@ class BaseTask(ABC):
         dry_run: bool = False,
         max_seconds: float | None = None,
     ) -> None:
+        """Wstrzykuje zależności (hub/llm), tryb dry-run i opcjonalny budżet wall-clock (Warstwa 2 kill switcha)."""
         self.hub = hub
         self.llm = llm
         self.cache = LocalCache(self._task_name or self.__class__.__name__)
@@ -107,6 +109,10 @@ class BaseTask(ABC):
                 start = time.perf_counter()
 
                 try:
+                    # Sprawdź PRZED jakąkolwiek robotą, nie tylko wewnątrz solve() —
+                    # zadania bez run_agent_loop() (pojedyncze blokujące wywołanie)
+                    # inaczej ominęłyby kill switch aż do _submit() na końcu.
+                    check_abort()
                     data = self.fetch_data()
                     answer = self.solve(data)
                     self._save_output(answer)
@@ -175,6 +181,7 @@ class BaseTask(ABC):
         return path
 
     def _submit(self, task_name: str, answer: Any) -> str | None:
+        """Wysyła finalną odpowiedź do huba (albo drukuje ją i wraca None w dry-run)."""
         check_abort()
         if self.dry_run:
             _console.print(f"[yellow]DRY RUN — answer would be:[/] {str(answer)[:300]}")

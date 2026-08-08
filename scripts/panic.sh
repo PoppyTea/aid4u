@@ -28,6 +28,17 @@ if ! [[ "$PGID" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
+# Bezpiecznik: nie zabijaj WŁASNEJ grupy procesów. Normalnie nie powinno się to
+# zdarzyć (przebieg odłącza się do własnej grupy przez setsid, więc panic.sh —
+# uruchomiony z innej powłoki — jest w innej grupie), ale jeśli plik PGID jest
+# nieaktualny/uszkodzony, wysłanie SIGKILL do własnej grupy ubiłoby ten skrypt
+# w połowie działania, zanim zdąży posprzątać.
+OWN_PGID="$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ')"
+if [[ -n "$OWN_PGID" && "$PGID" == "$OWN_PGID" ]]; then
+    echo "ODMOWA: $PGID_FILE wskazuje na WŁASNĄ grupę procesów tego skryptu ($PGID) — nie zabijam się." >&2
+    exit 1
+fi
+
 echo "Wysyłam SIGTERM do grupy procesów -$PGID..."
 kill -TERM "-$PGID" 2>/dev/null || true
 
