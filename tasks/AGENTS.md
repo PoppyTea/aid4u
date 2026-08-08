@@ -35,6 +35,12 @@ wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENT
 
 ## Ownership
 - Each folder (`sXXeYY`) acts as a domain for a specific task.
+- `s03/` (new as of 2026-08-08): first folder under `tasks/` grouping at the SEASON
+  level rather than per-episode — holds `requirements/` only (pre-season readiness
+  report + per-episode checklists), not task implementations. Season-3 task folders
+  themselves stay flat (`tasks/s03e01_evaluation/` etc.), matching S01/S02. See
+  `s03/AGENTS.md` and `strategy/season-transition.md` for the procedure this
+  instantiates.
 
 ## Local Contracts
 - Every task solution MUST contain `solution.py`. **Exception during season kickoff:**
@@ -115,3 +121,5 @@ wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENT
   faktycznie rate-limituje mimo że treść zadania tego nie wspominała.
 - `s02e05_drone/`: static reference docs (HTML API doc + terrain map) — only S02
   episode qualifying for a `data/input/` subfolder so far.
+- `s03/`: season-3 readiness report + per-episode checklists (`requirements/`) — see
+  `s03/AGENTS.md`. Not a container for task implementations, see Ownership above.
