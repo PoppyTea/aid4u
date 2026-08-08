@@ -167,61 +167,8 @@ class TestHubClientSubmit:
         mock_logfire.assert_any_call("Submitting task secret_task", answer_preview=expected_preview)
 
 
-class TestHubClientGetData503Tolerant:
-    """Testy get_data_503_tolerant() z zamockowanym HTTP i mockowanym czasem (tenacity)."""
-
-    def setup_method(self):
-        self.hub = HubClient.__new__(HubClient)
-        self.hub._apikey = "test-key"
-        self.hub._base_url = "https://hub.ag3nts.org"
-        self.hub._http = httpx.Client()
-        self.url = f"{self.hub._base_url}/data/{self.hub._apikey}/test-file.txt"
-
-    def teardown_method(self):
-        self.hub._http.close()
-
-    @respx.mock
-    def test_success_without_retry(self):
-        route = respx.get(self.url).mock(return_value=httpx.Response(200, content=b"success data"))
-
-        result = self.hub.get_data_503_tolerant("test-file.txt")
-        assert result == b"success data"
-        assert route.call_count == 1
-
-    @respx.mock
-    def test_success_after_503_retries(self, mocker):
-        # Pomijamy prawdziwe sleep'y w testach (przyspiesza wykonanie)
-        mocker.patch("time.sleep")
-
-        route = respx.get(self.url)
-        # 2 razy 503, 3. raz sukces
-        route.side_effect = [
-            httpx.Response(503),
-            httpx.Response(503),
-            httpx.Response(200, content=b"recovered data"),
-        ]
-
-        result = self.hub.get_data_503_tolerant("test-file.txt")
-        assert result == b"recovered data"
-        assert route.call_count == 3
-
-    @respx.mock
-    def test_exhausts_retries_on_503(self, mocker):
-        from tenacity import RetryError
-
-        mocker.patch("time.sleep")
-
-        route = respx.get(self.url).mock(return_value=httpx.Response(503))
-
-        with pytest.raises(RetryError):
-            self.hub.get_data_503_tolerant("test-file.txt")
-
-        # Zgodnie z @retry(stop=stop_after_attempt(8))
-        assert route.call_count == 8
-
-
 class TestHubClientGetData:
-    """Testy get_data() z zamockowanym HTTP i mockowanym czasem (tenacity)."""
+    """Testy get_data() — domyślny tryb (lekki retry) i tolerate_503=True (agresywny retry)."""
 
     def setup_method(self):
         self.hub = HubClient.__new__(HubClient)
@@ -269,55 +216,135 @@ class TestHubClientGetData:
         with pytest.raises(RetryError):
             self.hub.get_data("test-file.txt")
 
-        # Zgodnie z @retry(stop=stop_after_attempt(3))
+        # Zgodnie z @retry(stop=stop_after_attempt(3)) w trybie domyślnym
         assert route.call_count == 3
 
+    @respx.mock
+    def test_tolerate_503_success_without_retry(self):
+        route = respx.get(self.url).mock(return_value=httpx.Response(200, content=b"success data"))
 
-class TestHubClientGetDoc:
-    """Testy get_doc() — retry na 5xx/timeout, ale NIE na 4xx (path trwale błędny)."""
+        result = self.hub.get_data("test-file.txt", tolerate_503=True)
+        assert result == b"success data"
+        assert route.call_count == 1
+
+    @respx.mock
+    def test_tolerate_503_success_after_503_retries(self, mocker):
+        mocker.patch("time.sleep")
+
+        route = respx.get(self.url)
+        # 2 razy 503, 3. raz sukces
+        route.side_effect = [
+            httpx.Response(503),
+            httpx.Response(503),
+            httpx.Response(200, content=b"recovered data"),
+        ]
+
+        result = self.hub.get_data("test-file.txt", tolerate_503=True)
+        assert result == b"recovered data"
+        assert route.call_count == 3
+
+    @respx.mock
+    def test_tolerate_503_exhausts_retries_on_persistent_503(self, mocker):
+        from tenacity import RetryError
+
+        mocker.patch("time.sleep")
+
+        route = respx.get(self.url).mock(return_value=httpx.Response(503))
+
+        with pytest.raises(RetryError):
+            self.hub.get_data("test-file.txt", tolerate_503=True)
+
+        # Zgodnie z @retry(stop=stop_after_attempt(8)) w trybie tolerate_503
+        assert route.call_count == 8
+
+    @respx.mock
+    def test_tolerate_503_uses_more_attempts_than_default_on_5xx(self, mocker):
+        # tolerate_503=True powinno przetrwać więcej niż 3 błędy 500 z rzędu —
+        # dowód, że to faktycznie inna (agresywniejsza) polityka retry, nie alias.
+        mocker.patch("time.sleep")
+
+        route = respx.get(self.url)
+        route.side_effect = [httpx.Response(500)] * 5 + [httpx.Response(200, content=b"ok")]
+
+        result = self.hub.get_data("test-file.txt", tolerate_503=True)
+        assert result == b"ok"
+        assert route.call_count == 6
+
+
+class TestHubClientGetPublic:
+    """Testy get_public() — generyczny GET bez apikey, dowolny prefiks ścieżki."""
 
     def setup_method(self):
         self.hub = HubClient.__new__(HubClient)
         self.hub._apikey = "test-key"
         self.hub._base_url = "https://hub.ag3nts.org"
         self.hub._http = httpx.Client()
-        self.url = f"{self.hub._base_url}/dane/doc/test-file.md"
 
     def teardown_method(self):
         self.hub._http.close()
 
     @respx.mock
-    def test_get_doc_success_without_retry(self):
-        route = respx.get(self.url).mock(return_value=httpx.Response(200, content=b"doc content"))
+    def test_success_without_retry(self):
+        url = f"{self.hub._base_url}/dane/doc/test-file.md"
+        route = respx.get(url).mock(return_value=httpx.Response(200, content=b"doc content"))
 
-        result = self.hub.get_doc("test-file.md")
+        result = self.hub.get_public("dane/doc/test-file.md")
         assert result == b"doc content"
         assert route.call_count == 1
 
     @respx.mock
-    def test_get_doc_success_after_5xx_retries(self, mocker):
+    def test_success_after_5xx_retries(self, mocker):
+        url = f"{self.hub._base_url}/dane/doc/test-file.md"
         mocker.patch("time.sleep")
 
-        route = respx.get(self.url)
+        route = respx.get(url)
         route.side_effect = [
             httpx.Response(500),
             httpx.Response(503),
             httpx.Response(200, content=b"recovered doc"),
         ]
 
-        result = self.hub.get_doc("test-file.md")
+        result = self.hub.get_public("dane/doc/test-file.md")
         assert result == b"recovered doc"
         assert route.call_count == 3
 
     @respx.mock
-    def test_get_doc_404_not_retried(self):
-        route = respx.get(self.url).mock(return_value=httpx.Response(404))
+    def test_404_not_retried(self):
+        url = f"{self.hub._base_url}/dane/doc/test-file.md"
+        route = respx.get(url).mock(return_value=httpx.Response(404))
 
         with pytest.raises(httpx.HTTPStatusError):
-            self.hub.get_doc("test-file.md")
+            self.hub.get_public("dane/doc/test-file.md")
 
         # Kluczowa różnica względem get_data(): 4xx nie jest powtarzane.
         assert route.call_count == 1
+
+    @respx.mock
+    def test_supports_dane_prefix_without_doc_subpath(self):
+        # Kształt zweryfikowany przy s02e05 (drone.html) i s03 (sensors.zip) — bez
+        # "/doc/" w środku, w odróżnieniu od starego get_doc()'a jednego stałego prefiksu.
+        url = f"{self.hub._base_url}/dane/drone.html"
+        respx.get(url).mock(return_value=httpx.Response(200, content=b"<html>drone doc</html>"))
+
+        result = self.hub.get_public("dane/drone.html")
+        assert result == b"<html>drone doc</html>"
+
+    @respx.mock
+    def test_supports_root_level_path(self):
+        # Kształt zweryfikowany przy s03e03/s03e05 (reactor_preview.html, savethem_preview.html).
+        url = f"{self.hub._base_url}/reactor_preview.html"
+        respx.get(url).mock(return_value=httpx.Response(200, content=b"preview"))
+
+        result = self.hub.get_public("reactor_preview.html")
+        assert result == b"preview"
+
+    @respx.mock
+    def test_strips_leading_slash(self):
+        url = f"{self.hub._base_url}/i/solved_electricity.png"
+        respx.get(url).mock(return_value=httpx.Response(200, content=b"\x89PNG"))
+
+        result = self.hub.get_public("/i/solved_electricity.png")
+        assert result == b"\x89PNG"
 
 
 class TestHubClientTeardown:

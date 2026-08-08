@@ -133,9 +133,26 @@ class HubClient:
 
     # ─── Data fetching ───────────────────────────────────────────────────────
 
+    def get_data(self, path: str, *, tolerate_503: bool = False) -> bytes:
+        """
+        GET /data/{apikey}/{path}.
+
+        `tolerate_503=False` (domyślnie): lekki retry (3 próby) dla zwykłych,
+        niestabilnych połączeń — 5xx/timeout.
+        `tolerate_503=True`: agresywniejszy retry (8 prób, dłuższy backoff) dla zadań z
+        celowo symulowanym przeciążeniem (np. "railway"), gdzie 503 jest jawnie
+        traktowane jako retryable, nie tylko 5xx ogólnie.
+
+        Jedna publiczna metoda zamiast dwóch osobno nazwanych (`get_data` +
+        `get_data_503_tolerant`) — konsolidacja po przeglądzie wszystkich kształtów
+        GET-ów używanych w kursie (patrz `get_public()` niżej i `core/AGENTS.md`).
+        """
+        if tolerate_503:
+            return self._get_data_503_tolerant(path)
+        return self._get_data_plain(path)
+
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
-    def get_data(self, path: str) -> bytes:
-        """GET /data/{apikey}/{path} — z retry dla niestabilnych połączeń."""
+    def _get_data_plain(self, path: str) -> bytes:
         url = f"{self._base_url}/data/{self._apikey}/{path}"
         response = self._http.get(url)
         response.raise_for_status()
@@ -143,11 +160,7 @@ class HubClient:
 
     @langfuse_observe()
     @retry(stop=stop_after_attempt(8), wait=wait_exponential(min=3, max=60))
-    def get_data_503_tolerant(self, path: str) -> bytes:
-        """
-        GET z tolerancją na błędy 503 (celowe przeciążenie, np. zadanie 'railway').
-        Używa agresywniejszego retry z dłuższym backoffem.
-        """
+    def _get_data_503_tolerant(self, path: str) -> bytes:
         url = f"{self._base_url}/data/{self._apikey}/{path}"
         response = self._http.get(url)
         if response.status_code == 503:
@@ -160,9 +173,29 @@ class HubClient:
         stop=stop_after_attempt(3),
         wait=wait_exponential(min=1, max=10),
     )
-    def get_doc(self, path: str) -> bytes:
-        """GET /dane/doc/{path} — publiczne dokumenty zadań, bez apikey. Nie powtarza 4xx."""
-        url = f"{self._base_url}/dane/doc/{path}"
+    def get_public(self, path: str) -> bytes:
+        """
+        GET {base_url}/{path} — zasób publiczny, bez apikey. Nie powtarza 4xx (zły
+        path to trwały błąd), powtarza 5xx/transport errors — patrz
+        _is_retryable_http_error().
+
+        `path` jest ścieżką WZGLĘDEM base_url, bez wiodącego '/' — ta metoda celowo
+        NIE zakłada jednego stałego prefiksu. Kurs używa co najmniej czterech różnych
+        kształtów publicznych URL-i (zweryfikowane empirycznie, wszystkie zwracają
+        200): `dane/doc/{plik}` (dokumenty zadań, S01), `dane/{plik}` (pliki wprost w
+        /dane/, np. `drone.html`, `sensors.zip` w S02/S03), `i/{plik}` (obrazy
+        referencyjne, np. `solved_electricity.png`), oraz pliki na rootcie (np.
+        `reactor_preview.html`, `debug`). Dokładanie osobnej metody na każdy prefiks
+        kończyłoby się kilkoma prawie identycznymi, mylącymi się metodami — stąd jedna
+        generyczna.
+
+        UWAGA — hub potrafi zwrócić HTTP 200 ze stroną błędu (text/html) zamiast
+        prawdziwego 404 dla nieistniejącego zasobu binarnego (potwierdzone: zły URL do
+        mapy zwrócił 200+html zamiast image/png). Ta metoda NIE waliduje treści — użyj
+        `core.net.expect_binary()`/`expect_not_html()` po stronie wywołującego, gdy
+        format ma znaczenie.
+        """
+        url = f"{self._base_url}/{path.lstrip('/')}"
         response = self._http.get(url)
         response.raise_for_status()
         return response.content

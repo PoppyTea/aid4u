@@ -67,7 +67,7 @@ def fetch_all() -> list[Path]:
             content = dest.read_bytes()
         else:
             dest.parent.mkdir(parents=True, exist_ok=True)
-            content = hub.get_doc(rel_path.as_posix())
+            content = hub.get_public(f"dane/doc/{rel_path.as_posix()}")
             dest.write_bytes(content)
             downloaded.append(rel_path)
 

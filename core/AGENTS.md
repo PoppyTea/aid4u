@@ -8,6 +8,8 @@ Contains the architectural heart of the system: LLM clients, task management bas
 - `core/hub/`: Data acquisition and caching.
 - `core/tasks/`: Base classes for task registration.
 - `core/observability/`: Instrumentation and tracing decorators.
+- `core/net.py`: Content validation for anything fetched over the network
+  (soft-404 detection) — independent of `HubClient`, not hub-specific.
 
 ## Local Contracts
 - All external API interactions MUST go through `core/llm/client.py`.
@@ -36,6 +38,23 @@ Contains the architectural heart of the system: LLM clients, task management bas
   a `retry_after` field, so the backoff here is blind/exponential, not server-directed.
   Other 4xx (e.g. an unknown action name) still propagate immediately — only 429 is treated
   as transient.
+- **GET methods consolidated 2026-08-08** (survey across S01-S03 task specs, before adding
+  yet another single-purpose fetch method for `s02e05_drone`): `HubClient` exposes exactly
+  two public GET methods, not one-per-URL-shape.
+  - `get_data(path, *, tolerate_503=False)` — `/data/{apikey}/{path}` (keyed). Default is a
+    light retry (3 attempts); `tolerate_503=True` switches to the aggressive retry
+    (8 attempts, longer backoff) needed for tasks with deliberately simulated outages
+    (e.g. `railway`) — this replaces the old separate `get_data_503_tolerant()` method.
+  - `get_public(path)` — any public GET (no apikey), `path` relative to `base_url`. This
+    replaces `get_doc()` (which only covered the `/dane/doc/{path}` prefix) — the course
+    uses at least four distinct public URL shapes (`dane/doc/{file}`, `dane/{file}` e.g.
+    `drone.html`/`sensors.zip`, `i/{file}` e.g. `solved_electricity.png`, and root-level
+    files e.g. `reactor_preview.html`), all verified to return 200. One generic method
+    covers all of them instead of accumulating a near-identical method per prefix.
+  - Neither method validates response *content* — only status code and retry. The hub can
+    return HTTP 200 with an HTML error page instead of a real 404 for a bad binary-file URL
+    (confirmed empirically). Callers that care about format MUST validate with
+    `core.net.expect_binary()` / `expect_not_html()` after fetching.
 - Both `Config._from_keyring()` and `SecretsManager.get()`/`list()` MUST read the
   system keyring only through `core.secrets._keyring_get_with_timeout()`, never
   `keyring.get_password()` directly. Headless/VPS environments without a D-Bus
