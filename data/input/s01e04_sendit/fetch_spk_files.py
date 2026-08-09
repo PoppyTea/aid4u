@@ -19,6 +19,7 @@ import re
 from pathlib import Path
 
 from core.hub.client import HubClient
+from core.net import expect_not_html
 
 DOCS_DIR = Path(__file__).parent / "system-przesylek-konduktorskich"
 FILE_LIST = DOCS_DIR / "SPK_files_list.csv"
@@ -37,6 +38,7 @@ def _safe_rel_path(raw: Path) -> Path:
 
 
 def _read_file_list() -> set[Path]:
+    """Wczytuje znane ścieżki z manifestu (jedna na linię); pusty zbiór, gdy manifest jeszcze nie istnieje."""
     if not FILE_LIST.exists():
         return set()
     lines = FILE_LIST.read_text(encoding="utf-8").splitlines()
@@ -44,6 +46,7 @@ def _read_file_list() -> set[Path]:
 
 
 def _append_to_file_list(new_paths: list[Path]) -> None:
+    """Dopisuje nowo odkryte ścieżki do manifestu, po jednej na linię."""
     with FILE_LIST.open("a", encoding="utf-8") as f:
         for path in new_paths:
             f.write(f"{path}\n")
@@ -67,7 +70,12 @@ def fetch_all() -> list[Path]:
             content = dest.read_bytes()
         else:
             dest.parent.mkdir(parents=True, exist_ok=True)
-            content = hub.get_doc(rel_path.as_posix())
+            content = hub.get_public(f"dane/doc/{rel_path.as_posix()}")
+            # get_public() nie waliduje treści — hub potrafi zwrócić HTTP 200 ze
+            # stroną błędu zamiast prawdziwego 404 (potwierdzone empirycznie,
+            # patrz core/AGENTS.md). expect_not_html (nie expect_binary) bo pliki
+            # tu bywają tekstowe (.md) i binarne (.png) — nie ma jednego formatu.
+            expect_not_html(content, source=f"dane/doc/{rel_path.as_posix()}")
             dest.write_bytes(content)
             downloaded.append(rel_path)
 

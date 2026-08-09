@@ -93,7 +93,7 @@ task focus                       # jedno zadanie — zawsze zaczynaj tutaj
    (fork, TypeScript) — gotowe demo do przepisania na Python bije projektowanie od zera.
 3. **LLMClient:** Nie używaj bezpośrednio SDK — tylko `LLMClient` z `core/llm/`.
 4. **Observability:** `setup_observability()` zawsze jako pierwsza linia skryptu.
-5. **Rate Limit:** `503` → użyj `hub.get_data_503_tolerant()`.
+5. **Rate Limit:** `503` → użyj `hub.get_data(path, tolerate_503=True)`.
 6. **Single focus:** Jeden task TW naraz. `task focus` — nie `task list`, nie pamięć.
 
 # DOX framework

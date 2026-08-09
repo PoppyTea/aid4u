@@ -13,28 +13,34 @@ class TestFlagExtraction:
     """Testy ekstrakcji flagi z odpowiedzi hubu."""
 
     def setup_method(self):
+        """Buduje HubClient bez sieci (get_flag() nie jej potrzebuje)."""
         # HubClient nie wymaga sieci dla get_flag()
         self.hub = HubClient.__new__(HubClient)
         self.hub._apikey = "test-key"
         self.hub._base_url = "https://hub.ag3nts.org"
 
     def test_extracts_flag_from_message_field(self):
+        """Flaga w polu 'message' jest wyciągana poprawnie."""
         response = {"message": "Gratulacje! {FLG:TESTFLAG}"}
         assert self.hub.get_flag(response) == "{FLG:TESTFLAG}"
 
     def test_extracts_flag_from_msg_field(self):
+        """Flaga w polu 'msg' jest wyciągana poprawnie."""
         response = {"msg": "{FLG:ANOTHER}"}
         assert self.hub.get_flag(response) == "{FLG:ANOTHER}"
 
     def test_returns_none_when_no_flag(self):
+        """Odpowiedź bez flagi zwraca None, nie rzuca wyjątku."""
         response = {"message": "Błąd: nieprawidłowa odpowiedź"}
         assert self.hub.get_flag(response) is None
 
     def test_extracts_from_nested_string(self):
+        """Flaga otoczona innym tekstem w polu jest wciąż znajdowana."""
         response = {"message": "Odpowiedź OK. Flaga: {FLG:DEEP} — zachowaj ją."}
         assert self.hub.get_flag(response) == "{FLG:DEEP}"
 
     def test_flag_pattern_matches_alphanumeric(self):
+        """_FLAG_PATTERN dopasowuje alfanumeryczną treść flagi i odrzuca puste/niepełne nawiasy."""
         assert _FLAG_PATTERN.search("{FLG:PIZZA_2025}") is not None
         assert _FLAG_PATTERN.search("{FLG:}") is None  # pusta flaga
         assert _FLAG_PATTERN.search("FLG:NOOUTER") is None  # brak nawiasów
@@ -44,6 +50,7 @@ class TestHubClientSubmit:
     """Testy submit() z zamockowanym HTTP."""
 
     def setup_method(self):
+        """Buduje HubClient z prawdziwym httpx.Client, mockowanym przez respx."""
         self.hub = HubClient.__new__(HubClient)
         self.hub._apikey = "test-key"
         self.hub._base_url = "https://hub.ag3nts.org"
@@ -51,6 +58,7 @@ class TestHubClientSubmit:
 
     @respx.mock
     def test_submit_sends_correct_payload(self):
+        """submit() zwraca sparsowaną odpowiedź JSON huba przy sukcesie."""
         respx.post("https://hub.ag3nts.org/verify").mock(
             return_value=httpx.Response(200, json={"message": "{FLG:OK}"})
         )
@@ -59,6 +67,7 @@ class TestHubClientSubmit:
 
     @respx.mock
     def test_submit_raises_on_http_error(self):
+        """Trwały błąd HTTP (nie 503/429) propaguje się jako HTTPStatusError bez retry."""
         respx.post("https://hub.ag3nts.org/verify").mock(
             return_value=httpx.Response(500, json={"error": "server error"})
         )
@@ -67,6 +76,7 @@ class TestHubClientSubmit:
 
     @respx.mock
     def test_submit_retries_on_503_outage(self, mocker):
+        """Symulowane przeciążenie (503) jest powtarzane aż do sukcesu."""
         mocker.patch("time.sleep")
 
         route = respx.post("https://hub.ag3nts.org/verify")
@@ -81,6 +91,7 @@ class TestHubClientSubmit:
 
     @respx.mock
     def test_submit_retries_on_429_using_retry_after_from_body(self, mocker):
+        """429 z `retry_after` w ciele odpowiedzi jest respektowane + margines 2s."""
         mock_sleep = mocker.patch("time.sleep")
 
         route = respx.post("https://hub.ag3nts.org/verify")
@@ -97,6 +108,7 @@ class TestHubClientSubmit:
 
     @respx.mock
     def test_submit_retries_on_429_with_missing_retry_after(self, mocker):
+        """429 bez pola `retry_after` spada na domyślny czas oczekiwania + margines."""
         mock_sleep = mocker.patch("time.sleep")
 
         route = respx.post("https://hub.ag3nts.org/verify")
@@ -111,6 +123,7 @@ class TestHubClientSubmit:
 
     @respx.mock
     def test_submit_retries_on_429_with_non_json_body(self, mocker):
+        """429 z ciałem, które nie jest JSON-em, nie wysadza parsowania — spada na domyślny czas."""
         mock_sleep = mocker.patch("time.sleep")
 
         route = respx.post("https://hub.ag3nts.org/verify")
@@ -125,6 +138,7 @@ class TestHubClientSubmit:
 
     @respx.mock
     def test_submit_retries_on_429_with_non_numeric_retry_after(self, mocker):
+        """429 z nienumerycznym `retry_after` (np. "soon") spada na domyślny czas oczekiwania."""
         mock_sleep = mocker.patch("time.sleep")
 
         route = respx.post("https://hub.ag3nts.org/verify")
@@ -139,6 +153,7 @@ class TestHubClientSubmit:
 
     @respx.mock
     def test_submit_exhausts_retries_on_persistent_503(self, mocker):
+        """Trwały 503 wyczerpuje wszystkie próby i kończy się RuntimeError, nie wiszącą pętlą."""
         mocker.patch("time.sleep")
 
         route = respx.post("https://hub.ag3nts.org/verify").mock(
@@ -152,6 +167,7 @@ class TestHubClientSubmit:
 
     @respx.mock
     def test_submit_redacts_answer_in_log(self, mocker):
+        """Log przesłania odpowiedzi pokazuje tylko zredagowany podgląd, nie pełną odpowiedź."""
         # Setup mock for logfire
         mock_logfire = mocker.patch("core.hub.client.logfire.info")
 
@@ -167,63 +183,11 @@ class TestHubClientSubmit:
         mock_logfire.assert_any_call("Submitting task secret_task", answer_preview=expected_preview)
 
 
-class TestHubClientGetData503Tolerant:
-    """Testy get_data_503_tolerant() z zamockowanym HTTP i mockowanym czasem (tenacity)."""
-
-    def setup_method(self):
-        self.hub = HubClient.__new__(HubClient)
-        self.hub._apikey = "test-key"
-        self.hub._base_url = "https://hub.ag3nts.org"
-        self.hub._http = httpx.Client()
-        self.url = f"{self.hub._base_url}/data/{self.hub._apikey}/test-file.txt"
-
-    def teardown_method(self):
-        self.hub._http.close()
-
-    @respx.mock
-    def test_success_without_retry(self):
-        route = respx.get(self.url).mock(return_value=httpx.Response(200, content=b"success data"))
-
-        result = self.hub.get_data_503_tolerant("test-file.txt")
-        assert result == b"success data"
-        assert route.call_count == 1
-
-    @respx.mock
-    def test_success_after_503_retries(self, mocker):
-        # Pomijamy prawdziwe sleep'y w testach (przyspiesza wykonanie)
-        mocker.patch("time.sleep")
-
-        route = respx.get(self.url)
-        # 2 razy 503, 3. raz sukces
-        route.side_effect = [
-            httpx.Response(503),
-            httpx.Response(503),
-            httpx.Response(200, content=b"recovered data"),
-        ]
-
-        result = self.hub.get_data_503_tolerant("test-file.txt")
-        assert result == b"recovered data"
-        assert route.call_count == 3
-
-    @respx.mock
-    def test_exhausts_retries_on_503(self, mocker):
-        from tenacity import RetryError
-
-        mocker.patch("time.sleep")
-
-        route = respx.get(self.url).mock(return_value=httpx.Response(503))
-
-        with pytest.raises(RetryError):
-            self.hub.get_data_503_tolerant("test-file.txt")
-
-        # Zgodnie z @retry(stop=stop_after_attempt(8))
-        assert route.call_count == 8
-
-
 class TestHubClientGetData:
-    """Testy get_data() z zamockowanym HTTP i mockowanym czasem (tenacity)."""
+    """Testy get_data() — domyślny tryb (lekki retry) i tolerate_503=True (agresywny retry)."""
 
     def setup_method(self):
+        """Buduje HubClient z prawdziwym httpx.Client, mockowanym przez respx."""
         self.hub = HubClient.__new__(HubClient)
         self.hub._apikey = "test-key"
         self.hub._base_url = "https://hub.ag3nts.org"
@@ -231,10 +195,12 @@ class TestHubClientGetData:
         self.url = f"{self.hub._base_url}/data/{self.hub._apikey}/test-file.txt"
 
     def teardown_method(self):
+        """Zamyka httpx.Client po każdym teście."""
         self.hub._http.close()
 
     @respx.mock
     def test_get_data_success_without_retry(self):
+        """Sukces za pierwszym razem nie generuje żadnego retry."""
         route = respx.get(self.url).mock(return_value=httpx.Response(200, content=b"success data"))
 
         result = self.hub.get_data("test-file.txt")
@@ -243,6 +209,7 @@ class TestHubClientGetData:
 
     @respx.mock
     def test_get_data_success_after_retries(self, mocker):
+        """Dwa błędy 500 z rzędu, potem sukces — domyślna (lekka) polityka retry to przetrzymuje."""
         # Pomijamy prawdziwe sleep'y w testach (przyspiesza wykonanie)
         mocker.patch("time.sleep")
 
@@ -260,6 +227,7 @@ class TestHubClientGetData:
 
     @respx.mock
     def test_get_data_exhausts_retries(self, mocker):
+        """Trwały 500 wyczerpuje domyślne 3 próby i kończy się tenacity.RetryError."""
         from tenacity import RetryError
 
         mocker.patch("time.sleep")
@@ -269,61 +237,154 @@ class TestHubClientGetData:
         with pytest.raises(RetryError):
             self.hub.get_data("test-file.txt")
 
-        # Zgodnie z @retry(stop=stop_after_attempt(3))
+        # Zgodnie z @retry(stop=stop_after_attempt(3)) w trybie domyślnym
         assert route.call_count == 3
 
+    @respx.mock
+    def test_tolerate_503_success_without_retry(self):
+        """tolerate_503=True: sukces za pierwszym razem nie generuje żadnego retry."""
+        route = respx.get(self.url).mock(return_value=httpx.Response(200, content=b"success data"))
 
-class TestHubClientGetDoc:
-    """Testy get_doc() — retry na 5xx/timeout, ale NIE na 4xx (path trwale błędny)."""
+        result = self.hub.get_data("test-file.txt", tolerate_503=True)
+        assert result == b"success data"
+        assert route.call_count == 1
+
+    @respx.mock
+    def test_tolerate_503_success_after_503_retries(self, mocker):
+        """tolerate_503=True: dwa 503 z rzędu, potem sukces — agresywniejsza polityka to przetrzymuje."""
+        mocker.patch("time.sleep")
+
+        route = respx.get(self.url)
+        # 2 razy 503, 3. raz sukces
+        route.side_effect = [
+            httpx.Response(503),
+            httpx.Response(503),
+            httpx.Response(200, content=b"recovered data"),
+        ]
+
+        result = self.hub.get_data("test-file.txt", tolerate_503=True)
+        assert result == b"recovered data"
+        assert route.call_count == 3
+
+    @respx.mock
+    def test_tolerate_503_exhausts_retries_on_persistent_503(self, mocker):
+        """tolerate_503=True: trwały 503 wyczerpuje 8 prób i kończy się tenacity.RetryError."""
+        from tenacity import RetryError
+
+        mocker.patch("time.sleep")
+
+        route = respx.get(self.url).mock(return_value=httpx.Response(503))
+
+        with pytest.raises(RetryError):
+            self.hub.get_data("test-file.txt", tolerate_503=True)
+
+        # Zgodnie z @retry(stop=stop_after_attempt(8)) w trybie tolerate_503
+        assert route.call_count == 8
+
+    @respx.mock
+    def test_tolerate_503_uses_more_attempts_than_default_on_5xx(self, mocker):
+        """tolerate_503=True przetrzymuje więcej błędów 500 z rzędu niż domyślna polityka."""
+        # tolerate_503=True powinno przetrwać więcej niż 3 błędy 500 z rzędu —
+        # dowód, że to faktycznie inna (agresywniejsza) polityka retry, nie alias.
+        mocker.patch("time.sleep")
+
+        route = respx.get(self.url)
+        route.side_effect = [httpx.Response(500)] * 5 + [httpx.Response(200, content=b"ok")]
+
+        result = self.hub.get_data("test-file.txt", tolerate_503=True)
+        assert result == b"ok"
+        assert route.call_count == 6
+
+
+class TestHubClientGetPublic:
+    """Testy get_public() — generyczny GET bez apikey, dowolny prefiks ścieżki."""
 
     def setup_method(self):
+        """Buduje HubClient z prawdziwym httpx.Client, mockowanym przez respx."""
         self.hub = HubClient.__new__(HubClient)
         self.hub._apikey = "test-key"
         self.hub._base_url = "https://hub.ag3nts.org"
         self.hub._http = httpx.Client()
-        self.url = f"{self.hub._base_url}/dane/doc/test-file.md"
 
     def teardown_method(self):
+        """Zamyka httpx.Client po każdym teście."""
         self.hub._http.close()
 
     @respx.mock
-    def test_get_doc_success_without_retry(self):
-        route = respx.get(self.url).mock(return_value=httpx.Response(200, content=b"doc content"))
+    def test_success_without_retry(self):
+        """Sukces za pierwszym razem nie generuje żadnego retry."""
+        url = f"{self.hub._base_url}/dane/doc/test-file.md"
+        route = respx.get(url).mock(return_value=httpx.Response(200, content=b"doc content"))
 
-        result = self.hub.get_doc("test-file.md")
+        result = self.hub.get_public("dane/doc/test-file.md")
         assert result == b"doc content"
         assert route.call_count == 1
 
     @respx.mock
-    def test_get_doc_success_after_5xx_retries(self, mocker):
+    def test_success_after_5xx_retries(self, mocker):
+        """500 i 503 z rzędu, potem sukces — 5xx jest retryable niezależnie od konkretnego kodu."""
+        url = f"{self.hub._base_url}/dane/doc/test-file.md"
         mocker.patch("time.sleep")
 
-        route = respx.get(self.url)
+        route = respx.get(url)
         route.side_effect = [
             httpx.Response(500),
             httpx.Response(503),
             httpx.Response(200, content=b"recovered doc"),
         ]
 
-        result = self.hub.get_doc("test-file.md")
+        result = self.hub.get_public("dane/doc/test-file.md")
         assert result == b"recovered doc"
         assert route.call_count == 3
 
     @respx.mock
-    def test_get_doc_404_not_retried(self):
-        route = respx.get(self.url).mock(return_value=httpx.Response(404))
+    def test_404_not_retried(self):
+        """4xx (zły path) propaguje się natychmiast — nie jest retryable jak 5xx."""
+        url = f"{self.hub._base_url}/dane/doc/test-file.md"
+        route = respx.get(url).mock(return_value=httpx.Response(404))
 
         with pytest.raises(httpx.HTTPStatusError):
-            self.hub.get_doc("test-file.md")
+            self.hub.get_public("dane/doc/test-file.md")
 
         # Kluczowa różnica względem get_data(): 4xx nie jest powtarzane.
         assert route.call_count == 1
+
+    @respx.mock
+    def test_supports_dane_prefix_without_doc_subpath(self):
+        """get_public() obsługuje prefiks '/dane/{plik}' bez podścieżki '/doc/'."""
+        # Kształt zweryfikowany przy s02e05 (drone.html) i s03 (sensors.zip) — bez
+        # "/doc/" w środku, w odróżnieniu od starego get_doc()'a jednego stałego prefiksu.
+        url = f"{self.hub._base_url}/dane/drone.html"
+        respx.get(url).mock(return_value=httpx.Response(200, content=b"<html>drone doc</html>"))
+
+        result = self.hub.get_public("dane/drone.html")
+        assert result == b"<html>drone doc</html>"
+
+    @respx.mock
+    def test_supports_root_level_path(self):
+        """get_public() obsługuje pliki na rootcie base_url, bez żadnego prefiksu."""
+        # Kształt zweryfikowany przy s03e03/s03e05 (reactor_preview.html, savethem_preview.html).
+        url = f"{self.hub._base_url}/reactor_preview.html"
+        respx.get(url).mock(return_value=httpx.Response(200, content=b"preview"))
+
+        result = self.hub.get_public("reactor_preview.html")
+        assert result == b"preview"
+
+    @respx.mock
+    def test_strips_leading_slash(self):
+        """Wiodący '/' w path jest usuwany, zamiast dawać podwójny slash w URL."""
+        url = f"{self.hub._base_url}/i/solved_electricity.png"
+        respx.get(url).mock(return_value=httpx.Response(200, content=b"\x89PNG"))
+
+        result = self.hub.get_public("/i/solved_electricity.png")
+        assert result == b"\x89PNG"
 
 
 class TestHubClientTeardown:
     """Testy dla metody __del__ HubClient."""
 
     def test_del_closes_http_client(self, mocker):
+        """__del__() zamyka httpx.Client przy garbage-collection."""
         hub = HubClient.__new__(HubClient)
         mock_http = mocker.MagicMock(spec=httpx.Client)
         hub._http = mock_http
@@ -332,6 +393,7 @@ class TestHubClientTeardown:
         mock_http.close.assert_called_once()
 
     def test_del_logs_warning_on_http_error(self, mocker):
+        """Błąd HTTP przy zamykaniu klienta jest logowany jako warning, nie propaguje się."""
         hub = HubClient.__new__(HubClient)
         mock_http = mocker.MagicMock(spec=httpx.Client)
         error = httpx.HTTPError("Mocked socket close error")
@@ -345,6 +407,7 @@ class TestHubClientTeardown:
         mock_logfire.assert_called_once_with("Failed to close HubClient HTTP session", error=error)
 
     def test_del_swallows_other_exceptions_silently(self, mocker):
+        """Nie-HTTP wyjątek przy zamykaniu klienta jest cicho tłumiony, bez logu."""
         hub = HubClient.__new__(HubClient)
         mock_http = mocker.MagicMock(spec=httpx.Client)
         mock_http.close.side_effect = RuntimeError("Generic unexpected error")
@@ -358,6 +421,7 @@ class TestHubClientTeardown:
         mock_logfire.assert_not_called()
 
     def test_del_handles_missing_or_none_http_attribute(self):
+        """__del__() nie rzuca, gdy _http nigdy nie zostało ustawione albo jest None."""
         hub = HubClient.__new__(HubClient)
         # self._http nie jest ustawione wcale
         hub.__del__()
@@ -371,16 +435,19 @@ class TestHubClientPostApi:
     """Testy post_api() z zamockowanym HTTP."""
 
     def setup_method(self):
+        """Buduje HubClient z prawdziwym httpx.Client, mockowanym przez respx."""
         self.hub = HubClient.__new__(HubClient)
         self.hub._apikey = "test-key"
         self.hub._base_url = "https://hub.ag3nts.org"
         self.hub._http = httpx.Client()
 
     def teardown_method(self):
+        """Zamyka httpx.Client po każdym teście."""
         self.hub._http.close()
 
     @respx.mock
     def test_post_api_success(self):
+        """post_api() zwraca JSON odpowiedzi i dokłada apikey do ciała requestu."""
         # Setup mock route
         url = f"{self.hub._base_url}/api/test-endpoint"
         # We expect a payload with "foo": "bar" and "apikey": "test-key"
@@ -401,6 +468,7 @@ class TestHubClientPostApi:
 
     @respx.mock
     def test_post_api_raises_on_http_error(self):
+        """Błąd HTTP inny niż 429 propaguje się natychmiast, bez retry."""
         url = f"{self.hub._base_url}/api/test-endpoint"
         respx.post(url).mock(
             return_value=httpx.Response(400, json={"error": "bad request"})
