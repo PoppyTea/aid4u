@@ -231,6 +231,7 @@ class TestPanicScriptKillsEntireProcessGroup:
                     os.killpg(os.getpgid(parent.pid), 9)
                 except ProcessLookupError:
                     pass
+            parent.stdout.close()
             pgid_file.unlink(missing_ok=True)
 
     def test_refuses_to_kill_own_process_group(self):

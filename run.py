@@ -147,6 +147,9 @@ def panic(
         return
 
     script = Path(__file__).parent / "scripts" / "panic.sh"
+    if not script.is_file():
+        console.print(f"[red]Brak {script} — nie mogę wywołać awaryjnego wyłącznika.[/]")
+        raise typer.Exit(1)
     result = subprocess.run(["bash", str(script)])
     raise typer.Exit(result.returncode)
 

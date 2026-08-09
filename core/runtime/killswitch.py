@@ -76,10 +76,13 @@ def start_run(*, max_seconds: float | None = None) -> None:
     Ujemne wartości nie mają sensu i są odrzucane.
     """
     global _active_budget
-    _install_process_group()
-    _STOP_FILE.unlink(missing_ok=True)
+    # Walidacja PRZED jakimikolwiek efektami ubocznymi (grupa procesów, plik PGID) —
+    # inaczej ValueError zostawia osierocony .run/current.pgid na dysku (start_run()
+    # jest wołane poza try/finally w BaseTask.run(), więc end_run() się nie odpali).
     if max_seconds is not None and max_seconds < 0:
         raise ValueError(f"max_seconds musi być >= 0, dostano {max_seconds}.")
+    _install_process_group()
+    _STOP_FILE.unlink(missing_ok=True)
     _active_budget = RunBudget(max_seconds=max_seconds) if max_seconds is not None else None
 
 

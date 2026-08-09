@@ -1,8 +1,10 @@
 import json
+import os
 import re
 
 import pytest
 
+from core.runtime import killswitch
 from core.tasks.base import BaseTask
 
 
@@ -13,10 +15,23 @@ class _DummyTask(BaseTask):
 
 @pytest.fixture
 def dummy_task(tmp_path, monkeypatch):
-    """BaseTask z podmienionym .cache/ i data/run-history/ na tmp_path — bez śmiecenia w repo."""
+    """BaseTask z podmienionym .cache/, data/run-history/ i .run/ na tmp_path — bez śmiecenia w repo.
+
+    Izoluje też killswitch (patrz tests/core/runtime/test_killswitch.py::_isolated_run_dir) —
+    run() woła teraz start_run()/end_run() naprawdę, więc bez tego testy dotykałyby
+    prawdziwego .run/ repozytorium i odłączałyby proces pytest od sesji terminala
+    przez realny os.setsid().
+    """
     monkeypatch.setattr("core.hub.cache._CACHE_ROOT", tmp_path / ".cache")
     outputs_dir = tmp_path / "outputs"
     monkeypatch.setattr("core.tasks.base._OUTPUTS_DIR", outputs_dir)
+
+    run_dir = tmp_path / ".run"
+    monkeypatch.setattr(killswitch, "_RUN_DIR", run_dir)
+    monkeypatch.setattr(killswitch, "_PGID_FILE", run_dir / "current.pgid")
+    monkeypatch.setattr(killswitch, "_STOP_FILE", run_dir / "STOP")
+    monkeypatch.setattr(os, "setsid", lambda: None)
+    killswitch.end_run()
 
     task = _DummyTask(hub=None, llm=None)
     task._task_name = "s99e99"
@@ -86,3 +101,90 @@ class TestSaveOutput:
 
         path = _written_file(outputs_dir)
         assert json.loads(path.read_text(encoding="utf-8")) == {"result": "ok"}
+
+
+class TestKillSwitchIntegration:
+    """
+    Weryfikuje że kill switch jest faktycznie WPIĘTY w BaseTask.run(), nie tylko że
+    jego prymitywy (check_abort/start_run/end_run) działają w izolacji — to drugie
+    już pokrywa tests/core/runtime/test_killswitch.py, ale nic tam nie sprawdzało
+    punktu połączenia z run().
+    """
+
+    def test_check_abort_runs_before_fetch_data(self, dummy_task, monkeypatch):
+        """Budżet wall-clock=0 musi zablokować fetch_data() — check_abort() woła się PRZED nim, nie tylko przed submit.
+
+        Celowo używa budżetu czasu, nie .run/STOP: start_run() poprawnie czyści
+        STOP na starcie każdego przebiegu (patrz jego docstring), więc STOP
+        ustawione przed task.run() nigdy by nie przetrwało do check_abort() —
+        budżet=0 to jedyny sposób na deterministyczne wymuszenie AbortRun
+        dokładnie w tym miejscu.
+        """
+        task, _ = dummy_task
+        task._max_seconds = 0
+        fetch_data_called = False
+
+        def spy_fetch_data():
+            nonlocal fetch_data_called
+            fetch_data_called = True
+            return None
+
+        monkeypatch.setattr(task, "fetch_data", spy_fetch_data)
+
+        result = task.run()
+
+        assert result is None
+        assert not fetch_data_called, "fetch_data() nie powinno wystartować — check_abort() miał to złapać wcześniej"
+
+    def test_abort_run_from_solve_returns_none_cleanly(self, dummy_task, monkeypatch):
+        """AbortRun rzucone z solve() (np. przez check_abort() w pętli agenta) daje czyste run() -> None, nie wyjątek."""
+        task, _ = dummy_task
+
+        def aborting_solve(data):
+            raise killswitch.AbortRun("Przerwano przez .run/STOP (graceful stop).")
+
+        monkeypatch.setattr(task, "fetch_data", lambda: None)
+        monkeypatch.setattr(task, "solve", aborting_solve)
+
+        result = task.run()  # nie powinno rzucić
+
+        assert result is None
+
+    def test_start_run_and_end_run_are_called(self, dummy_task, monkeypatch):
+        """run() musi wołać start_run() na starcie i end_run() na końcu (sukces) — cykl życia .run/ zależy od obu.
+
+        Patchuje `core.tasks.base.start_run`/`end_run`, NIE `killswitch.start_run`
+        — `base.py` importuje te nazwy przez `from core.runtime import ...`, więc
+        patchowanie źródłowego modułu nie wpłynęłoby na już-zaimportowaną lokalną
+        referencję w `base.py` (klasyczna pułapka "patch where it's used").
+        """
+        task, _ = dummy_task
+        calls = []
+        monkeypatch.setattr("core.tasks.base.start_run", lambda **kw: calls.append(("start_run", kw)))
+        monkeypatch.setattr("core.tasks.base.end_run", lambda: calls.append(("end_run",)))
+        monkeypatch.setattr(task, "fetch_data", lambda: None)
+        monkeypatch.setattr(task, "solve", lambda data: {"result": "ok"})
+        monkeypatch.setattr(task, "_submit", lambda task_name, answer: None)
+
+        task.run()
+
+        names = [c[0] for c in calls]
+        assert names == ["start_run", "end_run"], f"oczekiwano start_run przed end_run, dostano: {names}"
+
+    def test_end_run_called_even_when_solve_raises(self, dummy_task, monkeypatch):
+        """end_run() (sprzątanie .run/) musi się wykonać nawet gdy solve() rzuca zwykły wyjątek, nie tylko na happy path."""
+        task, _ = dummy_task
+        end_run_called = False
+
+        def spy_end_run():
+            nonlocal end_run_called
+            end_run_called = True
+
+        monkeypatch.setattr("core.tasks.base.end_run", spy_end_run)
+        monkeypatch.setattr(task, "fetch_data", lambda: None)
+        monkeypatch.setattr(task, "solve", lambda data: (_ for _ in ()).throw(RuntimeError("boom")))
+
+        with pytest.raises(RuntimeError, match="boom"):
+            task.run()
+
+        assert end_run_called
