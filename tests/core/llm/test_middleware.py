@@ -67,3 +67,16 @@ def test_creates_and_finalizes_langfuse_generation(mock_get_client):
     assert update_kwargs["output"] == "odpowiedź"
     assert update_kwargs["usage_details"] == {"input_tokens": 10, "output_tokens": 5}
     generation.end.assert_called_once()
+
+
+def test_call_next_without_terminal_handler_raises_runtime_error():
+    """Calling call_next on a middleware without _next configured should raise RuntimeError."""
+    import pytest
+
+    class SimpleMiddleware(LLMMiddleware):
+        def handle(self, messages: list[LLMMessage], **kwargs) -> LLMResponse:
+            return self.call_next(messages, **kwargs)
+
+    mw = SimpleMiddleware()
+    with pytest.raises(RuntimeError, match="Brak terminalnego handlera w łańcuchu middleware"):
+        mw.handle([LLMMessage.user("pytanie")])
