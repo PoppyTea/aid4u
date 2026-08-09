@@ -40,4 +40,8 @@ task (matching its `tasks/` folder name, e.g. `s01e02_findhim/`).
 
 ## Child DOX Index
 
-- None yet.
+- `s02e05_drone/`: `dam_sector.json` — deterministic dam-sector detection result
+  (col/row/water_fraction/all_sector_scores), produced by `map_analysis.py`
+  during `solve()`. Ground truth for calibrating vision/prompts later, if
+  `LLMClient` ever gains image support (see `core/AGENTS.md`) — a no-LLM
+  baseline to compare against, not just a one-off answer.

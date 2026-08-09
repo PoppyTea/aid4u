@@ -6,7 +6,7 @@ s01e01, s01e02, s01e04, s01e05 zaliczone przez normalny `solve()→submit()` (fl
 `.flags.json`); s01e03 zaliczone przez żywą rozmowę (ngrok/proxy) — flaga poza
 `.flags.json`, patrz `s01e03_proxy/AGENTS.md`.
 
-**Sezon 2 w toku (od 2026-08-03)** — tematy wszystkich 5 epizodów rozpoznane przez
+**Sezon 2 zamknięty (2026-08-08)** — tematy wszystkich 5 epizodów rozpoznane przez
 NotebookLM (`LLM_aid4u_tylko_zadania`) i foldery przemianowane z sufiksem
 tematycznym: `s02e01_categorize`, `s02e02_electricity`, `s02e03_failure`,
 `s02e04_mailbox`, `s02e05_drone`. Sposób zdobycia danych wejściowych dla
@@ -26,7 +26,13 @@ automatyzujący `solve()→submit()` jeszcze nie istnieje. **s02e03 zaliczone
 przeszukująca żywe API `zmail`; `claude-haiku-4-5` zawiódł 3x pod rząd, `claude-sonnet-5`
 rozwiązał od razu — patrz `s02e04_mailbox/AGENTS.md` dla realnego protokołu `zmail` (odkrytego
 na żywo, różni się od tego co sugerowały komentarze kursu) i dla poprawki 429-resilience w
-`HubClient.post_api()`. e05 czeka.
+`HubClient.post_api()`. **s02e05 zaliczone (2026-08-08)** — flaga `{FLG:LETSFLY}` w
+`.flags.json`, za pierwszej próby wysyłki, **zero LLM** — sektor tamy wykryty deterministycznie
+z mapy (czerwone linie siatki + podbita intensywność wody), niezależnie potwierdzony przez
+społeczność kursu; kontrakt API drona statyczny i znany z góry, żadnej pętli agentowej nie
+potrzeba (patrz `s02e05_drone/AGENTS.md`). **Sezon 2 domknięty: 9/9 flag zdobytych** (5+4 razem
+z sezonem 1). Sezon 3 startuje po przeglądzie międzysezonowym — patrz
+`tasks/s03/requirements/` i `strategy/season-transition.md`.
 
 **EFFICIENCY MODE aktywny** (od 2026-07-29)
 — priorytet: szybkość i skuteczność zdobywania flag do 20/25, nie proces. Learning-mode
@@ -119,7 +125,10 @@ wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENT
   `claude-sonnet-5` wymagany — `claude-haiku-4-5` konsekwentnie kończył pętlę bez wysyłki
   odpowiedzi. Zobacz też `HubClient.post_api()` 429-retry (`core/AGENTS.md`), dodany bo zmail
   faktycznie rate-limituje mimo że treść zadania tego nie wspominała.
-- `s02e05_drone/`: static reference docs (HTML API doc + terrain map) — only S02
-  episode qualifying for a `data/input/` subfolder so far.
+- `s02e05_drone/`: **solved, zero LLM** — deterministic red-gridline + water-intensity
+  detection locates the dam sector (`map_analysis.py`, no vision support exists in
+  `LLMClient` today — see `core/AGENTS.md`); the drone API contract is static and known
+  upfront, so no agent loop either. Static reference docs (HTML API doc + terrain map) —
+  only S02 episode qualifying for a `data/input/` subfolder.
 - `s03/`: season-3 readiness report + per-episode checklists (`requirements/`) — see
   `s03/AGENTS.md`. Not a container for task implementations, see Ownership above.
