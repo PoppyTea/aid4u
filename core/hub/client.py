@@ -151,16 +151,26 @@ class HubClient:
             return self._get_data_503_tolerant(path)
         return self._get_data_plain(path)
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
+    @retry(
+        retry=retry_if_exception(_is_retryable_http_error),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(min=1, max=10),
+    )
     def _get_data_plain(self, path: str) -> bytes:
+        """GET /data/{apikey}/{path}; lekki retry, tylko na 5xx/transport errors, nie na trwałe 4xx."""
         url = f"{self._base_url}/data/{self._apikey}/{path}"
         response = self._http.get(url)
         response.raise_for_status()
         return response.content
 
     @langfuse_observe()
-    @retry(stop=stop_after_attempt(8), wait=wait_exponential(min=3, max=60))
+    @retry(
+        retry=retry_if_exception(_is_retryable_http_error),
+        stop=stop_after_attempt(8),
+        wait=wait_exponential(min=3, max=60),
+    )
     def _get_data_503_tolerant(self, path: str) -> bytes:
+        """Jak `_get_data_plain`, ale 503 jest jawnie zamieniane na wyjątek, żeby retry go złapał, a agresywniejszy backoff (8 prób) toleruje dłuższe symulowane przeciążenia."""
         url = f"{self._base_url}/data/{self._apikey}/{path}"
         response = self._http.get(url)
         if response.status_code == 503:

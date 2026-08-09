@@ -17,12 +17,15 @@ prawdą o samej treści.
 
 from __future__ import annotations
 
-_MAGIC_BYTES: dict[str, bytes] = {
-    "png": b"\x89PNG\r\n\x1a\n",
-    "zip": b"PK\x03\x04",
-    "gif": b"GIF8",
-    "jpeg": b"\xff\xd8\xff",
-    "pdf": b"%PDF-",
+_MAGIC_BYTES: dict[str, tuple[bytes, ...]] = {
+    "png": (b"\x89PNG\r\n\x1a\n",),
+    # PK\x03\x04 = normalny lokalny nagłówek pliku; PK\x05\x06 = "end of central
+    # directory" — sygnatura PUSTEGO archiwum ZIP (0 plików w środku). Bez drugiej
+    # sygnatury `expect_binary(..., "zip")` odrzucałby prawidłowy, tylko pusty ZIP.
+    "zip": (b"PK\x03\x04", b"PK\x05\x06"),
+    "gif": (b"GIF8",),
+    "jpeg": (b"\xff\xd8\xff",),
+    "pdf": (b"%PDF-",),
 }
 
 _HTML_MARKERS = (b"<!doctype html", b"<html")
@@ -43,11 +46,11 @@ def expect_binary(content: bytes, kind: str, *, source: str = "") -> bytes:
     Zwraca `content` niezmienione przy sukcesie — wygodne do łańcuchowania:
     `path.write_bytes(expect_binary(hub.get_public(...), "png"))`.
     """
-    magic = _MAGIC_BYTES.get(kind)
-    if magic is None:
+    signatures = _MAGIC_BYTES.get(kind)
+    if signatures is None:
         raise ValueError(f"Nieznany format '{kind}' — dodaj magic bytes do _MAGIC_BYTES.")
 
-    if not content.startswith(magic):
+    if not any(content.startswith(sig) for sig in signatures):
         looks_like_html = content.lstrip()[:15].lower().startswith(_HTML_MARKERS)
         hint = " (treść wygląda na stronę HTML — prawdopodobnie soft-404)" if looks_like_html else ""
         where = f" z {source}" if source else ""
