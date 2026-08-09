@@ -68,21 +68,34 @@ class TestDetectGrid:
     def test_ignores_small_non_gridline_red_blobs(self):
         """Mały czerwony kwadrat (np. etykieta) nie liczy się jako linia siatki — tylko pełno-wymiarowe pasma."""
         # Czerwony "szum" (np. etykieta) w rogu — pokrywa tylko fragment wymiaru,
-        # nie powinien zostać uznany za linię siatki.
+        # nie powinien zostać uznany za linię siatki. Prawdziwa linia pozioma jest też
+        # obecna (arr[95:105, :]), żeby ten test sprawdzał WYŁĄCZNIE filtrowanie szumu,
+        # nie zachowanie przy braku linii w jednym wymiarze (patrz osobny test niżej).
         arr = np.full((200, 300, 3), _BG, dtype=np.uint8)
         arr[90:110, 90:110] = _RED  # mały czerwony kwadrat, nie linia
-        arr[:, 148:152] = _RED  # prawdziwa linia siatki (pełna wysokość)
+        arr[:, 148:152] = _RED  # prawdziwa linia siatki pionowa (pełna wysokość)
+        arr[95:105, :] = _RED  # prawdziwa linia siatki pozioma (pełna szerokość)
         buf = BytesIO()
         Image.fromarray(arr, mode="RGB").save(buf, format="PNG")
 
         grid = detect_grid(Image.open(buf))
 
-        assert grid.n_cols == 2  # tylko jedna prawdziwa linia = 2 kolumny
-        assert grid.n_rows == 1  # brak poziomych linii = 1 wiersz
+        assert grid.n_cols == 2  # tylko jedna prawdziwa linia pionowa = 2 kolumny
+        assert grid.n_rows == 2  # jedna prawdziwa linia pozioma = 2 wiersze
 
     def test_raises_when_no_gridlines_found(self):
         """Obraz bez żadnej czerwonej linii w żadnym wymiarze zgłasza błąd zamiast zgadywać siatkę 1x1."""
         arr = np.full((200, 300, 3), _BG, dtype=np.uint8)
+        buf = BytesIO()
+        Image.fromarray(arr, mode="RGB").save(buf, format="PNG")
+
+        with pytest.raises(ValueError, match="Nie wykryto żadnych czerwonych linii"):
+            detect_grid(Image.open(buf))
+
+    def test_raises_when_one_dimension_has_no_gridlines(self):
+        """Linie tylko w JEDNYM wymiarze (np. same pionowe) też zgłaszają błąd — nie zgaduje '1 wiersz'."""
+        arr = np.full((200, 300, 3), _BG, dtype=np.uint8)
+        arr[:, 148:152] = _RED  # tylko linia pionowa, zero poziomych
         buf = BytesIO()
         Image.fromarray(arr, mode="RGB").save(buf, format="PNG")
 

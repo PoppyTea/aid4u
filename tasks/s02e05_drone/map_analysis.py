@@ -127,9 +127,11 @@ def detect_grid(image: Image.Image) -> GridBoundaries:
     Wykrywa granice siatki po pełnej-wysokości/pełnej-szerokości czerwonych liniach,
     plus domyślnie krawędzie obrazu (patrz `_with_implicit_edges`) — działa zarówno gdy
     mapa ma rysowaną ramkę (jak referencyjna mapa s02e05), jak i gdy ma tylko wewnętrzne
-    linie podziału. Rzuca ValueError, jeśli mimo to znaleziono mniej niż 2 granice w
-    którymkolwiek wymiarze (siatka wymaga co najmniej jednej komórki) — sygnał że próg
-    detekcji trzeba dostroić do konkretnego obrazu, nie że coś innego jest nie tak.
+    linie podziału. Rzuca ValueError, jeśli w KTÓRYMKOLWIEK wymiarze nie wykryto ani
+    jednej czerwonej linii (nie tylko gdy oba wymiary są puste) — sygnał że próg detekcji
+    trzeba dostroić do konkretnego obrazu, nie że coś innego jest nie tak. Nie zgaduje
+    "1 wiersz/kolumna" po cichu w takim przypadku, bo to narzędzie ma być narzędziem
+    zerowej niepewności (patrz nagłówek modułu).
     """
     arr = np.asarray(image.convert("RGB")).astype(int)
     h, w, _ = arr.shape
@@ -143,13 +145,18 @@ def detect_grid(image: Image.Image) -> GridBoundaries:
     raw_row_boundaries = _band_midpoints(row_coverage, _GRIDLINE_COVERAGE)
     raw_col_boundaries = _band_midpoints(col_coverage, _GRIDLINE_COVERAGE)
 
-    if not raw_row_boundaries and not raw_col_boundaries:
-        # Zero czerwonych linii w OBU wymiarach — nie zgaduj "1x1 siatka", to prawie na
-        # pewno źle dobrany próg albo obraz bez siatki w ogóle.
+    if not raw_row_boundaries or not raw_col_boundaries:
+        # Zero czerwonych linii w KTÓRYMKOLWIEK wymiarze — nie zgaduj "1 wiersz"/"1 kolumna",
+        # to prawie na pewno źle dobrany próg albo obraz bez siatki w tym wymiarze.
+        missing = " i ".join(
+            label
+            for empty, label in ((not raw_row_boundaries, "poziomych"), (not raw_col_boundaries, "pionowych"))
+            if empty
+        )
         raise ValueError(
-            "Nie wykryto żadnych czerwonych linii siatki (ani poziomych, ani pionowych) — "
-            "dostrój _RED_THRESHOLD/_GRIDLINE_COVERAGE do tego konkretnego obrazu, albo "
-            "obraz faktycznie nie ma siatki."
+            f"Nie wykryto żadnych czerwonych linii siatki ({missing}) — dostrój "
+            "_RED_THRESHOLD/_GRIDLINE_COVERAGE do tego konkretnego obrazu, albo obraz "
+            "faktycznie nie ma siatki w tym wymiarze."
         )
 
     row_boundaries = _with_implicit_edges(raw_row_boundaries, h - 1)

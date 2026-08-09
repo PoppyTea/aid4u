@@ -142,14 +142,26 @@ class TestSolve:
 
     def test_dry_run_never_calls_hub_submit(self, tmp_path, monkeypatch):
         """dry_run=True buduje i zwraca sekwencję bez ani jednego POST /verify."""
+        artifact_path = tmp_path / "dam_sector.json"
         hub = _FakeHub()
-        task = _make_task(hub, dry_run=True, tmp_artifact_path=tmp_path / "dam_sector.json", monkeypatch=monkeypatch)
+        task = _make_task(hub, dry_run=True, tmp_artifact_path=artifact_path, monkeypatch=monkeypatch)
 
         answer = task.solve(DAM_PNG)
 
         assert hub.submit_calls == []
         assert answer == {"instructions": solution._build_instructions(col=2, row=4)}
         assert task._captured_flag is None
+
+    def test_dry_run_does_not_overwrite_dam_sector_artifact(self, tmp_path, monkeypatch):
+        """dry_run=True nie nadpisuje commitowanego artefaktu — próbny przebieg nie ma zapisywać wyniku."""
+        artifact_path = tmp_path / "dam_sector.json"
+        artifact_path.write_text('{"sentinel": "not-overwritten"}', encoding="utf-8")
+        hub = _FakeHub()
+        task = _make_task(hub, dry_run=True, tmp_artifact_path=artifact_path, monkeypatch=monkeypatch)
+
+        task.solve(DAM_PNG)
+
+        assert artifact_path.read_text(encoding="utf-8") == '{"sentinel": "not-overwritten"}'
 
     def test_writes_dam_sector_artifact(self, tmp_path, monkeypatch):
         """solve() zapisuje wynik detekcji jako JSON — ground truth do przyszłej kalibracji vision."""

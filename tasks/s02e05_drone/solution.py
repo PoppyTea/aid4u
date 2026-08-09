@@ -23,6 +23,7 @@ from typing import Any
 import logfire
 
 from core.net import expect_binary
+from core.runtime import check_abort
 from core.tasks import BaseTask, task
 from tasks.s02e05_drone.map_analysis import DamSectorResult, detect_dam_sector
 
@@ -82,7 +83,6 @@ class DroneTask(BaseTask):
         """
         expect_binary(data, "png", source="drone.png")
         dam = detect_dam_sector(data)
-        self._save_dam_sector_artifact(dam)
         answer = {"instructions": _build_instructions(col=dam.col, row=dam.row)}
 
         if self.dry_run:
@@ -91,12 +91,17 @@ class DroneTask(BaseTask):
             # --dry-run pokazuje więc TYLKO zbudowaną sekwencję, bez żadnego /verify,
             # zgodnie z kontraktem self.dry_run z innych zadań wieloetapowych
             # (s01e05_railway, s02e04_mailbox) — tu, w odróżnieniu od nich, nie ma co
-            # iterować bez sieci, bo cała pętla polega na feedbacku z huba.
+            # iterować bez sieci, bo cała pętla polega na feedbacku z huba. Artefakt
+            # detekcji NIE jest zapisywany tutaj — --dry-run nie powinien nadpisywać
+            # commitowanego ground-truth pliku wynikiem z próbnego przebiegu.
             logfire.info("DRY RUN — solve() nie wysyła do huba", sector=(dam.col, dam.row))
             return answer
 
+        self._save_dam_sector_artifact(dam)
+
         last_response: dict | None = None
         for attempt in range(1, _MAX_ATTEMPTS + 1):
+            check_abort()
             response = self.hub.submit(HUB_TASK_NAME, answer)
             last_response = response
 
@@ -118,6 +123,7 @@ class DroneTask(BaseTask):
 
     def _submit(self, task_name: str, answer: Any) -> str | None:
         """Pomija redundantny finalny POST /verify, jeśli solve() już złapało flagę."""
+        check_abort()
         if self._captured_flag:
             return self._captured_flag
         return super()._submit(task_name, answer)
