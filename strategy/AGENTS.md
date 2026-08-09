@@ -34,3 +34,5 @@ Repozytorium dokumentacji strategicznej, protokołów uczenia się, standardów 
 - `./learning-protocol.md` - Protokół nauki.
 - `./naming-conventions.md` - Standardy nazewnictwa.
 - `./secrets-management.md` - Strategia bezpieczeństwa i sekretów.
+- `./season-transition.md` - Procedura przejścia między sezonami kursu (sezonoagnostyczna;
+  konkretne instancje per-sezon w `tasks/sXX/requirements/`).

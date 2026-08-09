@@ -25,6 +25,10 @@ agents/
 # Cache danych z hubu (nie commituj — każdy ma swój apikey)
 .cache/
 
+# Kill switch — PGID i wartownik STOP bieżącego przebiegu (efemeryczne, per-maszyna).
+# Patrz core/runtime/killswitch.py + core/AGENTS.md.
+.run/
+
 # Historia odpowiedzi agenta per-run (nie commituj — lokalny audit trail).
 # Nie mylić z data/output/ (bez "s") — tam trafiają dane faktycznie przydatne
 # w kolejnych zadaniach, commitowane. Patrz data/AGENTS.md.

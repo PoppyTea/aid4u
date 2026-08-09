@@ -25,8 +25,9 @@ Four subtrees, four lifecycles:
 **Rule of thumb:** if the answer to "would a later episode want this?" is
 yes, it's `input/` or `output/`, gets a human-readable name, and is committed.
 If it's "just so I can see what happened on this run," it's `run-history/`
-(automatic) or `.cache/` (see `../core/hub/cache.py` — pure dev-speed cache,
-hash-named, safe to `rm -rf` any time, never holds anything not re-fetchable
+(automatic) or `.cache/` (lives at the **repo root**, not under `core/` — implemented
+by `../core/hub/cache.py` — pure dev-speed cache, hash-named, safe to `rm -rf` any
+time, never holds anything not re-fetchable
 from the hub).
 
 ## Ownership
