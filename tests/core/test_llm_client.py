@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from core.llm.client import LLMClient
 from core.llm.types import LLMMessage, LLMResponse, Tool, ToolCall
+from core.runtime import AbortRun
 
 
 def make_response(content: str, tool_calls=None) -> LLMResponse:
@@ -131,3 +132,23 @@ class TestAgentLoop:
         history = mock_provider.complete_with_tools.call_args[0][0]
         for msg in history:
             assert "Narzędzie się posypało" not in msg.content
+
+    def test_abort_run_from_tool_executor_propagates_not_swallowed(self, llm, mock_provider):
+        """Kontrakt z core/AGENTS.md: AbortRun to sygnał kill switcha, nie awaria narzędzia —
+        MUSI przelecieć przez run_agent_loop(), nie zostać połknięte jak generyczny wyjątek
+        (patrz test_tool_executor_error_doesnt_crash_loop powyżej — to jest jego przeciwieństwo).
+        Bez tego testu ktoś mógłby przypadkiem zamienić kolejność `except AbortRun: raise` /
+        `except Exception:` podczas refaktoru i kill switch przestałby działać w pętli agenta —
+        cicho, bez czerwonego testu."""
+        tool_call = ToolCall(id="c1", name="aborting", arguments={})
+        mock_provider.complete_with_tools.return_value = make_response("", tool_calls=[tool_call])
+
+        def aborting_executor(name, args):
+            raise AbortRun("Przerwano przez .run/STOP (graceful stop).")
+
+        with pytest.raises(AbortRun):
+            llm.run_agent_loop(
+                [LLMMessage.user("test")],
+                tools=[Tool("aborting", "Narzędzie zgłaszające kill switch", {})],
+                tool_executor=aborting_executor,
+            )

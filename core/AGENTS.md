@@ -8,6 +8,7 @@ Contains the architectural heart of the system: LLM clients, task management bas
 - `core/hub/`: Data acquisition and caching.
 - `core/tasks/`: Base classes for task registration.
 - `core/observability/`: Instrumentation and tracing decorators.
+- `core/runtime/`: Kill switch (process-group panic, graceful stop, run budgets).
 
 ## Local Contracts
 - All external API interactions MUST go through `core/llm/client.py`.
@@ -36,6 +37,31 @@ Contains the architectural heart of the system: LLM clients, task management bas
   a `retry_after` field, so the backoff here is blind/exponential, not server-directed.
   Other 4xx (e.g. an unknown action name) still propagate immediately — only 429 is treated
   as transient.
+- **Kill switch (`core/runtime/killswitch.py`) — three layers, none may depend on the
+  agent's cooperation to work:**
+  - **Layer 0 (OS-level, guaranteed):** `BaseTask.run()` calls `start_run()`, which puts
+    the process in its own process group (`os.setsid()`) and writes the PGID to
+    `.run/current.pgid`. `scripts/panic.sh` (pure bash, zero Python/venv dependency —
+    must work even when the environment is broken) sends SIGTERM then SIGKILL to
+    `-PGID` (the leading `-` kills the whole group, not just the leader, so child
+    processes — e.g. a shell command spawned by a s03e02-style tool — die too).
+    Verified with a real subprocess-group test, not just a mock:
+    `tests/core/runtime/test_killswitch.py::TestPanicScriptKillsEntireProcessGroup`.
+  - **Layer 1 (cooperative, graceful):** `.run/STOP` sentinel file. `check_abort()`
+    raises `AbortRun` when it exists — call it at safe checkpoints (agent-loop
+    iteration start, before each tool call, before `hub.submit()`). `BaseTask.run()`
+    catches `AbortRun` and returns cleanly (flushes Langfuse, no traceback spam).
+    `run.py panic --graceful` writes the sentinel.
+  - **Layer 2 (budgets, self-triggering):** per-run wall-clock (`start_run(max_seconds=...)`,
+    exposed as `solve --max-seconds`, checked automatically inside `check_abort()`) and
+    per-call tool-result size (`truncate_tool_result()`, applied in
+    `LLMClient.run_agent_loop()` — corrects a single call, does NOT abort the run).
+    Cost/token budget is NOT implemented yet (would need `CostTrackMiddleware` to expose
+    a running total mid-run, not just at the end) — noted as a gap in `killswitch.py`'s
+    module docstring, not silently absent.
+  - Any caller that wraps a tool executor's exceptions (as `run_agent_loop` does) MUST
+    re-raise `AbortRun` specifically, not swallow it into a generic error string — it's
+    a kill signal, not a tool failure.
 - Both `Config._from_keyring()` and `SecretsManager.get()`/`list()` MUST read the
   system keyring only through `core.secrets._keyring_get_with_timeout()`, never
   `keyring.get_password()` directly. Headless/VPS environments without a D-Bus
