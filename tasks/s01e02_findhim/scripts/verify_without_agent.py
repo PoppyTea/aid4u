@@ -19,6 +19,7 @@ from core.observability.setup import setup_observability
 
 setup_observability()
 
+import concurrent.futures  # noqa: E402
 import json  # noqa: E402
 import sys  # noqa: E402
 from pathlib import Path  # noqa: E402
@@ -53,7 +54,6 @@ def main(*, submit: bool) -> None:
     suspects = load_suspects()
 
     print("=== Dystanse per podejrzany (wszystkie elektrownie brane pod uwagę) ===")
-    import concurrent.futures
 
     def fetch_result(s: dict) -> dict:
         result = search_suspect_history_for_nearest_power_plant(
@@ -61,11 +61,17 @@ def main(*, submit: bool) -> None:
         )
         return {**s, **result}
 
+    # as_completed() zamiast executor.map(): drukuje każdy wynik OD RAZU po ukończeniu,
+    # nie dopiero po skompletowaniu wszystkich 5 — inaczej wyjątek na jednym podejrzanym
+    # chowałby cały dotychczasowy postęp (a to skrypt DIAGNOSTYCZNY, więc widoczność
+    # tego, co się już udało przed awarią, jest tu celem, nie skutkiem ubocznym).
+    results: list[dict] = []
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        results = list(executor.map(fetch_result, suspects))
-
-    for r in results:
-        print(f"  {r['name']:<10} {r['surname']:<12} -> {r['plant_code']}  ({r['distance_km']} km)")
+        futures = {executor.submit(fetch_result, s): s for s in suspects}
+        for future in concurrent.futures.as_completed(futures):
+            r = future.result()
+            results.append(r)
+            print(f"  {r['name']:<10} {r['surname']:<12} -> {r['plant_code']}  ({r['distance_km']} km)")
 
     winner = min(results, key=lambda r: r["distance_km"])
     print(
