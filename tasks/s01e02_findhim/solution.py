@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import time
-from _collections_abc import Iterator
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -11,7 +12,7 @@ import httpx
 from pydantic import BaseModel, Field, computed_field, field_validator
 
 from core.hub import HubClient
-from core.llm import LLMClient, LLMMessage
+from core.llm import LLMMessage
 from core.llm.types import Tool
 from core.tasks import BaseTask, task
 from tasks.common.const import REFERENCE_YEAR
@@ -33,7 +34,7 @@ class GeoPoint(BaseModel):
     def __add__(self: GeoPoint, other: GeoPoint) -> GeoConnection:
         return GeoConnection(alpha_point=self, beta_point=other)
 
-    def distance_to(self, target:GeoPoint):
+    def distance_to(self, target:GeoPoint) -> float:
         if self == target:
             distance:float = 0.0
         elif self.latitude and self.longitude and target.latitude and target.longitude is not None:
@@ -316,11 +317,23 @@ class Suspect(BaseModel):
     def parse_location_history(cls, v) -> list[GeoPoint]:
         if isinstance(v, Path):
             path = Path(v)
+            # Pusty plik traktujemy jako brak historii
+            if os.path.getsize(path) == 0:
+                raise ValueError("Plik wskazany jako historia lokacji nie istnieje lub jest pusty.")
             with open(path, mode="r", encoding="utf-8") as f:
                 raw_json = json.load(f)
                 return [GeoPoint(**data_point) for data_point in raw_json]
-        return v if isinstance(v, list) else []
-
+        if isinstance(v, list):
+            bad_data_type_elements: list[Unknown] = []
+            for element in v:
+                if isinstance(element, GeoPoint):
+                    continue
+                else:
+                    bad_data_type_elements.append(element)
+            if len(bad_data_type_elements) == 0:
+                return v
+            raise ValueError(f"Lista wewnątrz pliku wskazanego jako historia lokacji zawiera błędne typy danych.\nIlość błędów: {len(bad_data_type_elements)},\nBłędne wartości: {bad_data_type_elements}\noczekiwany typ danych wewnątrz listy: GeoPoint")
+        raise ValueError(f"Pojęcia nie mam co Ty tu rzuciłeś jako listę historii lokacji.\n Sam zobacz:\n{v.__repr__()} ")
 
 # ─── Agent + Function Calling — narzędzia dla LLMClient.run_agent_loop ───────
 
