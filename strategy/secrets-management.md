@@ -1,8 +1,8 @@
 # Strategia Zarządzania Sekretami — aid4u
 
-> **Status:** Living Document | v1.0.0
+> **Status:** Living Document | v1.1.0
 > **Ścieżka docelowa w repo:** `aid4u/strategy/secrets-management.md`
-> **Ostatnia aktualizacja:** 2026-07-02
+> **Ostatnia aktualizacja:** 2026-08-16
 
 ---
 
@@ -80,3 +80,20 @@ Gdy brakuje klucza:
 2. Agent **instruuje** użytkownika, jak ustawić klucz przez keyring:
    `uv run python -m keyring set aid4u <KEY_NAME>`
 3. Jeśli użytkownik dostarczy klucze w sekcji `.env`, Agent powinien zaproponować uruchomienie `uv run scripts/import_keyring.py` i natychmiastowe usunięcie ich z pliku tekstowego.
+
+---
+
+## 🔧 `km` — wrapper wieloprojektowy (2026-08-16)
+
+`scripts/import_keyring.py` ma teraz odpowiednik w drugą stronę: `km`
+(`~/scripts/python/keyring-manager`, poza tym repo, osobny uv workspace). Projekt jest w nim
+zarejestrowany jako `aid4u`; indeks kluczy trzyma w `keyring-index.md` w tym katalogu
+(gitignored, zero wartości sekretów).
+
+- `km --project aid4u list` / `get KLUCZ` / `check` — bezpieczne dla Agenta: same nazwy i
+  maski (`len=.. fp=..`), zero wartości. Nie łamią zakazu z sekcji "Reżim dostępu".
+- `km --project aid4u export-env` zapisuje realne wartości do `.env` — po użyciu Agent i tak
+  **nie czyta** pliku wynikowego, zakaz obowiązuje bez wyjątków.
+- Wymaga `uv sync --all-packages` w `~/scripts/python` (samo `uv sync` zawęża się do jednego
+  członka workspace'u i potrafi odinstalować pakiety innych skryptów).
+- Pełna lista komend i model bezpieczeństwa: `km --help` / `~/scripts/python/keyring-manager/README.md`.

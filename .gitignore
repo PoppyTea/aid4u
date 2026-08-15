@@ -71,3 +71,4 @@ tasks/s01e02_findhim/tmp-quick-scripting-tests.py
 # all untracked despite tasks/AGENTS.md documenting doc/ as part of the
 # intended per-episode structure).
 /doc/
+keyring-index.md

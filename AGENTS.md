@@ -44,6 +44,7 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 | **Modele LLM (referencja/ściągawka)** | `strategy/llm-models.md` |
 | **Protokół nauki (zarchiwizowany, efficiency mode)** | `strategy/learning-protocol.md` |
 | **Konwencje nazewnictwa plików** | `strategy/naming-conventions.md` |
+| **Sekrety / keyring** | `strategy/secrets-management.md` |
 | **Struktura infrastruktury** | `README.md` |
 | **MCP serwery** | `.claude/settings.json` |
 
