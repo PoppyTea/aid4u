@@ -12,6 +12,10 @@ trzyma konkretne fakty i decyzje dla S03.
 
 ## Ownership
 - `season.md`: wymagania/dług przed startem CAŁEGO sezonu.
+- `core-stack-decision.md`: rozstrzygnięcie „własny `core/llm/` vs `pydantic-ai`" (sesja
+  `pre-s03`, 2026-08-15). Rekomendacja: **Ścieżka A** (zostajemy przy własnym core). Czyta się
+  RAZ na starcie sezonu, razem z `season.md`; jego „Krok 0" doprecyzowuje, które poprawki z
+  `source/`-owego triage'u Qodo wchodzą przed którym zadaniem.
 - `s03e01.md` … `s03e05.md`: checklisty przed KONKRETNYM zadaniem.
 - `source/`: materiał źródłowy — pełny raport narzędzi (kategorie: konieczne / nice
   to have / fun and educational / wymagające upgradu) i destylat ~5000 linii

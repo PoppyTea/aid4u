@@ -193,4 +193,5 @@ When the user requests a durable behavior change, record it here or in the relev
 - `tests/`: Project test suite and verification logic.
 - `data/`: Task datasets — static inputs, fetched doc trees (`data/input/`), run outputs.
 - `deploy/`: VPS deployment, systemd units, tunnel scripts.
+- `.issues/`: Triage długu technicznego z dyskusji na PR-ach, podsumowania dla człowieka.
 - `../misje-poboczne/`: Side missions and specific project artifacts.

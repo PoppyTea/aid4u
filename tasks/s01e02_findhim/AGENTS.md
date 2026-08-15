@@ -41,6 +41,36 @@ flag `{FLG:BUSTED}` in `.flags.json`.
   coordinates without re-running live geocoding, snapshot a *fresh, correct*
   copy into `data/output/s01e02_findhim/` — don't resurrect the removed files.
 
+- **Znane defekty w `solution.py` — świadomie NIENAPRAWIONE, zarezerwowane na learning mode.**
+  Przegląd nierozwiązanych uwag Qodo z zamkniętych PR-ów (2026-08-15, pełny zapis w
+  `.issues/summaries-4-human/closed-prs-qodo-triage.md`, sekcja B) potwierdził dwa defekty,
+  które nadal żyją w kodzie. **Nie naprawiać ich mimochodem** — powód niżej.
+
+  | Miejsce | Defekt | Osiągalny dla danych zadania? |
+  |---|---|---|
+  | `solution.py:39` (`GeoPoint.distance_to`) | Warunek `self.latitude and self.longitude and target.latitude and target.longitude is not None` miesza truthiness z `is None`. `is not` wiąże mocniej niż `and`, więc sprawdzenie na `None` dotyczy wyłącznie `target.longitude`; pozostałe trzy współrzędne odrzucają poprawne `0.0` (równik / południk zerowy) fałszywym `ValueError`. | **Nie** — Polska to szer. ~49–55°, dł. ~14–24°; `0.0` nie występuje. |
+  | `solution.py:74-79` (`GeoPoint.is_nearest_to`) | Kandydaci kubełkowani po dokładnej wartości `float` jako kluczu `dict` (porównanie bit w bit). Docstring obiecuje „wszystkie najbliższe"; remis policzony dwiema różnymi ścieżkami arytmetycznymi mógłby rozpaść się na dwa kubełki. | **Praktycznie nie** — przy 6 miejscach po przecinku (~11 cm) dwa różne punkty albo są symetryczne względem punktu odniesienia i wychodzą bit-identycznie (`sin(dlon/2)**2` zjada znak — tak działa `point_x` w `test_is_nearest_to__parametrize`), albo różnią się o znacznie więcej niż jeden ULP. |
+
+  Zostają nienaprawione, bo:
+  1. **Zadanie jest zaliczone** — flaga `{FLG:BUSTED}`, żaden z defektów nie był na ścieżce do niej.
+  2. **Nie dotykają niczego poza tym zadaniem.** `GeoPoint` nie jest importowany nigdzie poza
+     `s01e02` (jedyny import spoza `solution.py` to własne `test_data.py`), nie ma go w
+     `tasks/common/` i nie spełnia jego kryterium wejścia („używane w więcej niż jednym zadaniu").
+     `tasks/s03/requirements/` nie zawiera geodezji — „mapa" w `s03e04`/`s03e05` to siatka 10×10,
+     nie współrzędne geograficzne.
+  3. **Powstały w learning mode, ręcznie.** To ostatnie zadanie napisane w przytłaczającej
+     większości ręcznie, przed przejściem na efficiency mode. Ich samodzielna naprawa jest
+     materiałem do nauki, a nie długiem do spłacenia przez agenta. **Termin: po powrocie do
+     learning mode, czyli po zdobyciu 20 flag** — nie wcześniej, nie „przy okazji".
+
+  Naprawione już przez autora (2026-08-15, nie wymagają dalszej pracy): `parse_location_history()`
+  rzuca `ValueError` zamiast cicho zwracać `[]` dla błędnego typu; `Iterator` importowany
+  z `collections.abc` zamiast prywatnego `_collections_abc`.
+
+  Dwie martwe asercje w `test_solution.py::test_is_nearest_to__parametrize` (licznik
+  `same_name_count` zerowany wewnątrz pętli po `j`, więc `<= 1` zawsze prawdziwe;
+  `check_count` trywialnie spełnione) — ten sam reżim: do poprawy w learning mode.
+
 ## Work Guidance
 - (none beyond the above — task is solved)
 
