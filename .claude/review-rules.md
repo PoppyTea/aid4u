@@ -4,6 +4,12 @@
 > Odtworzone z reguł widocznych w archiwalnych recenzjach Qodo (ID w nawiasach = oryginalny numer na platformie Qodo, zostawiony dla śladu).
 > Reguły task-specific (format `SEC-`, jedna linia na zdarzenie) celowo pominięte — powstawały per zadanie; patrz uwaga na końcu.
 
+> ⚠️ **Zanim zgłosisz cokolwiek jako nowe znalezisko: sprawdź `.issues/todo-4-agent/`** (łącznie
+> z `.issues/todo-4-agent/archive/`) — jeśli pozycja już tam jest (aktywna albo przekreślona jako
+> naprawiona), zacytuj ją zamiast pisać drugi raz. Pełna konwencja (przekreślanie zamiast
+> usuwania, archiwizacja w pełni domkniętych plików): `.issues/AGENTS.md`. To dotyczy Ciebie jako
+> recenzenta w tym repo — CodeRabbit nie ma dostępu do tej konwencji i jej nie zastosuje.
+
 ## Severity i mapowanie
 
 Trzy poziomy, zgodne z kontraktem wyjściowym skilla `qodo-get-rules` (nagłówek `📋 Qodo Rules Loaded`), żeby lokalny zamiennik czytający ten plik zachował semantykę egzekwowania:
