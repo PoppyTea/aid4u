@@ -61,7 +61,19 @@ class OpenAIAdapter(LLMProvider):
         schema_str = json.dumps(schema.model_json_schema(), ensure_ascii=False)
         system_prompt = (system or "") + f"\nRespond ONLY with JSON: {schema_str}"
         response = self.complete(messages, system=system_prompt, max_tokens=4096)
-        content = response.content.strip().lstrip("```json").rstrip("```").strip()
+
+        # Usuwa fence markdown jako DELIMITER, nie jako zbiór znaków do strip() —
+        # `.lstrip("```json")` (poprzednia wersja) strippuje dowolny znak z ` ```json `,
+        # więc dla fence'a `` ```JSON `` (wielkie litery) zostawia literalne "JSON\n"
+        # przed danymi i psuje model_validate_json(). Split na "```" + case-insensitive
+        # sprawdzenie prefiksu językowego naprawia oba przypadki.
+        content = response.content.strip()
+        if content.startswith("```"):
+            content = content.split("```")[1]
+            if content[:4].lower() == "json":
+                content = content[4:]
+            content = content.strip()
+
         parsed = schema.model_validate_json(content)
         return replace(response, parsed=parsed)
 

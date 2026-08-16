@@ -40,11 +40,11 @@ def test_gemini_complete_structured():
     adapter = GeminiAdapter(api_key=api_key)
     messages = [LLMMessage.user("Name: John, Age: 30")]
 
-    result = adapter.complete_structured(messages, UserSchema)
+    response = adapter.complete_structured(messages, UserSchema)
 
-    assert isinstance(result, UserSchema)
-    assert result.name == "John"
-    assert result.age == 30
+    assert isinstance(response.parsed, UserSchema)
+    assert response.parsed.name == "John"
+    assert response.parsed.age == 30
 
 
 @pytest.mark.integration

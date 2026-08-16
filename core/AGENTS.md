@@ -14,7 +14,18 @@ Contains the architectural heart of the system: LLM clients, task management bas
   (soft-404 detection) — independent of `HubClient`, not hub-specific.
 
 ## Local Contracts
-- All external API interactions MUST go through `core/llm/client.py`.
+- All external **LLM provider** API interactions MUST go through `core/llm/client.py`
+  (Anthropic/Gemini/OpenAI/OpenRouter — the providers `core/llm/adapters/` abstracts
+  over). This does NOT cover observability/telemetry calls (Langfuse, Logfire) —
+  those are a different concern with a different existing home: `core/hub/client.py`
+  (`@langfuse_observe()`), `core/llm/middleware.py` (`CostTrackMiddleware` calls
+  `langfuse.get_client()` directly), and `core/observability/` (`prompts.py`,
+  `decorators.py`) all call the Langfuse SDK directly by design — `LLMClient` is a
+  provider abstraction, not a generic external-API gateway, so routing telemetry
+  through it would be the wrong direction, not a missing boundary. Flagged and
+  clarified 2026-08-16 after CodeRabbit read the contract literally as "every"
+  external API — the pre-existing `middleware.py` pattern already contradicted that
+  reading before this note existed.
   - **Exception:** `core/llm/native_tool_*.py` (Anthropic native tools — web_search,
     code_execution, bash, text_editor) call `anthropic.Anthropic` directly instead of
     going through `LLMClient`. These aren't portable across providers, so they're a

@@ -61,6 +61,25 @@ def test_complete_structured_markdown_json(adapter):
         assert result.parsed.age == 25
 
 
+def test_complete_structured_markdown_uppercase_json_language_tag(adapter):
+    """Regresja: `.lstrip("```json")` (usunięte) stripował po zbiorze znaków, nie substringu
+    — dla `` ```JSON `` zostawiał literalne "JSON\\n" przed danymi. Case-insensitive check naprawia to."""
+    expected_json = '```JSON\n{"name": "Zoe", "age": 22}\n```'
+
+    with patch.object(adapter, "complete") as mock_complete:
+        mock_complete.return_value = LLMResponse(
+            content=expected_json, model="claude-test", input_tokens=10, output_tokens=10
+        )
+
+        result = adapter.complete_structured(
+            messages=[LLMMessage.user("Hello")], schema=DummySchema
+        )
+
+        assert isinstance(result.parsed, DummySchema)
+        assert result.parsed.name == "Zoe"
+        assert result.parsed.age == 22
+
+
 def test_complete_structured_markdown_no_lang(adapter):
     expected_json = '```\n{"name": "Charlie", "age": 40}\n```'
 

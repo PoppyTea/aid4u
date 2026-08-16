@@ -78,9 +78,9 @@ class CostTrackMiddleware(LLMMiddleware):
     wywołanie Gemini nigdy nie trafiało do żadnego systemu obserwability.
 
     Błędy telemetrii (koszt, Langfuse) są nieblokujące — nigdy nie przerywają
-    właściwego wywołania LLM. Znane ograniczenie: jeśli call_next() rzuci
-    wyjątkiem, generation w Langfuse zostaje niezamknięta (brak .end()) —
-    akceptowalne dla pierwszej wersji, do poprawy gdyby okazało się problemem.
+    właściwego wywołania LLM. Jeśli `call_next()` sam rzuci (np. provider padnie
+    po wyczerpaniu retry w `RateLimitMiddleware`), generacja zostaje zamknięta
+    ze statusem błędu zamiast zostać otwarta na zawsze — patrz `except` niżej.
     """
 
     def handle(self, messages: list[LLMMessage], **kwargs) -> LLMResponse:
@@ -97,7 +97,16 @@ class CostTrackMiddleware(LLMMiddleware):
         start = time.perf_counter()
         generation = self._start_langfuse_generation(messages, prompt_name=prompt_name)
 
-        response = self.call_next(messages, **kwargs)
+        try:
+            response = self.call_next(messages, **kwargs)
+        except Exception as exc:
+            # Bez tego generacja zostawałaby otwarta w Langfuse na zawsze przy
+            # każdej awarii providera — nie tylko brzydko w panelu, ale też
+            # myląco: wygląda jak zawieszone wywołanie, nie jak błąd. Zamykamy
+            # ją ze statusem błędu i propagujemy WYJĄTEK PROVIDERA bez zmian —
+            # telemetria nigdy nie zastępuje ani nie maskuje prawdziwego błędu.
+            self._end_langfuse_generation_with_error(generation, exc)
+            raise
         elapsed = time.perf_counter() - start
 
         cost: float | None = None
@@ -187,6 +196,22 @@ class CostTrackMiddleware(LLMMiddleware):
             import logfire
 
             logfire.warning("Failed to finalize Langfuse generation", exc_info=True)
+
+    @staticmethod
+    def _end_langfuse_generation_with_error(generation, error: BaseException) -> None:
+        """Zamyka generację ze statusem błędu, gdy `call_next()` rzucił — nie mamy
+        wtedy `LLMResponse` do przekazania do `_end_langfuse_generation()`."""
+        if generation is None:
+            return
+        try:
+            generation.update(level="ERROR", status_message=str(error))
+            generation.end()
+        except Exception:
+            import logfire
+
+            logfire.warning(
+                "Failed to finalize Langfuse generation after provider error", exc_info=True
+            )
 
 
 class ProviderCallMiddleware(LLMMiddleware):

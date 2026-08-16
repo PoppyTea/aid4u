@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import time
+import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
@@ -105,12 +106,18 @@ class BaseTask(ABC):
             "`uv run run.py panic --graceful` (czyste zamknięcie).[/]"
         )
 
-        # sessionId = nazwa zadania + timestamp uruchomienia — grupuje w Langfuse
-        # wszystkie generacje/tool observation tego jednego `run.py solve` pod
-        # jedną sesją (patrz strategy/observability.md, hierarchia Session→Trace→...).
-        # Bez tego propagate_attrs() istniał w kodzie od dawna, ale nigdy nie był
-        # wołany — każda generacja lądowała w Langfuse bez żadnego kontekstu sesji.
-        session_id = f"{task_name}-{datetime.now(tz=WARSAW_TZ).strftime('%m%d-%H%M%S')}"
+        # sessionId = nazwa zadania + timestamp uruchomienia + krótki losowy sufiks —
+        # grupuje w Langfuse wszystkie generacje/tool observation tego jednego
+        # `run.py solve` pod jedną sesją (patrz strategy/observability.md, hierarchia
+        # Session→Trace→...). Bez tego propagate_attrs() istniał w kodzie od dawna,
+        # ale nigdy nie był wołany — każda generacja lądowała w Langfuse bez żadnego
+        # kontekstu sesji. Sufiks jest konieczny: sama sekunda (`%H%M%S`) koliduje —
+        # dwa uruchomienia tego samego zadania w tej samej sekundzie dostałyby
+        # identyczny session_id i ich generacje zlałyby się w jedną sesję w panelu.
+        session_id = (
+            f"{task_name}-{datetime.now(tz=WARSAW_TZ).strftime('%m%d-%H%M%S')}"
+            f"-{uuid.uuid4().hex[:8]}"
+        )
 
         try:
             with (

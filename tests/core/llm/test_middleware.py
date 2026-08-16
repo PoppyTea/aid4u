@@ -25,9 +25,26 @@ class _StubTerminal(LLMMiddleware):
         return self._response
 
 
+class _RaisingTerminal(LLMMiddleware):
+    """Terminal handler symulujący awarię providera (np. wyczerpany retry w RateLimitMiddleware)."""
+
+    def __init__(self, error: BaseException) -> None:
+        super().__init__()
+        self._error = error
+
+    def handle(self, messages: list[LLMMessage], **kwargs) -> LLMResponse:
+        raise self._error
+
+
 def _build(response: LLMResponse) -> CostTrackMiddleware:
     mw = CostTrackMiddleware()
     mw.set_next(_StubTerminal(response))
+    return mw
+
+
+def _build_raising(error: BaseException) -> CostTrackMiddleware:
+    mw = CostTrackMiddleware()
+    mw.set_next(_RaisingTerminal(error))
     return mw
 
 
@@ -49,6 +66,54 @@ def test_langfuse_failure_does_not_break_the_call(mock_get_client):
     result = mw.handle([LLMMessage.user("pytanie")])
 
     assert result is response
+
+
+# ─── Bezpieczeństwo wyjątków — generacja Langfuse zamknięta, gdy provider padnie ──
+#
+# Do 2026-08-16, jeśli call_next() rzucił (np. provider wyczerpał retry), handle()
+# kończył się wyjątkiem PRZED wywołaniem _end_langfuse_generation() — generacja
+# zostawała otwarta w Langfuse na zawsze. To był udokumentowany, świadomy dług
+# ("akceptowalne dla pierwszej wersji"), zamknięty tutaj.
+
+
+@patch("langfuse.get_client")
+def test_provider_exception_still_propagates_unchanged(mock_get_client):
+    error = RuntimeError("provider wyczerpał retry")
+    mw = _build_raising(error)
+
+    import pytest
+
+    with pytest.raises(RuntimeError, match="provider wyczerpał retry") as exc_info:
+        mw.handle([LLMMessage.user("pytanie")])
+
+    assert exc_info.value is error  # dokładnie ten sam obiekt — telemetria nie owija/maskuje
+
+
+@patch("langfuse.get_client")
+def test_provider_exception_closes_generation_with_error_status(mock_get_client):
+    generation = MagicMock()
+    mock_get_client.return_value.start_observation.return_value = generation
+    mw = _build_raising(RuntimeError("boom"))
+
+    import pytest
+
+    with pytest.raises(RuntimeError):
+        mw.handle([LLMMessage.user("pytanie")])
+
+    generation.update.assert_called_once_with(level="ERROR", status_message="boom")
+    generation.end.assert_called_once()
+
+
+def test_provider_exception_without_langfuse_configured_still_propagates():
+    """Brak Langfuse (start_observation zwraca None przez wewnętrzny except) nie może
+    zablokować propagacji prawdziwego błędu providera."""
+    error = ValueError("prawdziwy błąd providera")
+    mw = _build_raising(error)
+
+    import pytest
+
+    with pytest.raises(ValueError, match="prawdziwy błąd providera"):
+        mw.handle([LLMMessage.user("pytanie")])
 
 
 def test_cost_is_actually_calculated_for_a_known_model():

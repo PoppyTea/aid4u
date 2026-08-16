@@ -215,4 +215,32 @@ class TestObservabilitySessionContext:
         task.run()
 
         assert captured["trace_name"] == "s99e99"
-        assert re.fullmatch(r"s99e99-\d{4}-\d{6}", captured["session_id"]), captured["session_id"]
+        # Sufiks losowy (8 hex) na końcu — bez niego dwa uruchomienia w tej samej
+        # sekundzie kolidowałyby (patrz base.py, komentarz przy session_id).
+        assert re.fullmatch(r"s99e99-\d{4}-\d{6}-[0-9a-f]{8}", captured["session_id"]), captured[
+            "session_id"
+        ]
+
+    def test_propagate_attrs_session_id_is_unique_across_runs_in_the_same_second(
+        self, dummy_task, monkeypatch
+    ):
+        """Regresja: session_id bez losowego sufiksu miał rozdzielczość 1 sekundy — dwa
+        uruchomienia tego samego zadania w tej samej sekundzie dostawały identyczny
+        session_id i ich generacje zlewały się w Langfuse w jedną sesję."""
+        task, _ = dummy_task
+        captured_ids = []
+
+        @contextmanager
+        def fake_propagate_attrs(**kwargs):
+            captured_ids.append(kwargs["session_id"])
+            yield
+
+        monkeypatch.setattr("core.tasks.base.propagate_attrs", fake_propagate_attrs)
+        monkeypatch.setattr(task, "fetch_data", lambda: None)
+        monkeypatch.setattr(task, "solve", lambda data: {"result": "ok"})
+        monkeypatch.setattr(task, "_submit", lambda task_name, answer: None)
+
+        task.run()
+        task.run()
+
+        assert captured_ids[0] != captured_ids[1]

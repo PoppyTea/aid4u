@@ -39,10 +39,10 @@ def run_manual_test():
 
     print("\n--- Testing GeminiAdapter.complete_structured ---")
     messages = [LLMMessage.user("Name: John, Age: 30. Respond only with JSON.")]
-    result = adapter.complete_structured(messages, UserSchema)
-    print(f"Parsed: {result}")
+    response = adapter.complete_structured(messages, UserSchema)
+    print(f"Parsed: {response.parsed}")
 
-    if isinstance(result, UserSchema) and result.name == "John" and result.age == 30:
+    if isinstance(response.parsed, UserSchema) and response.parsed.name == "John" and response.parsed.age == 30:
         print("SUCCESS: complete_structured")
     else:
         print("FAILED: complete_structured")
