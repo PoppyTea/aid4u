@@ -1,0 +1,69 @@
+# CodeRabbit config dla aid4u — pierwsza wersja (2026-08-16).
+#
+# Kontekst: repo jest publiczne, ale <10 gwiazdek — CodeRabbit NIE robi automatycznego
+# review dla takich repo niezależnie od `auto_review.enabled` niżej; `@coderabbitai review`
+# musi być wywołane ręcznie na każdym PR. `auto_review.enabled: false` odzwierciedla to
+# świadomie (nie próbujemy włączyć czegoś, czego platforma i tak nie zrobi) — recenzje są
+# na zawołanie, per AGENTS.md "PR review follow-up" (root AGENTS.md), nie automatyczne.
+#
+# Qodo nie jest już częścią pipeline'u (subskrypcja wygasła 2026-08-16) — CodeRabbit jest
+# jedynym automatycznym recenzentem. `.claude/review-rules.md` (reguły odtworzone z Qodo,
+# R1-R8) i `.issues/summaries-4-human/` (triage historii CodeRabbit) to uzupełniające źródła
+# wiedzy o repo, nie duplikujemy ich treści tutaj.
+
+reviews:
+  auto_review:
+    enabled: false
+    drafts: false
+
+  path_instructions:
+    - path: "core/llm/client.py"
+      instructions: >
+        LLMClient to abstrakcja WYŁĄCZNIE providerów LLM (Anthropic/Gemini/OpenAI/
+        OpenRouter — patrz core/llm/adapters/). Nie sugeruj routowania przez niego
+        wywołań telemetrii (Langfuse/Logfire) — to świadomie osobna warstwa,
+        core/hub/client.py i core/llm/middleware.py już wołają Langfuse bezpośrednio,
+        patrz core/AGENTS.md "Local Contracts".
+
+    - path: "core/observability/**"
+      instructions: >
+        setup_observability() jest wołane raz w run.py (jedyny entrypoint CLI) —
+        nie sugeruj wołania go w importowanych modułach bibliotecznych (prompts.py,
+        decorators.py itd.), funkcja jest idempotentna i entrypoint już to robi.
+
+    - path: "tasks/**/doc/*.md"
+      instructions: >
+        To materiały referencyjne — kopie treści zadania kursu, transkrypcje fabuły,
+        destylaty komentarzy społeczności — nieużywane w runtime. Markdownlint/styl/
+        literówki NISKI priorytet (Optional, nie Minor). WYJĄTEK: realne sekrety
+        (klucze API, tokeny) zawsze zgłaszaj jako Major/security — to jedyna kategoria
+        wartego uwagi ryzyka w tych plikach.
+
+    - path: "tasks/**/solution.py"
+      instructions: >
+        Rozwiązania zadań kursowych (AI_Devs 4) — priorytet to zdobycie flagi z huba,
+        nie architektura produkcyjna (patrz root AGENTS.md, EFFICIENCY MODE). Nie
+        flaguj braku testów jednostkowych jako problemu — test_solution.py jest
+        opcjonalny z rozmysłem (tasks/AGENTS.md), weryfikacja przez realny hub liczy
+        się bardziej. Realne bugi wpływające na poprawność odpowiedzi do huba
+        (podwójny submit, złe parsowanie, przekroczony limit z treści zadania) — zawsze
+        ważne, zgłaszaj normalnie.
+
+    - path: "tests/**"
+      instructions: >
+        Testy jednostkowe w tym repo są izolowane od realnych zasobów (patrz
+        tests/CLAUDE.md "Keep tests isolated and fast") — jeśli test modyfikuje
+        stan współdzielony z repo (pliki w .run/, .cache/, prawdziwe API), to zawsze
+        realny problem, nie styl.
+
+tone_instructions: >
+  Solo-projekt kursowy w trybie EFFICIENCY MODE (root AGENTS.md) — priorytet to
+  szybkość dojścia do działającego rozwiązania. Nie proponuj dodatkowej walidacji
+  wejścia dla skryptów jednoosobowych ani abstrakcji "na przyszłość". Prawdziwe
+  bugi, security issues i złamane kontrakty zawsze ważne.
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "**/AGENTS.md"
