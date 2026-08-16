@@ -1,8 +1,16 @@
 # Decyzja: na czym budujemy S03 i dalej — własny `core/llm/` vs `pydantic-ai`
 
-**Sesja:** `pre-s03` · **Data:** 2026-08-15 · **Status:** rekomendacja do akceptacji autora
-(przed pisaniem kodu S03) · **Źródła rozstrzygane:** `season.md` (linie 77-87),
+**Sesja:** `pre-s03` · **Data:** 2026-08-15 · **Status:** ✅ **ZAAKCEPTOWANE przez autora
+2026-08-16 — Ścieżka A** · **Źródła rozstrzygane:** `season.md` (linie 77-87),
 `source/tool-inventory.md` (sekcja „rozwidlenie drogi", 130-144).
+
+> **Zmiany przyjęte przy akceptacji (2026-08-16):**
+> - **Kolejność ataku: `e01 → e03 → e04 → e05 → e02`** (numeryczna, e02 na końcu) —
+>   zastępuje `e03 → e01 → …` z §4 i §10. Uzasadnienie w `season.md`.
+> - **Warstwa observability awansuje przed e01** (była pozycją 🟢 „oportunistyczną"
+>   w `season.md`). Powód nie jest kosztowy, tylko strukturalny: e01 woła wyłącznie
+>   `.structured()`, czyli dokładnie tę metodę, która omija łańcuch middleware — bez
+>   naprawy zadanie dałoby zero generacji w Langfuse. Kontrakt: `strategy/observability.md`.
 
 ---
 
@@ -208,31 +216,38 @@ pozostaje **A** (§1-8).
 
 ---
 
-## 10. Plan (po akceptacji — kod nie rusza wcześniej)
+## 10. Plan (zaakceptowane 2026-08-16 — kolejność skorygowana)
 
-Kolejność zgodna z `season.md` (e03 → e01 → e04 → e05 → e02) i z routingiem commitów (`AGENTS.md:179`).
+**Kolejność: `e01 → e03 → e04 → e05 → e02`** — numeryczna, z jednym wyjątkiem: e02
+zostaje na końcu (rozrzut kosztu ×140, udokumentowane nieudane przebiegi po $7.20 i ~$4,
+wymaga kompletu osłon pętli agentowej). Routing commitów: `AGENTS.md:179`.
 
-**Krok 0 — porządki kontraktowe w core (przed e02, nie przed e03).** Z `closed-prs-qodo-triage.md`
-bierzemy **tylko to, co przeżywa przy A i wraca w S03**:
+**Krok 0 — poprawki kontraktowe w core, przed e01 (nie przed e02).** Z
+`closed-prs-qodo-triage.md` bierzemy tylko to, co przeżywa przy A:
 
-- **A1** (`BaseTask.run()` podwójny submit) — **wróci w S03**, bo e01/e02 mają iteracyjny/agentowy
-  `solve()`. Zrobić przed e01.
-- **A4** (`ToolCall.id` dublowany w Gemini) — dotyczy każdej pętli agentowej; zrobić przed e02.
-- **Propagacja błędów narzędzia** (`client.py:137-139`) + **przepięcie `.structured()`/
-  `run_agent_loop()` przez `self._chain`** (`client.py:73,117`) — to zamyka trzy z czterech luk §2
-  jedną porcją roboty w `middleware`/`client`. Przed e01 (cost-tracking) i e02 (błędy, rate-limit).
+- **Przepięcie `.structured()`/`run_agent_loop()` przez `self._chain`**
+  (`client.py:73,117`) — **przed e01**, nie z powodu kosztu (e01 kosztuje ~$0.002,
+  policzalne analitycznie przez `tiktoken`), tylko dlatego, że e01 woła wyłącznie
+  `.structured()` i bez tego fixu dałoby **zero generacji w Langfuse**. Zamyka też
+  propagację błędów narzędzia (`client.py:137-139`), potrzebną przy e02.
+- **A1** (`BaseTask.run()` podwójny submit) — **NIE dotyczy e01**. Poprzednia wersja
+  tego planu zakładała inaczej („e01/e02 mają iteracyjny `solve()`") — przesłanka była
+  fałszywa dla e01: treść zadania wymaga jednego zapytania z kompletną listą ID, więc
+  `solve()` jest jednostrzałowe. A1 wraca do rozmowy przed e02, jeśli e02 faktycznie
+  potrzebuje własnej pętli `/verify`.
+- **A4** (`ToolCall.id` dublowany w Gemini) — dotyczy każdej pętli agentowej; przed e02.
 - **Osłony e02** (rate limiter wychodzący `/api/*`, blacklist ścieżek w kodzie) — przed e02.
   Truncacja już jest (`feat/killswitch`).
 
-**Nie robimy** (wyparowałoby przy B, więc i tak bez znaczenia — ale przy A po prostu poza zakresem
-S03): nic z warstwy s01/s02 poza tym, co wyżej; A2/A3/A5/A6/A8 idą osobnym torem „contract hardening"
-jeśli w ogóle (to nie blokuje flag S03).
+**Nie robimy:** A2/A3/A5/A6/A8 idą osobnym torem „contract hardening" jeśli w ogóle (nie
+blokuje flag S03).
 
-**Krok 1 — e03 (reactor).** BFS/DP, zero LLM, zero stacku. Pierwsza flaga sezonu.
+**Krok 1 — e01 (evaluation).** Pierwsza flaga sezonu. Warstwa observability (Faza 2,
+`strategy/observability.md`) jako prerekwizyt. Progi deterministyczne podane wprost
+w treści zadania (nie wyprowadzane z danych); LLM wyłącznie do klasyfikacji unikalnych
+fraz notatek. Szczegóły: `s03e01.md` + `.help/s03e01-explanations.md`.
 
-**Krok 2 — e01 (evaluation).** Batch: progi deterministyczne w kodzie, LLM tylko do sprzeczności
-notatka↔dane, dedup notatek przed LLM (wzorzec s02e03). Tu — i tylko tu — rozważyć `pydantic-evals`
-per §6.
+**Krok 2 — e03 (reactor).** BFS/DP, zero LLM, zero stacku.
 
 **Krok 3-5 — e04, e05, e02** wg `s03eXX.md` (prep-faza per zadanie).
 

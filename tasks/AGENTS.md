@@ -1,42 +1,20 @@
 # Tasks Module
 
 ## Purpose
-Execution environment for AI_Devs 4 course tasks. **Sezon 1 zamknięty (2026-08-03)** —
-s01e01, s01e02, s01e04, s01e05 zaliczone przez normalny `solve()→submit()` (flagi w
-`.flags.json`); s01e03 zaliczone przez żywą rozmowę (ngrok/proxy) — flaga poza
-`.flags.json`, patrz `s01e03_proxy/AGENTS.md`.
+Execution environment for AI_Devs 4 course tasks. **Sezon 1 i Sezon 2 zamknięte** —
+9 flag w `.flags.json` (s01e01, s01e02, s01e04, s01e05, s02e01…s02e05); s01e03 zaliczone
+przez żywą rozmowę (ngrok/proxy), flaga poza `.flags.json` z natury tego typu zadania —
+patrz `s01e03_proxy/AGENTS.md`. Szczegóły każdego epizodu (wzorzec danych, model użyty,
+pułapki) żyją w jego własnym `AGENTS.md`, nie tutaj — Child DOX Index niżej wskazuje który.
 
-**Sezon 2 zamknięty (2026-08-08)** — tematy wszystkich 5 epizodów rozpoznane przez
-NotebookLM (`LLM_aid4u_tylko_zadania`) i foldery przemianowane z sufiksem
-tematycznym: `s02e01_categorize`, `s02e02_electricity`, `s02e03_failure`,
-`s02e04_mailbox`, `s02e05_drone`. Sposób zdobycia danych wejściowych dla
-wszystkich pięciu ustalony z wyprzedzeniem i zapisany w ich `AGENTS.md`
-(Ownership) — zanim ruszyliśmy z implementacją którejkolwiek `solve()`. Wzorzec
-skopiowany z dojrzałej wersji z sezonu 1 (e03–e05: `AGENTS.md`+`doc/`+`solution.py`
-od startu) celowo, żeby uniknąć przemeblowań jakie miały miejsce przy e01/e02
-(brak `AGENTS.md`/`doc/`, scratch pliki, niespójne nazwy danych). **s02e01
-zaliczone (2026-08-03)** — flaga `{FLG:SMUGGLER}` w `.flags.json`. **s02e02
-zaliczone (2026-08-05)** — flaga `{FLG:ROTATEIT}` w `.flags.json`, zdobyta ręcznie
-przez lokalny `webui/` (rotacja planszy przez przeglądarkę), `solution.py`
-automatyzujący `solve()→submit()` jeszcze nie istnieje. **s02e03 zaliczone
-(2026-08-07)** — flaga `{FLG:SQUASHIT}` w `.flags.json`, przez normalny
-`solve()→submit()` z pętlą iteracji wbudowaną w `solve()` (patrz
-`s02e03_failure/AGENTS.md`). **s02e04 zaliczone (2026-08-07)** — flaga
-`{FLG:TRAITOR}` w `.flags.json`, agentowa pętla function-calling (`LLMClient.run_agent_loop`)
-przeszukująca żywe API `zmail`; `claude-haiku-4-5` zawiódł 3x pod rząd, `claude-sonnet-5`
-rozwiązał od razu — patrz `s02e04_mailbox/AGENTS.md` dla realnego protokołu `zmail` (odkrytego
-na żywo, różni się od tego co sugerowały komentarze kursu) i dla poprawki 429-resilience w
-`HubClient.post_api()`. **s02e05 zaliczone (2026-08-08)** — flaga `{FLG:LETSFLY}` w
-`.flags.json`, za pierwszej próby wysyłki, **zero LLM** — sektor tamy wykryty deterministycznie
-z mapy (czerwone linie siatki + podbita intensywność wody), niezależnie potwierdzony przez
-społeczność kursu; kontrakt API drona statyczny i znany z góry, żadnej pętli agentowej nie
-potrzeba (patrz `s02e05_drone/AGENTS.md`). **Sezon 2 domknięty: 9/9 flag zdobytych** (5+4 razem
-z sezonem 1). Sezon 3 startuje po przeglądzie międzysezonowym — patrz
-`tasks/s03/requirements/` i `strategy/season-transition.md`.
+**Sezon 3 w toku** (od 2026-08-16) — kolejność ataku `e01 → e03 → e04 → e05 → e02`
+(e02 na końcu świadomie: najdroższe zadanie sezonu, wymaga osłon pętli agentowej których
+jeszcze nie ma). Stan gotowości, dług i checklisty per-epizod: `tasks/s03/requirements/`.
+Procedura przejścia między sezonami (sezonoagnostyczna): `strategy/season-transition.md`.
 
-**EFFICIENCY MODE aktywny** (od 2026-07-29)
-— priorytet: szybkość i skuteczność zdobywania flag do 20/25, nie proces. Learning-mode
-wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENTS.md`
+**EFFICIENCY MODE aktywny** (od 2026-07-29) — priorytet: szybkość i skuteczność
+zdobywania flag do 20/25, nie proces. Learning-mode wersja tego pliku:
+`.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENTS.md`
 (przywróć przez `aid4u/scripts/learning_mode_on_off.py on`).
 
 ## Ownership
@@ -99,36 +77,17 @@ wersja tego pliku: `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENT
 - Zadanie zwraca flagę z huba — to jest ostateczna weryfikacja, nie zielone testy.
 
 ## Child DOX Index
-- `s01e02_findhim/`: solved — data entirely live (hub + Nominatim geocoding at
-  solve-time), no static input files; see that folder's `AGENTS.md` for the
-  2026-08-05 dead-scratch-data cleanup.
-- `s01e03_proxy/`: live-server task (public `/` endpoint) — see local exception above.
-- `s01e04_sendit/`: deterministic SPK declaration builder, no LLM.
-- `s01e05_railway/`: multi-step hub API protocol (route activation), no LLM —
-  503/429 resilience lives in `HubClient.submit()`, not here.
-- `s02e01_categorize/`: **solved** — prompt-only classification task (DNG/NEU,
-  ≤100 tokens), no LLM at runtime. `answer` must be `{"prompt": ...}` (JSON
-  object, undocumented) and DNG must stay scoped to actual weapons, not
-  anything hazardous-sounding — see that folder's `AGENTS.md` for the live
-  failure that taught this.
-- `s02e02_electricity/`: **solved** (manually, via local `webui/`) — 3x3
-  pipe-rotation puzzle, image-driven, live/mutable board state (re-fetch after
-  every `rotate`). `solve()` automation still outstanding.
-- `s02e03_failure/`: **solved** — huge log file → ≤1500-token condensed
-  summary. Mostly deterministic (dedup + `[INFO]` filter in code collapses
-  2137 raw lines to 55 before any LLM call); the hub's iterative
-  accept/reject feedback loop lives inside `solve()` itself, not in
-  `BaseTask.run()` — see that folder's `AGENTS.md` for the `/verify` HTTP 400
-  contract and the token-budget-instruction-doesn't-work lesson.
-- `s02e04_mailbox/`: **solved** — agentowa `run_agent_loop()` przeszukuje żywe API `zmail`
-  (protokół odkryty na żywo przez `help`: help/getInbox/getThread/getMessages/search/reset).
-  `claude-sonnet-5` wymagany — `claude-haiku-4-5` konsekwentnie kończył pętlę bez wysyłki
-  odpowiedzi. Zobacz też `HubClient.post_api()` 429-retry (`core/AGENTS.md`), dodany bo zmail
-  faktycznie rate-limituje mimo że treść zadania tego nie wspominała.
-- `s02e05_drone/`: **solved, zero LLM** — deterministic red-gridline + water-intensity
-  detection locates the dam sector (`map_analysis.py`, no vision support exists in
-  `LLMClient` today — see `core/AGENTS.md`); the drone API contract is static and known
-  upfront, so no agent loop either. Static reference docs (HTML API doc + terrain map) —
-  only S02 episode qualifying for a `data/input/` subfolder.
-- `s03/`: season-3 readiness report + per-episode checklists (`requirements/`) — see
-  `s03/AGENTS.md`. Not a container for task implementations, see Ownership above.
+
+**Sezon 1** (solved): `s01e02_findhim/` (live geocoding, no static input) ·
+`s01e03_proxy/` (live-server exception, see Local Contracts) ·
+`s01e04_sendit/` (deterministic, no LLM) · `s01e05_railway/` (multi-step hub protocol, no LLM).
+
+**Sezon 2** (solved, 5/5): `s02e01_categorize/` (prompt-only, no runtime LLM) ·
+`s02e02_electricity/` (solved manually via `webui/`, `solve()` automation outstanding) ·
+`s02e03_failure/` (dedup+filter pattern, iterative `/verify`) ·
+`s02e04_mailbox/` (agentowa `run_agent_loop()`, wymaga `claude-sonnet-5`) ·
+`s02e05_drone/` (zero LLM, deterministic map analysis).
+
+**Sezon 3** (w toku): `s03/` — readiness report + per-episode checklists
+(`requirements/`), nie kontener implementacji, patrz Ownership. `s03e01_evaluation/` —
+pierwsze zadanie sezonu, w budowie.

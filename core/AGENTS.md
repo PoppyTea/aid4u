@@ -95,6 +95,11 @@ Contains the architectural heart of the system: LLM clients, task management bas
 ## Work Guidance
 - Follow the Adapter pattern for new LLM providers.
 - Maintain consistent interface usage across adapters.
+- **Observability contract lives in `strategy/observability.md`**, not here — role split
+  between Logfire (traces/spans, working) and Langfuse (prompt registry + generations,
+  near-zero coverage as of 2026-08-16). Known gap tracked there: `structured()` and
+  `run_agent_loop()` bypass `self._chain` (`client.py:73,117`), so neither gets a
+  Langfuse generation nor cost-tracking today — fix scheduled before `s03e01`.
 - Anthropic-only native tools (`core/llm/native_tool_*.py`) are standalone functions,
   not `AnthropicAdapter` methods — each builds its own `anthropic.Anthropic(api_key=...)`
   client rather than reaching into adapter internals. This keeps every native-tool module

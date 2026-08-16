@@ -12,10 +12,13 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 > przywraca go nieddestrukcyjnie. Kurs ma nadal służyć edukacyjnie po zdobyciu 20 flag —
 > to świadomy, tymczasowy kompromis, nie zmiana celu.
 
-> ✅ **Sezon 1 zamknięty (2026-08-03)** — s01e01–s01e05 rozwiązane (5/5). `run.py status`
-> pokaże 4/4 — `s01e03_proxy` (żywy serwer/ngrok) strukturalnie nie przechodzi przez
-> `solve()→submit()`, więc jego flaga nigdy nie trafia do `.flags.json`; to cecha tego typu
-> zadania, nie błąd. Sezon 2 startuje w nowym wątku.
+> ✅ **Sezon 1 + Sezon 2 zamknięte** — 9 flag w `.flags.json` (`run.py status` pokaże
+> 9/10 — `s01e03_proxy`, żywy serwer/ngrok, strukturalnie nie przechodzi przez
+> `solve()→submit()`, więc jego flaga nigdy nie trafia do pliku; cecha tego typu zadania,
+> nie błąd). **Sezon 3 w toku** (od 2026-08-16) — kolejność ataku `e01 → e03 → e04 →
+> e05 → e02` (e02 na końcu świadomie, patrz `tasks/s03/requirements/season.md`), stack
+> własny `core/llm/` (nie `pydantic-ai`, patrz `core-stack-decision.md`). Szczegóły i
+> checklisty: `tasks/s03/requirements/`.
 
 ## 🚀 Szybki start (efficiency mode)
 - **Zadanie dnia:** znajdź folder w `/tasks` → `uv run run.py solve sXXeYY`

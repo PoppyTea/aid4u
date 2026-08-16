@@ -15,19 +15,27 @@ cała narracja. Pełne uzasadnienia: `source/tool-inventory.md`, `source/communi
 | s03e04 | `negotiations` | **Ty budujesz narzędzia, ICH agent je wywołuje.** Publiczny hosting HTTP. |
 | s03e05 | `savethem` | Odkrywanie narzędzi przez `/api/toolsearch` + trasa 10×10 pod limitem zasobów. |
 
-## Rekomendowana kolejność (potwierdzona danymi o realnej trudności/koszcie)
+## Kolejność ataku (zdecydowane 2026-08-16, zastępuje wcześniejszą rekomendację)
 
-**e03 → e01 → e04 → e05 → e02**
+**e01 → e03 → e04 → e05 → e02**
 
-- e03 pierwsze — najłatwiejsze wg społeczności, ~$0, rozgrzewka.
-- e01 drugie — wzorzec z `s02e03_failure` przenosi się prawie 1:1, koszt <2 centy.
-- e04 trzecie — łatwe/tanie, ale jedyne zależne od czynnika zewnętrznego (publiczny
+Baza jest numeryczna (autor wybrał tę zasadę wprost), z jednym świadomym wyjątkiem:
+
+- **e01 pierwsze** — koszt <2 centy, wzorzec z `s02e03_failure` przenosi się prawie 1:1,
+  progi anomalii podane wprost w treści zadania (nie trzeba ich wyprowadzać z danych).
+  Zbiega się z warstwą observability wchodzącą na start sezonu (`strategy/observability.md`)
+  — e01 jest pierwszym realnym przypadkiem użycia rejestru promptów i trace'ów generacji.
+- **e03 drugie** — najłatwiejsze wg społeczności, ~$0, czysty BFS/DP, zero LLM.
+- **e04 trzecie** — łatwe/tanie, ale jedyne zależne od czynnika zewnętrznego (publiczny
   endpoint) — robić gdy tunel/hosting stoi.
-- e05 czwarte — trudne, ale porażki są koncepcyjne (nieodkryte `/api/books`,
+- **e05 czwarte** — trudne, ale porażki są koncepcyjne (nieodkryte `/api/books`,
   nieodkryty `dismount`) i już znane z `source/community-intel.md`.
-- e02 ostatnie — najdroższe w całym sezonie (rozrzut kosztu ×140 między podejściami w
-  komentarzach kursu), karze najbardziej za brak osłon pętli agentowej. Wchodzić
-  dopiero PO zbudowaniu pozycji 🔴 poniżej.
+- **e02 jedyny wyjątek od numeracji, na końcu** — najdroższe zadanie sezonu (rozrzut
+  kosztu ×140 między podejściami w komentarzach kursu; udokumentowane **nieudane**
+  przebiegi po $7.20 i ~$4, podczas gdy ten sam wynik na Gemini Flash kosztował $0.05).
+  Wymaga kompletu osłon pętli agentowej (🔴 niżej), których dziś nie ma. Wchodzić
+  dopiero PO ich zbudowaniu — robienie e02 wcześnie tylko dlatego, że jest „drugie w
+  numeracji", to dokładnie scenariusz, w którym ludzie palili $4-7 bez osłon.
 
 ## 🔴 Dług KONIECZNY przed startem (blokuje bezpieczne wejście w S03)
 
@@ -48,11 +56,18 @@ cała narracja. Pełne uzasadnienia: `source/tool-inventory.md`, `source/communi
   ten sam tunel) — uzupełnić `VPS_USER`/`VPS_PATH` w `.env`. Do backlogu, nie
   blokuje — ngrok + istniejący `deploy/` wystarczą na start.
 
-## 🟢 Oportunistyczne w trakcie sezonu (nie blokuje niczego)
+## 🟡 Przed e01 — awansowane z oportunistycznego (2026-08-16)
 
-- [ ] Dokończenie integracji Langfuse (scores/datasets) — dziś zainicjalizowany, ale
-  prawie nieużywany (`@langfuse_observe()` na jednej funkcji). e01 to naturalna okazja
-  (zadanie dosłownie nazywa się "evaluation").
+- [ ] **Warstwa observability** — dziś zainicjalizowana, ale prawie nieużywana
+  (`@langfuse_observe()` na jednej funkcji, w miejscu bez LLM). Awansuje przed e01, nie
+  bo jest tania (fix middleware to 1-2h, więcej niż całe e01), tylko strukturalnie: e01
+  woła wyłącznie `.structured()`, która dziś omija łańcuch middleware — bez naprawy
+  zadanie dałoby zero generacji w Langfuse. Kontrakt: `strategy/observability.md`.
+  Obejmuje: przepięcie `.structured()`/`run_agent_loop()` przez `self._chain`,
+  jednostronną synchronizację promptów kod→Langfuse (wzorzec `4th-devs/03_01_observability`),
+  `propagate_attrs()` w `BaseTask.run()`.
+
+## 🟢 Oportunistyczne w trakcie sezonu (nie blokuje niczego)
 - [ ] Rejestr narzędzi / schemat-z-sygnatury zamiast trzeciej ręcznie klepanej kopii
   wzorca `Tool + closure + dispatcher` (mamy już trzy: s01e02, s01e03, s02e04).
 - [ ] Naprawa `.structured()`/`run_agent_loop()` omijających middleware (rate-limit i
