@@ -13,7 +13,19 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class GeminiAdapter(LLMProvider):
-    def __init__(self, api_key: str, model: str = "gemini-3.1-flash") -> None:
+    """
+    Adapter Gemini — domyślny model `gemini-2.5-flash`, zgodnie z `run.py` i
+    `strategy/llm-models.md` ("to jest wartość domyślna --model w run.py i
+    startowy punkt dla każdego zadania"). Poprzedni default (`gemini-3.1-flash`)
+    był nieistniejącym identyfikatorem — sprawdzone 2026-08-16 przez
+    `client.models.list()` na żywym kluczu: rodzina 3.1 ma `-flash-lite`,
+    `-flash-image`, `-pro-preview`, ale nie gołe `-flash`. Nawet gdyby istniał,
+    complete_structured() poniżej steruje myśleniem przez `thinking_budget`
+    (kontrakt 2.5.x) — model 3.x wymaga `thinking_level` i Google zwraca 400
+    przy zmieszaniu obu w jednym zapytaniu (patrz `strategy/llm-models.md`).
+    """
+
+    def __init__(self, api_key: str, model: str = "gemini-2.5-flash") -> None:
         from google import genai
 
         self._client = genai.Client(api_key=api_key)
