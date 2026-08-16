@@ -102,19 +102,28 @@ class CostTrackMiddleware(LLMMiddleware):
 
         cost: float | None = None
         try:
-            import genai_prices
+            from genai_prices import Usage, calc_price
 
-            cost = genai_prices.calculate(
-                model=response.model,
-                input_tokens=response.input_tokens,
-                output_tokens=response.output_tokens,
+            # `genai_prices.calculate(model=, input_tokens=, output_tokens=)` był API
+            # z wcześniejszej wersji paczki — dzisiejsza to `calc_price(usage, model_ref)`,
+            # zwraca `PriceCalculation.total_price` (Decimal). Błąd nazwy atrybutu
+            # (`AttributeError: no attribute 'calculate'`) był tu od zawsze, ale nigdy
+            # nie ujawnił się w praktyce: przed naprawą łańcucha middleware (2026-08-16)
+            # ten kod uruchamiał się tylko dla chat(), które w realnych zadaniach prawie
+            # się nie używa — .structured()/run_agent_loop() dopiero teraz przechodzą
+            # tędy i odsłoniły martwy kod. Złapane przez `except Exception` niżej —
+            # cost tracking jest best-effort, nigdy nie przerywa właściwego wywołania.
+            price = calc_price(
+                Usage(input_tokens=response.input_tokens, output_tokens=response.output_tokens),
+                response.model,
             )
+            cost = float(price.total_price)
             logfire.info(
                 "llm_call_completed",
                 model=response.model,
                 input_tokens=response.input_tokens,
                 output_tokens=response.output_tokens,
-                cost_usd=round(cost, 6) if cost else None,
+                cost_usd=round(cost, 6),
                 elapsed_s=round(elapsed, 3),
             )
         except Exception:

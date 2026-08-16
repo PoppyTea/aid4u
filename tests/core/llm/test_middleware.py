@@ -51,6 +51,30 @@ def test_langfuse_failure_does_not_break_the_call(mock_get_client):
     assert result is response
 
 
+def test_cost_is_actually_calculated_for_a_known_model():
+    """
+    Regresja: `genai_prices.calculate(...)` był API z wcześniejszej wersji paczki —
+    dzisiejsza wymaga `calc_price(Usage(...), model_ref)`. Błąd nazwy atrybutu był
+    tu od zawsze, ale `except Exception` (best-effort, patrz docstring klasy) go
+    połykał cicho — żaden test nie wywoływał `genai_prices` naprawdę, więc nikt tego
+    nie złapał, dopóki nie ujawnił się na żywym przebiegu s03e01 (2026-08-16).
+    Celowo BEZ mocka `genai_prices` — to jest dokładnie to, czego mock by nie złapał.
+    """
+    response = LLMResponse(
+        content="x", model="claude-haiku-4-5-20251001", input_tokens=100, output_tokens=50
+    )
+    mw = _build(response)
+
+    with patch("logfire.info") as mock_logfire_info:
+        mw.handle([LLMMessage.user("pytanie")])
+
+    calls = [c for c in mock_logfire_info.call_args_list if c.args[:1] == ("llm_call_completed",)]
+    assert len(calls) == 1, "oczekiwano dokładnie jednego zdarzenia llm_call_completed"
+    cost_usd = calls[0].kwargs["cost_usd"]
+    assert isinstance(cost_usd, float)
+    assert cost_usd > 0
+
+
 @patch("langfuse.get_client")
 def test_creates_and_finalizes_langfuse_generation(mock_get_client):
     generation = MagicMock()

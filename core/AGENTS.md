@@ -109,6 +109,16 @@ Contains the architectural heart of the system: LLM clients, task management bas
   optional `prompt_name=` linking the generation to a version registered via
   `core.observability.prompts.sync_prompt()`. `propagate_attrs()` (existed since before,
   never called) is now wired into `BaseTask.run()` — every task run gets a `session_id`.
+- **Cost tracking was silently broken since before this fix, found by the first real
+  run through the newly-wired path (`s03e01`, 2026-08-16):** `CostTrackMiddleware`
+  called `genai_prices.calculate(model=, input_tokens=, output_tokens=)` — an API from
+  an older version of the package. The installed version only has `calc_price(Usage(...),
+  model_ref)` returning `PriceCalculation.total_price` (`Decimal`). The `except Exception`
+  around it (best-effort by design) swallowed the `AttributeError` silently for every
+  call — nobody noticed because `chat()` (the only call type reaching this code before
+  the middleware fix above) is barely used in practice. Fixed in the same commit;
+  covered by `tests/core/llm/test_middleware.py::test_cost_is_actually_calculated_for_a_known_model`,
+  deliberately without mocking `genai_prices` — that's exactly what a mock would have hidden.
 - Anthropic-only native tools (`core/llm/native_tool_*.py`) are standalone functions,
   not `AnthropicAdapter` methods — each builds its own `anthropic.Anthropic(api_key=...)`
   client rather than reaching into adapter internals. This keeps every native-tool module
