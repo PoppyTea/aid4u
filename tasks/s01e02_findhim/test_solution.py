@@ -386,14 +386,22 @@ def test_get_access_level_returns_just_the_level():
 
 ### TDD CYCLE 06 — narzędzia agenta (search_suspect_history_for_nearest_power_plant, tool_executor) ###
 
+def offline_search_suspect_history_for_nearest_power_plant(
+        fake_hub,
+        plants: list[PowerPlant],
+        name: str,
+        surname: str,
+        birth_year: int) -> dict:
+    result: dict = search_suspect_history_for_nearest_power_plant(fake_hub, plants, name, surname, birth_year)
+    return result
 
 def test_search_suspect_history_for_nearest_power_plant_finds_true_minimum_across_plants():
     # Podejrzany widziany dokładnie w Radomiu -> dystans 0 do elektrowni Radom,
     # musi wygrać z pozostałymi 6, niezależnie od kolejności na liście.
+
     hub = FakeHub(response=[{"latitude": RADOM.latitude, "longitude": RADOM.longitude}])
     # pyrefly: ignore [bad-argument-type]
-    result = search_suspect_history_for_nearest_power_plant(
-        # pyrefly: ignore [bad-argument-type]
+    result = offline_search_suspect_history_for_nearest_power_plant(
         hub, power_plants, "Testowy", "Podejrzany", 1990
     )
 
@@ -408,9 +416,7 @@ def test_search_suspect_history_for_nearest_power_plant_returns_none_code_when_n
         )
     ]
     hub = FakeHub(response=[{"latitude": WARSAW.latitude, "longitude": WARSAW.longitude}])
-    # pyrefly: ignore [bad-argument-type]
-    result = search_suspect_history_for_nearest_power_plant(
-        # pyrefly: ignore [bad-argument-type]
+    result = offline_search_suspect_history_for_nearest_power_plant(
         hub, unresolved_plants, "Testowy", "Podejrzany", 1990
     )
 
