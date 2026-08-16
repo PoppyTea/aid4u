@@ -17,7 +17,8 @@
 ## Rekomendacja
 
 **Ścieżka A — zostajemy przy własnym `core/`.** Wprowadzamy poprawki kontraktowe z
-`closed-prs-qodo-triage.md` (te, które przeżywają — patrz niżej) i lecimy z S03 od `s03e03`.
+`closed-prs-qodo-triage.md` (te, które przeżywają — patrz niżej) i lecimy z S03 od `s03e01`
+(kolejność zaktualizowana przy akceptacji 2026-08-16, patrz banner na górze pliku).
 `pydantic-ai` **nie wchodzi jako framework runtime**. Wchodzi co najwyżej `pydantic-evals` jako
 **izolowane narzędzie pomiaru w e01** (opcjonalnie, patrz §6) — to nie jest drugi stack LLM, bo
 nie dotyka `LLMClient` ani ścieżki `solve()→submit()`.

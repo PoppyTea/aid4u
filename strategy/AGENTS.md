@@ -39,4 +39,8 @@ Repozytorium dokumentacji strategicznej, protokołów uczenia się, standardów 
 - `./observability.md` - Kontrakt warstwy obserwacji (Logfire + Langfuse): podział ról,
   hierarchia zdarzeń, rejestr promptów, decyzja o async.
 - `./open-decisions.md` - Pytania rozstrzygalne międzysezonowo, bez miejsca w roadmapie
-  konkretnego sezonu (np. self-hosted vs cloud Langfuse).
+  konkretnego sezonu (np. self-hosted kontra cloud Langfuse).
+- `./demo-processing-workflow.md` - Workflow przetwarzania demo/przykładów kursu.
+- `./efficiency-mode` - Materiały trybu efficiency mode.
+- `./llm-models.md` - Referencja/ściągawka modeli LLM.
+- `./llm-selection.md` - Strategia wyboru/eskalacji/tier modeli LLM.

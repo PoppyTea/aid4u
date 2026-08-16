@@ -56,23 +56,18 @@ Baza jest numeryczna (autor wybrał tę zasadę wprost), z jednym świadomym wyj
   ten sam tunel) — uzupełnić `VPS_USER`/`VPS_PATH` w `.env`. Do backlogu, nie
   blokuje — ngrok + istniejący `deploy/` wystarczą na start.
 
-## 🟡 Przed e01 — awansowane z oportunistycznego (2026-08-16)
+## ✅ Przed e01 — zrobione (2026-08-16, awansowane z oportunistycznego)
 
-- [ ] **Warstwa observability** — dziś zainicjalizowana, ale prawie nieużywana
-  (`@langfuse_observe()` na jednej funkcji, w miejscu bez LLM). Awansuje przed e01, nie
-  bo jest tania (fix middleware to 1-2h, więcej niż całe e01), tylko strukturalnie: e01
-  woła wyłącznie `.structured()`, która dziś omija łańcuch middleware — bez naprawy
-  zadanie dałoby zero generacji w Langfuse. Kontrakt: `strategy/observability.md`.
-  Obejmuje: przepięcie `.structured()`/`run_agent_loop()` przez `self._chain`,
-  jednostronną synchronizację promptów kod→Langfuse (wzorzec `4th-devs/03_01_observability`),
-  `propagate_attrs()` w `BaseTask.run()`.
+- [x] **Warstwa observability** — była zainicjalizowana, ale prawie nieużywana
+  (`@langfuse_observe()` na jednej funkcji, w miejscu bez LLM). Zrobione w
+  `feat/core-observability-langfuse`: przepięcie `.structured()`/`run_agent_loop()` przez
+  `self._chain`, jednostronna synchronizacja promptów kod→Langfuse (wzorzec
+  `4th-devs/03_01_observability`), `propagate_attrs()` w `BaseTask.run()`. Kontrakt:
+  `strategy/observability.md`.
 
 ## 🟢 Oportunistyczne w trakcie sezonu (nie blokuje niczego)
 - [ ] Rejestr narzędzi / schemat-z-sygnatury zamiast trzeciej ręcznie klepanej kopii
   wzorca `Tool + closure + dispatcher` (mamy już trzy: s01e02, s01e03, s02e04).
-- [ ] Naprawa `.structured()`/`run_agent_loop()` omijających middleware (rate-limit i
-  cost-tracking nie działają tam, gdzie liczą się najbardziej — e01 jest zadaniem o
-  koszcie).
 - [ ] Dynamiczne odkrywanie narzędzi w runtime (blokuje elegancki e05 — dziś
   `run_agent_loop(tools=[...])` bierze tylko statyczną listę).
 - [ ] Doprecyzować w `data/AGENTS.md` gdzie faktycznie leży `.cache/` (opis mówi
