@@ -8,8 +8,8 @@ zakresem + #4 zwraca dane których nie powinien, obie deterministyczne) ∨
 podzbiorem `data_bad`, więc suma jest dwuskładnikowa, nie czteroskładnikowa. Pełne
 wyprowadzenie: `solution.py` docstring.
 
-**Rozwiązane (2026-08-16)** — flaga `{FLG:???}` w `.flags.json` (uzupełnić po
-realnym submicie), model `claude-haiku-4-5-20251001` (wybrany po A/B, patrz
+**Rozwiązane (2026-08-16)** — flaga `{FLG:BUGGYSYSTEM}` w `.flags.json`, za
+pierwszej próby, model `claude-haiku-4-5-20251001` (wybrany po A/B, patrz
 Verification).
 
 ## Ownership
