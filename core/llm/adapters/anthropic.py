@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from typing import Any, TypeVar
 
 from pydantic import BaseModel
@@ -65,7 +66,7 @@ class AnthropicAdapter(LLMProvider):
         schema: type[T],
         *,
         system: str | None = None,
-    ) -> T:
+    ) -> LLMResponse:
         schema_str = json.dumps(schema.model_json_schema(), ensure_ascii=False, indent=2)
         system_prompt = (
             (system or "")
@@ -81,7 +82,11 @@ class AnthropicAdapter(LLMProvider):
                 content = content[4:]
             content = content.strip()
 
-        return schema.model_validate_json(content)
+        parsed = schema.model_validate_json(content)
+        # `replace()` zachowuje model/tokeny z `self.complete()` — jedyne co dokładamy
+        # to `parsed`, żeby LLMResponse niosło oba (surowy JSON w `content` do podglądu,
+        # sparsowany model do rozpakowania przez LLMClient.structured()).
+        return replace(response, parsed=parsed)
 
     def complete_with_tools(
         self,

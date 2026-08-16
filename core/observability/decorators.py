@@ -72,6 +72,56 @@ def langfuse_observe(name: str | None = None) -> Callable[[F], F]:
 
 
 @contextmanager
+def langfuse_tool_observation(
+    name: str, *, input: Any = None
+) -> Generator[Callable[[Any], None], None, None]:
+    """
+    Owija wykonanie narzędzia observation Langfuse typu "tool"
+    (hierarchia Session→Trace→Span→Generation→Agent→Tool→Event, patrz
+    `strategy/observability.md`). Bez tego wywołania narzędzi w pętli
+    agentowej były widoczne tylko jako span Logfire — brak w Langfuse
+    utrudniał debugowanie „dlaczego agent zrobił X" w panelu obok generacji.
+
+    Yielduje `set_output(value)` — wywołaj PRZED końcem bloku `with`, żeby
+    zapisać wynik. Błędy telemetrii nigdy nie przerywają wykonania narzędzia
+    (ten sam kontrakt co `CostTrackMiddleware` w `core/llm/middleware.py`).
+
+    Użycie:
+        with langfuse_tool_observation("search", input={"query": q}) as set_output:
+            result = do_search(q)
+            set_output(result)
+    """
+    observation = None
+    try:
+        from langfuse import get_client
+
+        observation = get_client().start_observation(as_type="tool", name=name, input=input)
+    except Exception:
+        import logfire
+
+        logfire.warning(f"Failed to start Langfuse tool observation for '{name}'", exc_info=True)
+
+    output_holder: dict[str, Any] = {}
+
+    def set_output(value: Any) -> None:
+        output_holder["value"] = value
+
+    try:
+        yield set_output
+    finally:
+        if observation is not None:
+            try:
+                observation.update(output=output_holder.get("value"))
+                observation.end()
+            except Exception:
+                import logfire
+
+                logfire.warning(
+                    f"Failed to finalize Langfuse tool observation for '{name}'", exc_info=True
+                )
+
+
+@contextmanager
 def propagate_attrs(
     *,
     trace_name: str | None = None,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from typing import TypeVar
 
 from pydantic import BaseModel
@@ -56,12 +57,13 @@ class OpenAIAdapter(LLMProvider):
         schema: type[T],
         *,
         system: str | None = None,
-    ) -> T:
+    ) -> LLMResponse:
         schema_str = json.dumps(schema.model_json_schema(), ensure_ascii=False)
         system_prompt = (system or "") + f"\nRespond ONLY with JSON: {schema_str}"
         response = self.complete(messages, system=system_prompt, max_tokens=4096)
         content = response.content.strip().lstrip("```json").rstrip("```").strip()
-        return schema.model_validate_json(content)
+        parsed = schema.model_validate_json(content)
+        return replace(response, parsed=parsed)
 
     def complete_with_tools(
         self,

@@ -87,8 +87,15 @@ class CostTrackMiddleware(LLMMiddleware):
         import time
         import logfire
 
+        # `prompt_name=` nie jest parametrem żadnego adaptera — pop() PRZED
+        # call_next(), inaczej ProviderCallMiddleware/adapter dostałby
+        # nieznany kwarg. Łączy generację z wersją promptu zarejestrowaną
+        # przez core.observability.prompts.sync_prompt() (patrz
+        # strategy/observability.md, sekcja "Rejestr promptów").
+        prompt_name = kwargs.pop("prompt_name", None)
+
         start = time.perf_counter()
-        generation = self._start_langfuse_generation(messages)
+        generation = self._start_langfuse_generation(messages, prompt_name=prompt_name)
 
         response = self.call_next(messages, **kwargs)
         elapsed = time.perf_counter() - start
@@ -118,15 +125,33 @@ class CostTrackMiddleware(LLMMiddleware):
         return response
 
     @staticmethod
-    def _start_langfuse_generation(messages: list[LLMMessage]):
-        """Zwraca observation Langfuse albo None (no-op), jeśli cokolwiek pójdzie nie tak."""
+    def _start_langfuse_generation(messages: list[LLMMessage], *, prompt_name: str | None = None):
+        """
+        Zwraca observation Langfuse albo None (no-op), jeśli cokolwiek pójdzie nie tak.
+
+        `prompt_name`, gdy podane, jest wyszukiwane w rejestrze
+        (`core.observability.prompts.get_prompt_ref`) — jeśli synchronizacja
+        tego promptu powiodła się w tym procesie, generacja zostaje z nim
+        podpięta (`prompt=`), więc panel Langfuse pokazuje wersja→trace'y→koszt
+        obok siebie. Brak wpisu w rejestrze (nie zsynchronizowano / fallback)
+        po prostu pomija `prompt=` — nie jest to błąd.
+        """
         try:
             from langfuse import get_client
+
+            prompt_client = None
+            if prompt_name:
+                from core.observability.prompts import get_prompt_ref
+
+                ref = get_prompt_ref(prompt_name)
+                if ref is not None and not ref.is_fallback:
+                    prompt_client = ref.client
 
             return get_client().start_observation(
                 as_type="generation",
                 name="llm_call",
                 input=[{"role": m.role, "content": m.content} for m in messages],
+                prompt=prompt_client,
             )
         except Exception:
             import logfire
@@ -156,11 +181,29 @@ class CostTrackMiddleware(LLMMiddleware):
 
 
 class ProviderCallMiddleware(LLMMiddleware):
-    """Terminal handler — wywołuje właściwy adapter LLM."""
+    """
+    Terminal handler — jedyne miejsce w łańcuchu, które faktycznie robi I/O
+    (wywołuje adapter). RateLimit/CostTrack owijają to wywołanie, ale go nie
+    zawierają — ten podział jest celowy: przyszła wersja asynchroniczna
+    (`ahandle()`) potrzebowałaby zamienić tylko tę jedną metodę na `await`,
+    bez ruszania logiki wzbogacania w pozostałych middleware (patrz decyzja
+    o async w `strategy/observability.md`).
+
+    Dispatch po rodzaju wywołania — `kwargs["schema"]`/`kwargs["tools"]`
+    obecne wtedy i tylko wtedy, gdy `LLMClient.structured()`/`run_agent_loop()`
+    je przekazały (patrz `client.py`). Domyślnie: zwykłe `complete()`.
+    """
 
     def __init__(self, provider) -> None:
         super().__init__()
         self._provider = provider
 
     def handle(self, messages: list[LLMMessage], **kwargs) -> LLMResponse:
+        schema = kwargs.pop("schema", None)
+        tools = kwargs.pop("tools", None)
+
+        if schema is not None:
+            return self._provider.complete_structured(messages, schema, **kwargs)
+        if tools is not None:
+            return self._provider.complete_with_tools(messages, tools, **kwargs)
         return self._provider.complete(messages, **kwargs)

@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from contextlib import contextmanager
 
 import pytest
 
@@ -188,3 +189,30 @@ class TestKillSwitchIntegration:
             task.run()
 
         assert end_run_called
+
+
+class TestObservabilitySessionContext:
+    """
+    `propagate_attrs()` istniał w `core/observability/decorators.py` od dawna, ale
+    nigdy nie był wywoływany — bez tego każda generacja Langfuse lądowała w panelu
+    bez żadnego kontekstu sesji (patrz strategy/observability.md, 2026-08-16).
+    """
+
+    def test_propagate_attrs_called_with_task_name_and_session_id(self, dummy_task, monkeypatch):
+        task, _ = dummy_task
+        captured = {}
+
+        @contextmanager
+        def fake_propagate_attrs(**kwargs):
+            captured.update(kwargs)
+            yield
+
+        monkeypatch.setattr("core.tasks.base.propagate_attrs", fake_propagate_attrs)
+        monkeypatch.setattr(task, "fetch_data", lambda: None)
+        monkeypatch.setattr(task, "solve", lambda data: {"result": "ok"})
+        monkeypatch.setattr(task, "_submit", lambda task_name, answer: None)
+
+        task.run()
+
+        assert captured["trace_name"] == "s99e99"
+        assert re.fullmatch(r"s99e99-\d{4}-\d{6}", captured["session_id"]), captured["session_id"]

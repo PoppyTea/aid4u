@@ -7,7 +7,8 @@ Contains the architectural heart of the system: LLM clients, task management bas
 - `core/llm/`: LLM integration and adapter logic.
 - `core/hub/`: Data acquisition and caching.
 - `core/tasks/`: Base classes for task registration.
-- `core/observability/`: Instrumentation and tracing decorators.
+- `core/observability/`: Instrumentation, tracing decorators, prompt registry
+  (`prompts.py` — code→Langfuse one-way sync, see `strategy/observability.md`).
 - `core/runtime/`: Kill switch (process-group panic, graceful stop, run budgets).
 - `core/net.py`: Content validation for anything fetched over the network
   (soft-404 detection) — independent of `HubClient`, not hub-specific.
@@ -96,10 +97,18 @@ Contains the architectural heart of the system: LLM clients, task management bas
 - Follow the Adapter pattern for new LLM providers.
 - Maintain consistent interface usage across adapters.
 - **Observability contract lives in `strategy/observability.md`**, not here — role split
-  between Logfire (traces/spans, working) and Langfuse (prompt registry + generations,
-  near-zero coverage as of 2026-08-16). Known gap tracked there: `structured()` and
-  `run_agent_loop()` bypass `self._chain` (`client.py:73,117`), so neither gets a
-  Langfuse generation nor cost-tracking today — fix scheduled before `s03e01`.
+  between Logfire (traces/spans) and Langfuse (prompt registry + generations).
+  **Fixed 2026-08-16** (`feat/core-observability-langfuse`, before `s03e01`): `structured()`
+  and `run_agent_loop()` now route through `self._chain` like `chat()` — `complete_structured()`
+  changed ABC signature from `-> T` to `-> LLMResponse` (parsed model lives in the new
+  `LLMResponse.parsed` field, `types.py`) so `CostTrackMiddleware` sees tokens/cost for
+  every call shape uniformly. `ProviderCallMiddleware.handle()` dispatches on
+  `kwargs["schema"]`/`kwargs["tools"]` — both popped before reaching the provider.
+  All four call sites (`chat`/`structured`/`run_agent_loop`, plus every tool call inside
+  the agent loop) now also emit a Langfuse observation; `LLMClient` methods accept an
+  optional `prompt_name=` linking the generation to a version registered via
+  `core.observability.prompts.sync_prompt()`. `propagate_attrs()` (existed since before,
+  never called) is now wired into `BaseTask.run()` — every task run gets a `session_id`.
 - Anthropic-only native tools (`core/llm/native_tool_*.py`) are standalone functions,
   not `AnthropicAdapter` methods — each builds its own `anthropic.Anthropic(api_key=...)`
   client rather than reaching into adapter internals. This keeps every native-tool module

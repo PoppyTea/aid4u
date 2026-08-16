@@ -38,9 +38,10 @@ def test_complete_structured_plain_json(adapter):
             messages=[LLMMessage.user("Hello")], schema=DummySchema
         )
 
-        assert isinstance(result, DummySchema)
-        assert result.name == "Alice"
-        assert result.age == 30
+        assert isinstance(result, LLMResponse)
+        assert isinstance(result.parsed, DummySchema)
+        assert result.parsed.name == "Alice"
+        assert result.parsed.age == 30
 
 
 def test_complete_structured_markdown_json(adapter):
@@ -55,9 +56,9 @@ def test_complete_structured_markdown_json(adapter):
             messages=[LLMMessage.user("Hello")], schema=DummySchema
         )
 
-        assert isinstance(result, DummySchema)
-        assert result.name == "Bob"
-        assert result.age == 25
+        assert isinstance(result.parsed, DummySchema)
+        assert result.parsed.name == "Bob"
+        assert result.parsed.age == 25
 
 
 def test_complete_structured_markdown_no_lang(adapter):
@@ -72,9 +73,9 @@ def test_complete_structured_markdown_no_lang(adapter):
             messages=[LLMMessage.user("Hello")], schema=DummySchema
         )
 
-        assert isinstance(result, DummySchema)
-        assert result.name == "Charlie"
-        assert result.age == 40
+        assert isinstance(result.parsed, DummySchema)
+        assert result.parsed.name == "Charlie"
+        assert result.parsed.age == 40
 
 
 def test_complete_structured_system_prompt_formatting(adapter):

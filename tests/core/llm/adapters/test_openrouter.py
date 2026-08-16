@@ -109,9 +109,9 @@ def test_openrouter_adapter_complete_structured(mock_openai_client) -> None:
             system="Be precise",
         )
 
-        assert isinstance(result, DummySchema)
-        assert result.name == "Alice"
-        assert result.age == 30
+        assert isinstance(result.parsed, DummySchema)
+        assert result.parsed.name == "Alice"
+        assert result.parsed.age == 30
 
         mock_complete.assert_called_once()
         call_kwargs = mock_complete.call_args.kwargs

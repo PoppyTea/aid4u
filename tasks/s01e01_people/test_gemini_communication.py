@@ -175,7 +175,7 @@ class TestAdapterIncomingCommunication:
         )
 
         result = adapter.complete_structured([LLMMessage.user("x")], TaggingResponse)
-        assert result is expected
+        assert result.parsed is expected
 
     def test_falls_back_to_manual_json_parse_when_parsed_missing(self, adapter, monkeypatch):
         raw_json = '{"results": [{"index": 0, "tags": ["medycyna"]}]}'
@@ -186,7 +186,7 @@ class TestAdapterIncomingCommunication:
         )
 
         result = adapter.complete_structured([LLMMessage.user("x")], TaggingResponse)
-        assert result.results == [TaggedJob(index=0, tags=["medycyna"])]
+        assert result.parsed.results == [TaggedJob(index=0, tags=["medycyna"])]
 
     def test_raises_readable_error_on_truncated_response(self, adapter, monkeypatch):
         truncated_json = '{"results": [{"index": 0, "tags": ["medyc'  # urwany JSON
@@ -241,8 +241,8 @@ class TestRealGeminiRoundtrip:
             system=SYSTEM_TAGGING,
         )
 
-        assert isinstance(result, TaggingResponse)
-        returned_indices = {r.index for r in result.results}
+        assert isinstance(result.parsed, TaggingResponse)
+        returned_indices = {r.index for r in result.parsed.results}
         expected_indices = set(range(len(real_candidates)))
         missing = expected_indices - returned_indices
         assert not missing, (

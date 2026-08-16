@@ -29,6 +29,7 @@ from rich.console import Console
 from core.config import WARSAW_TZ
 from core.hub import HubClient, LocalCache
 from core.llm import LLMClient
+from core.observability.decorators import propagate_attrs
 from core.runtime import AbortRun, check_abort, end_run, start_run
 
 _console = Console()
@@ -104,8 +105,18 @@ class BaseTask(ABC):
             "`uv run run.py panic --graceful` (czyste zamknięcie).[/]"
         )
 
+        # sessionId = nazwa zadania + timestamp uruchomienia — grupuje w Langfuse
+        # wszystkie generacje/tool observation tego jednego `run.py solve` pod
+        # jedną sesją (patrz strategy/observability.md, hierarchia Session→Trace→...).
+        # Bez tego propagate_attrs() istniał w kodzie od dawna, ale nigdy nie był
+        # wołany — każda generacja lądowała w Langfuse bez żadnego kontekstu sesji.
+        session_id = f"{task_name}-{datetime.now(tz=WARSAW_TZ).strftime('%m%d-%H%M%S')}"
+
         try:
-            with logfire.span(f"task.{task_name}"):
+            with (
+                logfire.span(f"task.{task_name}"),
+                propagate_attrs(trace_name=task_name, session_id=session_id),
+            ):
                 start = time.perf_counter()
 
                 try:

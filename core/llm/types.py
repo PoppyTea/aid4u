@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from pydantic import BaseModel
+
 
 @dataclass
 class LLMMessage:
@@ -57,6 +59,14 @@ class LLMResponse:
     input_tokens: int
     output_tokens: int
     tool_calls: list[ToolCall] = field(default_factory=list)
+    parsed: BaseModel | None = None
+    """
+    Wypełnione WYŁĄCZNIE przez `complete_structured()` — instancja Pydantic modelu
+    (schematu) wygenerowana przez model. `content` w tym przypadku trzyma JSON-ową
+    reprezentację tej samej wartości (do podglądu w Langfuse/Logfire), nie osobną
+    treść. Pozwala structured output przejść przez ten sam łańcuch middleware co
+    `complete()`/`complete_with_tools()` bez zmiany kontraktu `LLMMiddleware.handle()`.
+    """
 
     @property
     def total_tokens(self) -> int:
