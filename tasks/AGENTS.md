@@ -89,5 +89,8 @@ zdobywania flag do 20/25, nie proces. Learning-mode wersja tego pliku:
 `s02e05_drone/` (zero LLM, deterministic map analysis).
 
 **Sezon 3** (w toku): `s03/` — readiness report + per-episode checklists
-(`requirements/`), nie kontener implementacji, patrz Ownership. `s03e01_evaluation/` —
-pierwsze zadanie sezonu, w budowie.
+(`requirements/`), nie kontener implementacji, patrz Ownership. `s03e01_evaluation/`
+— **solved** (2026-08-16, pierwsza flaga sezonu), reguły anomalii zwijają się do
+`data_bad ∨ note_failure`; LLM klasyfikuje wyłącznie unikalne frazy notatek
+(~325 na żywych danych, nie 9999 plików). A/B Haiku 4.5 vs Gemini 2.5 Flash: 100%
+zgodności, wybrano Haiku.
