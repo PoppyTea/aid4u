@@ -12,12 +12,14 @@ Uruchom:
     uv run python tasks/s01e02_findhim/scripts/verify_without_agent.py --dry-run
     uv run python tasks/s01e02_findhim/scripts/verify_without_agent.py          # wysyła realnie
 """
+
 from __future__ import annotations
 
 from core.observability.setup import setup_observability
 
 setup_observability()
 
+import concurrent.futures  # noqa: E402
 import json  # noqa: E402
 import sys  # noqa: E402
 from pathlib import Path  # noqa: E402
@@ -52,16 +54,29 @@ def main(*, submit: bool) -> None:
     suspects = load_suspects()
 
     print("=== Dystanse per podejrzany (wszystkie elektrownie brane pod uwagę) ===")
-    results = []
-    for s in suspects:
+
+    def fetch_result(s: dict) -> dict:
         result = search_suspect_history_for_nearest_power_plant(
             hub, plants, s["name"], s["surname"], s["birthYear"]
         )
-        results.append({**s, **result})
-        print(f"  {s['name']:<10} {s['surname']:<12} -> {result['plant_code']}  ({result['distance_km']} km)")
+        return {**s, **result}
+
+    # as_completed() zamiast executor.map(): drukuje każdy wynik OD RAZU po ukończeniu,
+    # nie dopiero po skompletowaniu wszystkich 5 — inaczej wyjątek na jednym podejrzanym
+    # chowałby cały dotychczasowy postęp (a to skrypt DIAGNOSTYCZNY, więc widoczność
+    # tego, co się już udało przed awarią, jest tu celem, nie skutkiem ubocznym).
+    results: list[dict] = []
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = {executor.submit(fetch_result, s): s for s in suspects}
+        for future in concurrent.futures.as_completed(futures):
+            r = future.result()
+            results.append(r)
+            print(f"  {r['name']:<10} {r['surname']:<12} -> {r['plant_code']}  ({r['distance_km']} km)")
 
     winner = min(results, key=lambda r: r["distance_km"])
-    print(f"\nZwycięzca: {winner['name']} {winner['surname']} -> {winner['plant_code']} ({winner['distance_km']} km)")
+    print(
+        f"\nZwycięzca: {winner['name']} {winner['surname']} -> {winner['plant_code']} ({winner['distance_km']} km)"
+    )
 
     access_level = get_access_level(hub, winner["name"], winner["surname"], winner["birthYear"])
     answer = {

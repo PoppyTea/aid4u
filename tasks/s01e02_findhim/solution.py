@@ -50,7 +50,7 @@ class GeoPoint(BaseModel):
     def __add__(self: GeoPoint, other: GeoPoint) -> GeoConnection:
         return GeoConnection(alpha_point=self, beta_point=other)
 
-    def distance_to(self, target:GeoPoint) -> float:
+    def distance_to(self, target: GeoPoint) -> float:
         if self == target:
             distance: float = 0.0
         elif self.latitude and self.longitude and target.latitude and target.longitude is not None:
