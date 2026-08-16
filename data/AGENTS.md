@@ -48,6 +48,8 @@ is safe to read whole before you try.
 | Path | Size (approx) | Purpose | Related task(s) | Described in | Safe to read in full? |
 |---|---|---|---|---|---|
 | `main_story/people.csv` | ~24k rows | Roster of people (name, surname, gender, birthDate, birthPlace, birthCountry, job) — input for candidate filtering | `s01e01_people` | `tasks/s01e01_people/solution.py` (`parse_csv`, `filter_candidates`, `format_answer`) | No — use `wc -l`, `head -n 5`, or `rg <pattern>` instead |
+| `input/s03e01_evaluation/sensors.zip` | ~3.7 MB, 9999 JSON members | Sensor readings ZIP, fetched once and never re-extracted to disk (`readings.load_readings()` parses in-memory) | `s03e01_evaluation` | `tasks/s03e01_evaluation/solution.py` (`fetch_data`), `readings.py` | No — it's a ZIP; inspect with `unzip -l` or Python, not `cat` |
+| `output/s03e01_evaluation/phrase_labels-<model>.json` | ~300 entries | Phrase→is_failure classification labels, one file per model (namespaced — see task's `AGENTS.md` Local Contracts for why) | `s03e01_evaluation` | `tasks/s03e01_evaluation/solution.py` (`_save_phrase_labels_artifact`) | Yes — small JSON dict |
 
 ## Work Guidance
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from typing import Any, TypeVar
 
 from pydantic import BaseModel
@@ -65,7 +66,7 @@ class AnthropicAdapter(LLMProvider):
         schema: type[T],
         *,
         system: str | None = None,
-    ) -> T:
+    ) -> LLMResponse:
         schema_str = json.dumps(schema.model_json_schema(), ensure_ascii=False, indent=2)
         system_prompt = (
             (system or "")
@@ -73,15 +74,21 @@ class AnthropicAdapter(LLMProvider):
         )
         response = self.complete(messages, system=system_prompt, max_tokens=4096)
 
-        # Strip markdown fences if model wraps JSON in ```json ... ```
+        # Strip markdown fences if model wraps JSON in ```json ... ``` — case-insensitive
+        # prefix check (`` ```JSON `` is legal and otherwise leaves "JSON\n" in `content`,
+        # breaking `model_validate_json()`; same fix as `adapters/openai.py`).
         content = response.content.strip()
         if content.startswith("```"):
             content = content.split("```")[1]
-            if content.startswith("json"):
+            if content[:4].lower() == "json":
                 content = content[4:]
             content = content.strip()
 
-        return schema.model_validate_json(content)
+        parsed = schema.model_validate_json(content)
+        # `replace()` zachowuje model/tokeny z `self.complete()` — jedyne co dokładamy
+        # to `parsed`, żeby LLMResponse niosło oba (surowy JSON w `content` do podglądu,
+        # sparsowany model do rozpakowania przez LLMClient.structured()).
+        return replace(response, parsed=parsed)
 
     def complete_with_tools(
         self,

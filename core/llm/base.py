@@ -44,8 +44,16 @@ class LLMProvider(ABC):
         schema: type[T],
         *,
         system: str | None = None,
-    ) -> T:
-        """Wywołanie ze strukturyzowanym wyjściem (Pydantic model)."""
+    ) -> LLMResponse:
+        """
+        Wywołanie ze strukturyzowanym wyjściem (Pydantic model).
+
+        Zwraca `LLMResponse` z polem `parsed` ustawionym na instancję `schema` —
+        nie goły `T` — żeby to wywołanie mogło przejść przez ten sam łańcuch
+        middleware (`CostTrackMiddleware` czyta `input_tokens`/`output_tokens`
+        z `LLMResponse`, niezależnie od typu wywołania) co `complete()`. Wołający
+        (`LLMClient.structured()`) rozpakowuje `.parsed` z powrotem do `T`.
+        """
         ...
 
     @abstractmethod

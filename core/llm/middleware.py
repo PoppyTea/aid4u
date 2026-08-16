@@ -78,36 +78,61 @@ class CostTrackMiddleware(LLMMiddleware):
     wywołanie Gemini nigdy nie trafiało do żadnego systemu obserwability.
 
     Błędy telemetrii (koszt, Langfuse) są nieblokujące — nigdy nie przerywają
-    właściwego wywołania LLM. Znane ograniczenie: jeśli call_next() rzuci
-    wyjątkiem, generation w Langfuse zostaje niezamknięta (brak .end()) —
-    akceptowalne dla pierwszej wersji, do poprawy gdyby okazało się problemem.
+    właściwego wywołania LLM. Jeśli `call_next()` sam rzuci (np. provider padnie
+    po wyczerpaniu retry w `RateLimitMiddleware`), generacja zostaje zamknięta
+    ze statusem błędu zamiast zostać otwarta na zawsze — patrz `except` niżej.
     """
 
     def handle(self, messages: list[LLMMessage], **kwargs) -> LLMResponse:
         import time
         import logfire
 
-        start = time.perf_counter()
-        generation = self._start_langfuse_generation(messages)
+        # `prompt_name=` nie jest parametrem żadnego adaptera — pop() PRZED
+        # call_next(), inaczej ProviderCallMiddleware/adapter dostałby
+        # nieznany kwarg. Łączy generację z wersją promptu zarejestrowaną
+        # przez core.observability.prompts.sync_prompt() (patrz
+        # strategy/observability.md, sekcja "Rejestr promptów").
+        prompt_name = kwargs.pop("prompt_name", None)
 
-        response = self.call_next(messages, **kwargs)
+        start = time.perf_counter()
+        generation = self._start_langfuse_generation(messages, prompt_name=prompt_name)
+
+        try:
+            response = self.call_next(messages, **kwargs)
+        except Exception as exc:
+            # Bez tego generacja zostawałaby otwarta w Langfuse na zawsze przy
+            # każdej awarii providera — nie tylko brzydko w panelu, ale też
+            # myląco: wygląda jak zawieszone wywołanie, nie jak błąd. Zamykamy
+            # ją ze statusem błędu i propagujemy WYJĄTEK PROVIDERA bez zmian —
+            # telemetria nigdy nie zastępuje ani nie maskuje prawdziwego błędu.
+            self._end_langfuse_generation_with_error(generation, exc)
+            raise
         elapsed = time.perf_counter() - start
 
         cost: float | None = None
         try:
-            import genai_prices
+            from genai_prices import Usage, calc_price
 
-            cost = genai_prices.calculate(
-                model=response.model,
-                input_tokens=response.input_tokens,
-                output_tokens=response.output_tokens,
+            # `genai_prices.calculate(model=, input_tokens=, output_tokens=)` był API
+            # z wcześniejszej wersji paczki — dzisiejsza to `calc_price(usage, model_ref)`,
+            # zwraca `PriceCalculation.total_price` (Decimal). Błąd nazwy atrybutu
+            # (`AttributeError: no attribute 'calculate'`) był tu od zawsze, ale nigdy
+            # nie ujawnił się w praktyce: przed naprawą łańcucha middleware (2026-08-16)
+            # ten kod uruchamiał się tylko dla chat(), które w realnych zadaniach prawie
+            # się nie używa — .structured()/run_agent_loop() dopiero teraz przechodzą
+            # tędy i odsłoniły martwy kod. Złapane przez `except Exception` niżej —
+            # cost tracking jest best-effort, nigdy nie przerywa właściwego wywołania.
+            price = calc_price(
+                Usage(input_tokens=response.input_tokens, output_tokens=response.output_tokens),
+                response.model,
             )
+            cost = float(price.total_price)
             logfire.info(
                 "llm_call_completed",
                 model=response.model,
                 input_tokens=response.input_tokens,
                 output_tokens=response.output_tokens,
-                cost_usd=round(cost, 6) if cost else None,
+                cost_usd=round(cost, 6),
                 elapsed_s=round(elapsed, 3),
             )
         except Exception:
@@ -118,15 +143,33 @@ class CostTrackMiddleware(LLMMiddleware):
         return response
 
     @staticmethod
-    def _start_langfuse_generation(messages: list[LLMMessage]):
-        """Zwraca observation Langfuse albo None (no-op), jeśli cokolwiek pójdzie nie tak."""
+    def _start_langfuse_generation(messages: list[LLMMessage], *, prompt_name: str | None = None):
+        """
+        Zwraca observation Langfuse albo None (no-op), jeśli cokolwiek pójdzie nie tak.
+
+        `prompt_name`, gdy podane, jest wyszukiwane w rejestrze
+        (`core.observability.prompts.get_prompt_ref`) — jeśli synchronizacja
+        tego promptu powiodła się w tym procesie, generacja zostaje z nim
+        podpięta (`prompt=`), więc panel Langfuse pokazuje wersja→trace'y→koszt
+        obok siebie. Brak wpisu w rejestrze (nie zsynchronizowano / fallback)
+        po prostu pomija `prompt=` — nie jest to błąd.
+        """
         try:
             from langfuse import get_client
+
+            prompt_client = None
+            if prompt_name:
+                from core.observability.prompts import get_prompt_ref
+
+                ref = get_prompt_ref(prompt_name)
+                if ref is not None and not ref.is_fallback:
+                    prompt_client = ref.client
 
             return get_client().start_observation(
                 as_type="generation",
                 name="llm_call",
                 input=[{"role": m.role, "content": m.content} for m in messages],
+                prompt=prompt_client,
             )
         except Exception:
             import logfire
@@ -154,13 +197,47 @@ class CostTrackMiddleware(LLMMiddleware):
 
             logfire.warning("Failed to finalize Langfuse generation", exc_info=True)
 
+    @staticmethod
+    def _end_langfuse_generation_with_error(generation, error: BaseException) -> None:
+        """Zamyka generację ze statusem błędu, gdy `call_next()` rzucił — nie mamy
+        wtedy `LLMResponse` do przekazania do `_end_langfuse_generation()`."""
+        if generation is None:
+            return
+        try:
+            generation.update(level="ERROR", status_message=str(error))
+            generation.end()
+        except Exception:
+            import logfire
+
+            logfire.warning(
+                "Failed to finalize Langfuse generation after provider error", exc_info=True
+            )
+
 
 class ProviderCallMiddleware(LLMMiddleware):
-    """Terminal handler — wywołuje właściwy adapter LLM."""
+    """
+    Terminal handler — jedyne miejsce w łańcuchu, które faktycznie robi I/O
+    (wywołuje adapter). RateLimit/CostTrack owijają to wywołanie, ale go nie
+    zawierają — ten podział jest celowy: przyszła wersja asynchroniczna
+    (`ahandle()`) potrzebowałaby zamienić tylko tę jedną metodę na `await`,
+    bez ruszania logiki wzbogacania w pozostałych middleware (patrz decyzja
+    o async w `strategy/observability.md`).
+
+    Dispatch po rodzaju wywołania — `kwargs["schema"]`/`kwargs["tools"]`
+    obecne wtedy i tylko wtedy, gdy `LLMClient.structured()`/`run_agent_loop()`
+    je przekazały (patrz `client.py`). Domyślnie: zwykłe `complete()`.
+    """
 
     def __init__(self, provider) -> None:
         super().__init__()
         self._provider = provider
 
     def handle(self, messages: list[LLMMessage], **kwargs) -> LLMResponse:
+        schema = kwargs.pop("schema", None)
+        tools = kwargs.pop("tools", None)
+
+        if schema is not None:
+            return self._provider.complete_structured(messages, schema, **kwargs)
+        if tools is not None:
+            return self._provider.complete_with_tools(messages, tools, **kwargs)
         return self._provider.complete(messages, **kwargs)

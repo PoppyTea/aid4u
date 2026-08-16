@@ -25,6 +25,11 @@ agents/
 # Cache danych z hubu (nie commituj — każdy ma swój apikey)
 .cache/
 
+# Stan synchronizacji rejestru promptów (SHA-256 per prompt → wersja w Langfuse).
+# Lokalny cache przyspieszający sync_prompt(), nie źródło prawdy — patrz
+# core/observability/prompts.py + strategy/observability.md.
+.langfuse-prompt-state.json
+
 # Kill switch — PGID i wartownik STOP bieżącego przebiegu (efemeryczne, per-maszyna).
 # Patrz core/runtime/killswitch.py + core/AGENTS.md.
 .run/

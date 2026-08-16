@@ -109,12 +109,36 @@ def test_openrouter_adapter_complete_structured(mock_openai_client) -> None:
             system="Be precise",
         )
 
-        assert isinstance(result, DummySchema)
-        assert result.name == "Alice"
-        assert result.age == 30
+        assert isinstance(result.parsed, DummySchema)
+        assert result.parsed.name == "Alice"
+        assert result.parsed.age == 30
 
         mock_complete.assert_called_once()
         call_kwargs = mock_complete.call_args.kwargs
         assert "Be precise" in call_kwargs["system"]
         assert "Respond ONLY with JSON" in call_kwargs["system"]
         assert "DummySchema" in call_kwargs["system"]
+
+
+def test_openrouter_adapter_complete_structured_uppercase_json_fence(mock_openai_client) -> None:
+    """Regresja na OpenAIAdapter.complete_structured (dziedziczone przez OpenRouterAdapter):
+    `.lstrip("```json")` (usunięte) stripował po zbiorze znaków, nie substringu — dla
+    `` ```JSON `` zostawiał literalne "JSON\\n" przed danymi i psuł model_validate_json()."""
+    adapter = OpenRouterAdapter(api_key="test-key", model="openrouter/meta-llama/llama-3-8b")
+    expected_json = '```JSON\n{"name": "Zoe", "age": 22}\n```'
+
+    with patch.object(adapter, "complete") as mock_complete:
+        mock_complete.return_value = LLMResponse(
+            content=expected_json,
+            model="meta-llama/llama-3-8b",
+            input_tokens=10,
+            output_tokens=10,
+        )
+
+        result = adapter.complete_structured(
+            messages=[LLMMessage.user("Parse this")], schema=DummySchema
+        )
+
+        assert isinstance(result.parsed, DummySchema)
+        assert result.parsed.name == "Zoe"
+        assert result.parsed.age == 22

@@ -10,7 +10,9 @@ większości decyzji poniżej, cytowana z numerem sekcji tamtej lekcji.
 
 ## Ownership
 - `core/llm/middleware.py`: łańcuch, przez który MUSI przechodzić każde wywołanie LLM.
-- `core/observability/decorators.py`: `@langfuse_observe()`, `propagate_attrs()`.
+- `core/observability/decorators.py`: `@langfuse_observe()`, `propagate_attrs()`,
+  `langfuse_tool_observation()`.
+- `core/observability/prompts.py`: `sync_prompt()`/`get_prompt_ref()` — rejestr promptów.
 - Rejestr promptów per-zadanie: `tasks/sXXeYY_*/prompts.py` + stan synchronizacji
   (`.langfuse-prompt-state.json`, gitignored — lokalny cache SHA-256, nie źródło prawdy).
 
@@ -22,9 +24,10 @@ większości decyzji poniżej, cytowana z numerem sekcji tamtej lekcji.
 - **Langfuse** = warstwa promptowa: rejestr, wersjonowanie, porównywanie, A/B, generacje
   LLM linkowane do wersji promptu. To narzędzie do rzeźbienia poleceń dla LLM-ów, nie
   ogólna telemetria.
-- Każde nowe wywołanie LLM w S03+ MUSI mieć: span w Logfire (już działa przez
-  `logfire.span`) ORAZ generację w Langfuse z podpiętą wersją promptu (dziś nie działa
-  dla `.structured()`/`run_agent_loop()` — patrz niżej).
+- Każde nowe wywołanie LLM w S03+ MUSI mieć: span w Logfire (`logfire.span`) ORAZ
+  generację w Langfuse z opcjonalnie podpiętą wersją promptu (`prompt_name=` kwarg na
+  `chat()`/`structured()`/`run_agent_loop()`) — działa dla wszystkich trzech od
+  2026-08-16 (patrz „Znany dług" niżej, zamknięty).
 
 ### Scentralizowany punkt podpięcia
 Lekcja S03E01 (sekcja „Zasady monitorowania"): *„U ich podstaw stoi konieczność
@@ -34,13 +37,22 @@ scentralizowane."* Ten punkt to `core/llm/middleware.py` — łańcuch
 `RateLimitMiddleware → CostTrackMiddleware → ProviderCallMiddleware`
 (`core/llm/client.py:40-46`).
 
-**Znany dług (do zamknięcia przed S03e01):** `chat()` (`client.py:62`) idzie przez
-`self._chain.handle(...)`, ale `structured()` (`:73`) i `run_agent_loop()` (`:117`)
-wołają `self._provider` bezpośrednio — omijają cały łańcuch, więc żadna generacja z tych
-dwóch ścieżek nie trafia do Langfuse ani do `CostTrackMiddleware`. Fix nie jest
-przepięciem jednej linii: `LLMProvider.complete_structured` w ogóle nie zwraca liczników
-tokenów (ABC `core/llm/base.py:41-48`), więc trzeba dotknąć ABC + cztery adaptery +
-`ProviderCallMiddleware`.
+**Znany dług — zamknięty 2026-08-16 (`feat/core-observability-langfuse`, przed s03e01).**
+Do tej daty `chat()` (`client.py:62`) szedł przez `self._chain.handle(...)`, ale
+`structured()` i `run_agent_loop()` wołały `self._provider` bezpośrednio — omijały cały
+łańcuch, więc żadna generacja z tych dwóch ścieżek nie trafiała do Langfuse ani do
+`CostTrackMiddleware`. Fix nie był przepięciem jednej linii: `LLMProvider.complete_structured`
+w ogóle nie zwracał liczników tokenów, więc zmiana dotknęła ABC (`core/llm/base.py`) +
+cztery adaptery + `ProviderCallMiddleware`. Kształt rozwiązania:
+- `LLMResponse` (`core/llm/types.py`) dostało pole `parsed: BaseModel | None` — structured
+  output przechodzi przez ten sam łańcuch co `complete()`, `content` niesie JSON do
+  podglądu, `parsed` niesie sparsowaną instancję schematu.
+- `complete_structured()` w ABC i wszystkich czterech adapterach zwraca teraz
+  `LLMResponse`, nie goły `T` — `LLMClient.structured()` rozpakowuje `.parsed` z powrotem.
+- `ProviderCallMiddleware.handle()` dispatchuje po `kwargs["schema"]`/`kwargs["tools"]`
+  (popowane przed przekazaniem do adaptera) zamiast zawsze wołać `complete()`.
+- `CostTrackMiddleware` i `ProviderCallMiddleware` pozostają rozdzielone (enrichment vs.
+  transport) — celowo, patrz sekcja „Async" niżej.
 
 ### Hierarchia zdarzeń (Langfuse)
 Z lekcji S03E01, siedem typów, wszystkie uniwersalne:
@@ -57,8 +69,11 @@ Z lekcji S03E01, siedem typów, wszystkie uniwersalne:
 
 Kontekst dołączany do każdego zdarzenia: `userId` (n/d w tym repo — jeden operator),
 `sessionId`, `agentId`, `promptVersion`, `tags`. Mechanizm `propagate_attrs()`
-(`core/observability/decorators.py:75`) już istnieje, ale **nie jest nigdzie wywoływany**
-— podpiąć w `BaseTask.run()`.
+(`core/observability/decorators.py`) istniał od dawna, ale nigdy nie był wywoływany —
+podpięty w `BaseTask.run()` 2026-08-16 (`session_id = f"{task_name}-{timestamp}"`, patrz
+`core/tasks/base.py`). Wywołania narzędzi w `run_agent_loop()` dostają od tej samej daty
+observation Langfuse typu `Tool` (`langfuse_tool_observation()`, `core/observability/decorators.py`),
+nie tylko span Logfire jak wcześniej.
 
 ### Rejestr promptów — jednostronna synchronizacja kod → Langfuse
 Lekcja S03E01: *„wystarczającym rozwiązaniem może okazać się jednostronna
@@ -71,11 +86,13 @@ Mechanizm (wzorzec `4th-devs/03_01_observability/src/core/tracing/prompts.ts`,
 przepisany na Python — reguła „4th-devs najpierw"):
 
 1. prompt w kodzie zadania (`tasks/sXXeYY_*/prompts.py`) — jedyne źródło prawdy,
-2. przy starcie: `SHA-256(treść)` → porównanie ze stanem w `.langfuse-prompt-state.json`
-   → push do Langfuse **tylko jeśli treść się zmieniła** → zapis `{content_hash, version}`,
-3. `get_prompt_ref(name) -> PromptRef` zwraca `{name, version}`, podpinane do każdej
-   generacji,
-4. brak kluczy Langfuse / błąd sieci → `is_fallback=True`, zadanie leci dalej.
+2. zadanie woła `sync_prompt(name, content)` raz przy starcie: `SHA-256(treść)` →
+   porównanie ze stanem w `.langfuse-prompt-state.json` → push do Langfuse **tylko jeśli
+   treść się zmieniła** → zapis `{content_hash, version}`, zwraca `PromptRef`,
+3. zadanie przekazuje `prompt_name=name` do `llm.chat()`/`.structured()`/`run_agent_loop()`
+   — `CostTrackMiddleware` sam wyszukuje referencję (`get_prompt_ref()`) i podpina ją pod
+   generację (`start_observation(prompt=...)`),
+4. brak kluczy Langfuse / błąd sieci → `PromptRef.is_fallback=True`, zadanie leci dalej.
    **Observability nigdy nie blokuje zdobycia flagi.**
 
 ### Async — decyzja, nie domyślne założenie

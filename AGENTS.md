@@ -12,13 +12,14 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 > przywraca go nieddestrukcyjnie. Kurs ma nadal służyć edukacyjnie po zdobyciu 20 flag —
 > to świadomy, tymczasowy kompromis, nie zmiana celu.
 
-> ✅ **Sezon 1 + Sezon 2 zamknięte** — 9 flag w `.flags.json` (`run.py status` pokaże
-> 9/10 — `s01e03_proxy`, żywy serwer/ngrok, strukturalnie nie przechodzi przez
-> `solve()→submit()`, więc jego flaga nigdy nie trafia do pliku; cecha tego typu zadania,
-> nie błąd). **Sezon 3 w toku** (od 2026-08-16) — kolejność ataku `e01 → e03 → e04 →
-> e05 → e02` (e02 na końcu świadomie, patrz `tasks/s03/requirements/season.md`), stack
-> własny `core/llm/` (nie `pydantic-ai`, patrz `core-stack-decision.md`). Szczegóły i
-> checklisty: `tasks/s03/requirements/`.
+> ✅ **Sezon 1 + Sezon 2 zamknięte, Sezon 3 w toku** — 10 flag w `.flags.json`
+> (`run.py status` pokaże 10/11 — `s01e03_proxy`, żywy serwer/ngrok, strukturalnie
+> nie przechodzi przez `solve()→submit()`, więc jego flaga nigdy nie trafia do
+> pliku; cecha tego typu zadania, nie błąd). **s03e01 zaliczone (2026-08-16)** —
+> `{FLG:BUGGYSYSTEM}`, pierwsza flaga sezonu, za pierwszej próby. Kolejność ataku
+> `e01 → e03 → e04 → e05 → e02` (e02 na końcu świadomie, patrz
+> `tasks/s03/requirements/season.md`), stack własny `core/llm/` (nie `pydantic-ai`,
+> patrz `core-stack-decision.md`). Szczegóły i checklisty: `tasks/s03/requirements/`.
 
 ## 🚀 Szybki start (efficiency mode)
 - **Zadanie dnia:** znajdź folder w `/tasks` → `uv run run.py solve sXXeYY`

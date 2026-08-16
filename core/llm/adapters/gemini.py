@@ -72,7 +72,7 @@ class GeminiAdapter(LLMProvider):
         schema: type[T],
         *,
         system: str | None = None,
-    ) -> T:
+    ) -> LLMResponse:
         from google.genai import types
 
         prompt = "\n".join(f"{m.role}: {m.content}" for m in messages)
@@ -101,33 +101,45 @@ class GeminiAdapter(LLMProvider):
             config=config,
         )
 
+        usage = response.usage_metadata
+        input_tokens = (usage.prompt_token_count or 0) if usage else 0
+        output_tokens = (usage.candidates_token_count or 0) if usage else 0
+
         # Jeżeli SDK sparsowało odpowiedź do modelu Pydantic (response.parsed), używamy go.
         # W przeciwnym razie parsujemy surowy tekst.
         if isinstance(response.parsed, schema):
-            return response.parsed
+            parsed = response.parsed
+        else:
+            finish_reason = None
+            if response.candidates:
+                finish_reason = response.candidates[0].finish_reason
 
-        finish_reason = None
-        if response.candidates:
-            finish_reason = response.candidates[0].finish_reason
+            if response.text is None:
+                raise TypeError(
+                    f"Response text is None (finish_reason={finish_reason}). "
+                    "Model prawdopodobnie nie wygenerował żadnej treści."
+                )
 
-        if response.text is None:
-            raise TypeError(
-                f"Response text is None (finish_reason={finish_reason}). "
-                "Model prawdopodobnie nie wygenerował żadnej treści."
-            )
+            try:
+                parsed = schema.model_validate_json(response.text)
+            except Exception as e:
+                if (
+                    finish_reason
+                    and getattr(finish_reason, "name", str(finish_reason)).upper() != "STOP"
+                ):
+                    raise ValueError(
+                        f"Odpowiedź modelu wygląda na ucięty JSON (finish_reason={finish_reason}). "
+                        f"Prawdopodobnie zabrakło max_output_tokens. Oryginalny błąd: {e}"
+                    ) from e
+                raise
 
-        try:
-            return schema.model_validate_json(response.text)
-        except Exception as e:
-            if (
-                finish_reason
-                and getattr(finish_reason, "name", str(finish_reason)).upper() != "STOP"
-            ):
-                raise ValueError(
-                    f"Odpowiedź modelu wygląda na ucięty JSON (finish_reason={finish_reason}). "
-                    f"Prawdopodobnie zabrakło max_output_tokens. Oryginalny błąd: {e}"
-                ) from e
-            raise
+        return LLMResponse(
+            content=parsed.model_dump_json(),
+            model=self._model_name,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            parsed=parsed,
+        )
 
     def complete_with_tools(
         self,

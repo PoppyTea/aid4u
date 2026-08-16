@@ -7,13 +7,25 @@ Contains the architectural heart of the system: LLM clients, task management bas
 - `core/llm/`: LLM integration and adapter logic.
 - `core/hub/`: Data acquisition and caching.
 - `core/tasks/`: Base classes for task registration.
-- `core/observability/`: Instrumentation and tracing decorators.
+- `core/observability/`: Instrumentation, tracing decorators, prompt registry
+  (`prompts.py` — code→Langfuse one-way sync, see `strategy/observability.md`).
 - `core/runtime/`: Kill switch (process-group panic, graceful stop, run budgets).
 - `core/net.py`: Content validation for anything fetched over the network
   (soft-404 detection) — independent of `HubClient`, not hub-specific.
 
 ## Local Contracts
-- All external API interactions MUST go through `core/llm/client.py`.
+- All external **LLM provider** API interactions MUST go through `core/llm/client.py`
+  (Anthropic/Gemini/OpenAI/OpenRouter — the providers `core/llm/adapters/` abstracts
+  over). This does NOT cover observability/telemetry calls (Langfuse, Logfire) —
+  those are a different concern with a different existing home: `core/hub/client.py`
+  (`@langfuse_observe()`), `core/llm/middleware.py` (`CostTrackMiddleware` calls
+  `langfuse.get_client()` directly), and `core/observability/` (`prompts.py`,
+  `decorators.py`) all call the Langfuse SDK directly by design — `LLMClient` is a
+  provider abstraction, not a generic external-API gateway, so routing telemetry
+  through it would be the wrong direction, not a missing boundary. Flagged and
+  clarified 2026-08-16 after CodeRabbit read the contract literally as "every"
+  external API — the pre-existing `middleware.py` pattern already contradicted that
+  reading before this note existed.
   - **Exception:** `core/llm/native_tool_*.py` (Anthropic native tools — web_search,
     code_execution, bash, text_editor) call `anthropic.Anthropic` directly instead of
     going through `LLMClient`. These aren't portable across providers, so they're a
@@ -96,10 +108,28 @@ Contains the architectural heart of the system: LLM clients, task management bas
 - Follow the Adapter pattern for new LLM providers.
 - Maintain consistent interface usage across adapters.
 - **Observability contract lives in `strategy/observability.md`**, not here — role split
-  between Logfire (traces/spans, working) and Langfuse (prompt registry + generations,
-  near-zero coverage as of 2026-08-16). Known gap tracked there: `structured()` and
-  `run_agent_loop()` bypass `self._chain` (`client.py:73,117`), so neither gets a
-  Langfuse generation nor cost-tracking today — fix scheduled before `s03e01`.
+  between Logfire (traces/spans) and Langfuse (prompt registry + generations).
+  **Fixed 2026-08-16** (`feat/core-observability-langfuse`, before `s03e01`): `structured()`
+  and `run_agent_loop()` now route through `self._chain` like `chat()` — `complete_structured()`
+  changed ABC signature from `-> T` to `-> LLMResponse` (parsed model lives in the new
+  `LLMResponse.parsed` field, `types.py`) so `CostTrackMiddleware` sees tokens/cost for
+  every call shape uniformly. `ProviderCallMiddleware.handle()` dispatches on
+  `kwargs["schema"]`/`kwargs["tools"]` — both popped before reaching the provider.
+  All four call sites (`chat`/`structured`/`run_agent_loop`, plus every tool call inside
+  the agent loop) now also emit a Langfuse observation; `LLMClient` methods accept an
+  optional `prompt_name=` linking the generation to a version registered via
+  `core.observability.prompts.sync_prompt()`. `propagate_attrs()` (existed since before,
+  never called) is now wired into `BaseTask.run()` — every task run gets a `session_id`.
+- **Cost tracking was silently broken since before this fix, found by the first real
+  run through the newly-wired path (`s03e01`, 2026-08-16):** `CostTrackMiddleware`
+  called `genai_prices.calculate(model=, input_tokens=, output_tokens=)` — an API from
+  an older version of the package. The installed version only has `calc_price(Usage(...),
+  model_ref)` returning `PriceCalculation.total_price` (`Decimal`). The `except Exception`
+  around it (best-effort by design) swallowed the `AttributeError` silently for every
+  call — nobody noticed because `chat()` (the only call type reaching this code before
+  the middleware fix above) is barely used in practice. Fixed in the same commit;
+  covered by `tests/core/llm/test_middleware.py::test_cost_is_actually_calculated_for_a_known_model`,
+  deliberately without mocking `genai_prices` — that's exactly what a mock would have hidden.
 - Anthropic-only native tools (`core/llm/native_tool_*.py`) are standalone functions,
   not `AnthropicAdapter` methods — each builds its own `anthropic.Anthropic(api_key=...)`
   client rather than reaching into adapter internals. This keeps every native-tool module

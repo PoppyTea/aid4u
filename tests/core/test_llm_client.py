@@ -59,7 +59,14 @@ class TestLLMClientStructured:
             name: str
             age: int
 
-        mock_provider.complete_structured.return_value = MySchema(name="Jan", age=30)
+        parsed = MySchema(name="Jan", age=30)
+        mock_provider.complete_structured.return_value = LLMResponse(
+            content=parsed.model_dump_json(),
+            model="claude-test",
+            input_tokens=10,
+            output_tokens=5,
+            parsed=parsed,
+        )
         result = llm.structured([LLMMessage.user("test")], MySchema)
         assert isinstance(result, MySchema)
         assert result.name == "Jan"
