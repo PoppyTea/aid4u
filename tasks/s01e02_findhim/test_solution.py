@@ -393,6 +393,7 @@ def test_search_suspect_history_for_nearest_power_plant_finds_true_minimum_acros
     hub = FakeHub(response=[{"latitude": RADOM.latitude, "longitude": RADOM.longitude}])
     # pyrefly: ignore [bad-argument-type]
     result = search_suspect_history_for_nearest_power_plant(
+        # pyrefly: ignore [bad-argument-type]
         hub, power_plants, "Testowy", "Podejrzany", 1990
     )
 
@@ -409,6 +410,7 @@ def test_search_suspect_history_for_nearest_power_plant_returns_none_code_when_n
     hub = FakeHub(response=[{"latitude": WARSAW.latitude, "longitude": WARSAW.longitude}])
     # pyrefly: ignore [bad-argument-type]
     result = search_suspect_history_for_nearest_power_plant(
+        # pyrefly: ignore [bad-argument-type]
         hub, unresolved_plants, "Testowy", "Podejrzany", 1990
     )
 
