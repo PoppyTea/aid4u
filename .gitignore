@@ -78,3 +78,7 @@ tasks/s01e02_findhim/tmp-quick-scripting-tests.py
 /doc/
 keyring-index.md
 .claude/state/work_summary.last
+.claude/state/contract_audit.json
+.ruff_cache/
+.pytest_cache/
+.zed/
