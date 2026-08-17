@@ -94,3 +94,8 @@ zdobywania flag do 20/25, nie proces. Learning-mode wersja tego pliku:
 flaga sezonu. Reguły anomalii zwijają się do `data_bad ∨ note_failure`; LLM
 klasyfikuje wyłącznie unikalne frazy notatek (~325 na żywych danych, nie 9999
 plików). A/B Haiku 4.5 vs Gemini 2.5 Flash: 100% zgodności, wybrano Haiku.
+`s03e03_reactor/` — **solved** (2026-08-17) — flaga `{FLG:INSTALLED}`, druga flaga
+sezonu, 9 ruchów, 0 zgnieceń, koszt $0.00. Deterministyczny receding-horizon BFS,
+zero LLM (najłatwiejszy epizod sezonu — LLM praktycznie zbędny wobec czystego
+algorytmu). Format API (`answer: {"command": ...}`, kolizja sprawdzana PO
+przesunięciu bloków) ustalony empirycznie sondą — lekcja go nie podaje.
