@@ -52,25 +52,46 @@ rotować/redagować bez nowej decyzji.**
 
 ## PR #64 (`core/runtime/killswitch.py`, kill switch)
 
-### E. `start_run()` nie czyści starego `.run/STOP`
+### ~~E. `start_run()` nie czyści starego `.run/STOP`~~ ✅ Naprawione
 `request_stop()` może utworzyć `.run/STOP`, gdy żadne zadanie nie jest aktywne (np. wywołane
 przypadkiem albo po zakończonym już runie). Kolejny `solve` odpala `start_run()`, które nie usuwa
 tego sentinela — nowy run pada na pierwszym `check_abort()` bez widocznej przyczyny.
 **Mechanizm poprawki:** `start_run()` ma jawnie skasować `.run/STOP`, jeśli istnieje, na starcie.
 
-### F. `run.py --max-seconds 0` nie jest walidowane
+**Zweryfikowane 2026-08-17 (prep s03e03): naprawione już w commicie `9efab61`, przed mergem PR #64
+— nie po nim.** `core/runtime/killswitch.py:85` — `start_run()` woła
+`_STOP_FILE.unlink(missing_ok=True)`, udokumentowane w docstringu funkcji (`:69-72`). Ten triage
+(16.08) sprawdzał wobec `main`, ale dla tej pozycji weryfikacja nie wyszła.
+
+### ~~F. `run.py --max-seconds 0` nie jest walidowane~~ ⚠️ Przesłanka fałszywa
 CLI przyjmuje `0` i ujemne wartości bez błędu; `start_run(max_seconds=0)` w `killswitch.py`
 traktuje `0` jako falsy i wyłącza budżet całkowicie — help text obiecuje twardy limit, więc `0`
 powinno być błędem walidacji, nie cichym "brak limitu".
 **Mechanizm poprawki:** walidacja w CLI (`run.py`), odrzucić `<= 0` z czytelnym komunikatem.
 
-### G. Testy killswitcha dotykają prawdziwego `.run/`
+**Zweryfikowane 2026-08-17: "`0` jako falsy" nie jest prawdą o kodzie.** `killswitch.py:86`
+sprawdza `max_seconds is not None`, nie truthy — `0` jest **świadomym** budżetem "przerwij
+natychmiast", udokumentowanym w docstringu `start_run()` (`:74-76`) i pokrytym testami
+(`test_killswitch.py:98,123`, `tests/core/tasks/test_base.py:125` — ten ostatni komentuje wprost,
+że budżet=0 to jedyny deterministyczny sposób wymuszenia `AbortRun` w teście). Wartości ujemne
+**są** odrzucane, `ValueError` w `killswitch.py:84`. Realnie otwarte zostaje tylko: `run.py` CLI
+nie ma własnej walidacji przed przekazaniem do `start_run()` — dziś ujemna wartość i tak kończy
+się czytelnym `Błąd: max_seconds musi być >= 0, ...` (przez `except Exception` w `run.py:114`),
+tylko nie jako walidacja argumentu na poziomie CLI. Kosmetyka, nie bug — nie warte osobnej
+poprawki.
+
+### ~~G. Testy killswitcha dotykają prawdziwego `.run/`~~ ✅ Naprawione
 `tests/core/runtime/test_killswitch.py` — `_PGID_FILE`/`_STOP_FILE` rozwiązywane na poziomie modułu,
 więc testy czytają/piszą do repo's prawdziwego `.run/`. Ryzyko: `end_run()` w autouse fixture kasuje
 `.run/current.pgid` prawdziwego aktywnego runu, `test_raises_after_request_stop` zapisuje prawdziwy
 `.run/STOP` i przerywa aktywny run, jeśli `pytest` odpala się równolegle z `solve`.
 **Mechanizm poprawki:** `monkeypatch` ścieżek modułu na `tmp_path` dla testów jednostkowych; zostawić
 prawdziwy katalog wyłącznie dla testu POSIX/panic, który go faktycznie potrzebuje.
+
+**Zweryfikowane 2026-08-17: naprawione już w commicie `9efab61`.** `test_killswitch.py:29-32` —
+autouse fixture `_isolated_run_dir` robi `monkeypatch.setattr` na `_RUN_DIR`/`_PGID_FILE`/
+`_STOP_FILE` → `tmp_path`, plus `os.setsid` zneutralizowany. Prawdziwy `.run/` zostaje tylko dla
+`TestPanicScriptKillsEntireProcessGroup`, dokładnie zgodnie z sugerowanym mechanizmem poprawki.
 
 ### H. `scripts/panic.sh` nie wiąże PGID z konkretnym runem
 Osłona przed zabiciem własnej grupy procesów istnieje, ale nie chroni przed **recyklingiem PID** —
@@ -86,5 +107,15 @@ zabić obcą grupę. Niskie realne ryzyko dzięki `os.setsid()` (izolacja), ale 
 
 ## Plan (nie zrobione — do zrobienia w osobnym PR/sesji)
 
-Kolejność wg ryzyka: E (myląca awaria bez przyczyny) → A/B (poprawność odpowiedzi s02e03, choć
-zadanie już zaliczone) → F/G (higiena) → H (heavy lift, niski priorytet realny).
+**Poprawiony 2026-08-17** — poprzednia wersja tego planu (`E → A/B → F/G → H`) opierała się na
+trzech pozycjach (E, F, G), które okazały się już zamknięte przy weryfikacji przed s03e03 (patrz
+sekcje wyżej). Realnie otwarte: **R6/R7** (`.claude/review-rules.md` — podwójna submisja i szeroki
+`except` w `s02e03_failure`, oba nadal obecne w kodzie) → **A/B** (poprawność odpowiedzi s02e03,
+choć zadanie już zaliczone) → **H** (heavy lift, niski priorytet realny) → **C/I** (kosmetyka, przy
+najbliższej okazji edycji tych plików).
+
+R8 (`.claude/review-rules.md` — brak `reraise=True` w 3 metodach `HubClient`) zweryfikowany
+2026-08-17: `grep -n "except.*httpx" tasks/ core/` zwraca tylko dwa miejsca (`s02e03_failure:270`,
+`s02e04_mailbox:165`), oba wokół `submit()`/`post_api()` — **żadne** wokół `get_data`/`get_public`,
+czyli metod bez `reraise=True`. Dziś nikogo to nie gryzie; warte ujednolicenia jako porządek, nie
+jako naprawa (dokładnie kryterium, które R8 sam sobie postawił).
