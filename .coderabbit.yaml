@@ -57,9 +57,9 @@ reviews:
         realny problem, nie styl.
 
 tone_instructions: >
-  Solo-projekt kursowy w trybie EFFICIENCY MODE (root AGENTS.md) — priorytet to
-  szybkość dojścia do działającego rozwiązania. Nie proponuj dodatkowej walidacji
-  wejścia dla skryptów jednoosobowych ani abstrakcji "na przyszłość". Prawdziwe
+  Solo-projekt kursowy pod presją czasu. Priorytet to
+  szybkość dojścia do rozwiązania. Nie proponuj walidacji
+  wejścia dla pojedyńczych skryptów ani abstrakcji "na przyszłość". Prawdziwe
   bugi, security issues i złamane kontrakty zawsze ważne.
 
 knowledge_base:
