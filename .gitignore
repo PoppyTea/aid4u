@@ -77,3 +77,4 @@ tasks/s01e02_findhim/tmp-quick-scripting-tests.py
 # intended per-episode structure).
 /doc/
 keyring-index.md
+.claude/state/work_summary.last
