@@ -1,0 +1,24 @@
+[
+  {
+    "title": "Napraw brakujące ładowanie .env w SecretsManager.get() (fałszywe skip'y testów Gemini)",
+    "description": "SecretsManager.get() (core/secrets.py, L46-63) sprawdza keyring i os.getenv(), ale nigdy nie wywołuje load_dotenv(). Ładowanie pliku .env odbywa się dziś tylko przy imporcie core.config (core/config.py, L21-24). W efekcie testy integracyjne Gemini (tests/core/test_gemini_integration.py, L14-18), które od tego PR pobierają klucz przez get_secrets().get(\"GEMINI_API_KEY\"), mogą fałszywie zgłaszać pytest.skip(\"GEMINI_API_KEY not found\"), mimo że klucz jest poprawnie skonfigurowany w .env — jeśli core.config nie zostało wcześniej zaimportowane w danym procesie testowym.\n\nSugerowane rozwiązania (do wyboru):\n1. W testach użyć tej samej warstwy konfiguracji co aplikacja: from core.config import get_config; api_key = get_config().gemini_key.\n2. Alternatywnie: jawnie wywołać load_dotenv() w module testowym przed użyciem get_secrets().\n3. Docelowo: rozważyć, czy SecretsManager.get() sam nie powinien ładować .env, aby uniknąć tej klasy błędów w całym projekcie, nie tylko w tym teście.\n\n**Oryginalny kontekst:** Komentarz recenzenta (qodo-code-review), review PR #6 aid4u, commit a58465a: \"tests/core/test_gemini_integration.py now fetches the key via get_secrets(), but SecretsManager.get() does not load the project .env file; if GEMINI_API_KEY is only present in .env (and core.config hasn't been imported elsewhere to load it), the integration tests will skip even though the key is configured.\" Odniesienia: tests/core/test_gemini_integration.py[14-18], core/secrets.py[46-63], core/config.py[21-24].",
+    "labels": ["technical-debt", "post-review"],
+    "linear": {
+      "id": "AID-5",
+      "url": "https://linear.app/aid4u/issue/AID-5/napraw-brakujace-ladowanie-env-w-secretsmanagerget-falszywe-skipy",
+      "team": "Aid4u",
+      "project": "AID4U"
+    }
+  },
+  {
+    "title": "Wydziel wspólny pytest fixture do pobierania klucza API Gemini i logiki skip",
+    "description": "W tests/core/test_gemini_integration.py logika pobierania GEMINI_API_KEY oraz warunkowego pytest.skip(...) jest zduplikowana w trzech testach integracyjnych. Warto wydzielić ją do wspólnego pytest fixture, aby uniknąć powielania kodu i zapewnić spójny komunikat skip przy dodawaniu kolejnych testów Gemini w przyszłości.\n\n**Oryginalny kontekst:** Qodo Code Review (PR #6 aid4u) — \"Introduce a shared pytest fixture for API key + skip logic ... Removes repeated key-fetch/skip blocks across tests, keeps skip messaging consistent if more Gemini tests are added ... If more Gemini integration tests are expected, consider a small follow-up refactor to a shared fixture to avoid duplication.\" Gemini Code Assist (ten sam PR): \"The feedback suggests refactoring the duplicated API key retrieval and skip logic into a shared pytest fixture to improve maintainability and reduce code duplication.\"",
+    "labels": ["technical-debt", "post-review"],
+    "linear": {
+      "id": "AID-6",
+      "url": "https://linear.app/aid4u/issue/AID-6/wydziel-wspolny-pytest-fixture-do-pobierania-klucza-api-gemini-i",
+      "team": "Aid4u",
+      "project": "AID4U"
+    }
+  }
+]

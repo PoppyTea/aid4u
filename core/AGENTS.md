@@ -89,7 +89,7 @@ Contains the architectural heart of the system: LLM clients, task management bas
     `LLMClient.run_agent_loop()` — corrects a single call, does NOT abort the run).
     Cost/token budget is NOT implemented yet (would need `CostTrackMiddleware` to expose
     a running total mid-run, not just at the end) — noted as a gap in `killswitch.py`'s
-    module docstring, not silently absent.
+    module docstring, not silently absent. (→ AID-62)
   - Any caller that wraps a tool executor's exceptions (as `run_agent_loop` does) MUST
     re-raise `AbortRun` specifically, not swallow it into a generic error string — it's
     a kill signal, not a tool failure.

@@ -1,3 +1,8 @@
+> **ZARCHIWIZOWANE 2026-08-18.** Decyzja podjęta 2026-08-16 →
+> `tasks/s03/requirements/core-stack-decision.md` (Ścieżka A — zostajemy przy własnym
+> `core/llm/`). Ten plik nigdy nie miał wyekstrahowanych issues (to prompt-decyzja, nie triage) —
+> stąd brak tabeli mapowania. Zostaje jako historyczny ślad tego, jak decyzja została zamówiona.
+
 # Prompt do osobnego wątku: decyzja architektoniczna pre-s03
 
 > Skopiuj wszystko poniżej linii jako pierwszą wiadomość w nowym wątku.

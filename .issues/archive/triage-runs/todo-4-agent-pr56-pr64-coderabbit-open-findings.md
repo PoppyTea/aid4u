@@ -1,3 +1,24 @@
+> **ZARCHIWIZOWANE 2026-08-18** — pozycje z tego dokumentu wyekstrahowane do Linear (team Aid4u).
+> Mapowanie stare-ID → AID-XXX:
+>
+> | Stare ID | AID-XXX | Tytuł |
+> |---|---|---|
+> | R6 | [AID-15](https://linear.app/aid4u/issue/AID-15) | BaseTask.run() zawsze wysyła odpowiedź drugi raz -- brak kontraktu 'solve już wysłał' |
+> | R7 | [AID-28](https://linear.app/aid4u/issue/AID-28) | s02e03_failure/s02e04_mailbox: except httpx.HTTPStatusError zbyt szeroki |
+> | R8 | [AID-29](https://linear.app/aid4u/issue/AID-29) | HubClient.get_data/get_public brak reraise=True |
+> | A | [AID-30](https://linear.app/aid4u/issue/AID-30) | s02e03_failure: brak globalnego egzekwowania budżetu tokenów |
+> | B | [AID-31](https://linear.app/aid4u/issue/AID-31) | s02e03_failure: render_line()/CompressedEntry.text nie sanityzuje \n/\r |
+> | C | [AID-43](https://linear.app/aid4u/issue/AID-43) | Kosmetyka dokumentacji s02e03 |
+> | H | [AID-44](https://linear.app/aid4u/issue/AID-44) | scripts/panic.sh nie wiąże PGID z konkretnym runem |
+> | I | [AID-45](https://linear.app/aid4u/issue/AID-45) | test_killswitch.py:260 -- nieużywany 'stdout' (ruff RUF059) |
+>
+> D, E, F, G — **nie migrowane**: D to rozstrzygnięta decyzja (apikey doc/zadanie.md, zostaje),
+> E i G już naprawione w commicie `9efab61` przed mergem PR#64, F to przesłanka fałszywa
+> (`killswitch.py` sprawdza `is not None`, nie truthy) — wszystkie ✅ zrobione/rozstrzygnięte,
+> patrz dziennik migracji.
+>
+> Pełne opisy żyją teraz wyłącznie w Linear — ten plik zostaje jako historyczny ślad triage'u.
+
 # Todo dla agenta — PR #56, #64 (CodeRabbit) + R6-R8 (Qodo-derived)
 
 Odpowiednik dla człowieka: `summaries-4-human/pr56-pr64-coderabbit-open-findings.md`.
