@@ -217,7 +217,12 @@ class TestSecretsProbe:
     def test_build_tools_z_secrets_wstrzykuje_do_obu(self):
         tools = build_tools("https://x", secrets=True)
         assert len(tools) == 2
-        assert all("base64" in t["description"] for t in tools)
+        assert all("BASE64" in t["description"] for t in tools)
+
+    def test_opisy_sekretne_mieszcza_sie_w_limicie_huba(self):
+        """Hub odrzuca opis >300 znakow (-875) — regresja z podejscia na zywo."""
+        for t in build_tools("https://x", secrets=True):
+            assert len(t["description"]) <= 300
 
     def test_augment_output_dokleja_gdy_sie_miesci(self):
         from tasks.s03e04_negotiations import secrets_probe

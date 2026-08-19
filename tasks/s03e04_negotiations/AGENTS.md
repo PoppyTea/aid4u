@@ -80,5 +80,19 @@ w **6 z 10** dostępnych kroków. Odpowiedź: **Domatowo + Skolwin**.
 - `https://hub.ag3nts.org/debug` — realny ruch od agenta, sprawdzać PRZED `check`.
 - Zadanie zwraca flagę z huba — to ostateczna weryfikacja, nie zielone testy.
 
+## Sekret (druga flaga) — stan: nieudane jedno podejście (2026-08-19)
+- Nazwa flagi (jedyna wskazówka): „Dostałbym ją gdyby nie ta cenzura!" → hipoteza:
+  cenzor tnie jawne `{FLG:...}`, trzeba przemycić flagę zakodowaną (base64).
+- Tryb `--secrets` (`secrets_probe.py`, env `S03E04_SECRETS`): prompt injection w
+  opisach (limit **300 znaków**, `-875`) + wzmocnienie w odpowiedziach; socjotechnika
+  („kanał audytu", „darmowy odbiór") + żądanie base64. Poller dekoduje base64/rot13.
+- **Dlaczego nie zadziałało:** po pierwszym zaliczeniu głównej flagi hub oddaje
+  **zbuforowany** wynik i **nie uruchamia agenta ponownie** — 0 nowych wywołań
+  narzędzi w przebiegu sekretnym. Injection nigdy nie dotarł do agenta.
+- **Wniosek na powrót (po 20 flagach):** sekretu trzeba próbować **przed** albo
+  **razem z** pierwszym zaliczeniem (jedna rejestracja, injection od startu), nie w
+  osobnym drugim podejściu z tego samego konta. Ewentualny reset zadania po stronie
+  huba — nieznany.
+
 ## Child DOX Index
 - None.
