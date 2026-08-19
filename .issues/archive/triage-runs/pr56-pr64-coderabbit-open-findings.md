@@ -60,13 +60,18 @@ linii `answer["logs"]`, łamiąc kontrakt huba ("jedno zdarzenie = jedna linia")
 - `tasks/s02e03_failure/doc/community_notes.md` — literówki wykryte przez LanguageTool.
 - `tasks/s02e03_failure/doc/community_notes.md:26` — blok JSON bez oznaczonego języka (markdownlint).
 
-### D. Zweryfikowany, świadomie zignorowany — apikey w `doc/zadanie.md`
+### D. ~~Zweryfikowany, świadomie zignorowany~~ — apikey w `doc/zadanie.md` → **DECYZJA ODWRÓCONA 2026-08-19**
 Betterleaks (skaner sekretów CodeRabbit) zgłosił wykryty klucz API w
-`tasks/s02e03_failure/doc/zadanie.md` (URL + przykład JSON, format `7a6dcc7c-...`). **Zweryfikowane
-2026-08-16: to prawdziwy format apikey huba** (nie fałszywy alarm co do formatu), najpewniej
-skopiowany 1:1 z treści zadania kursu przy zapisie `doc/zadanie.md`. Autor: świadomie nie warte
-uwagi — to klucz do huba kursowego (submitowanie zadań), nie sekret produkcyjny. **Nie
-rotować/redagować bez nowej decyzji.**
+`tasks/s02e03_failure/doc/zadanie.md` (URL + przykład JSON). Zweryfikowane 2026-08-16: to
+prawdziwy apikey huba, skopiowany 1:1 z treści zadania kursu. Wtedy uznane za nie warte
+uwagi — klucz kursowy, nie produkcyjny — z zastrzeżeniem „nie rotować/redagować bez nowej
+decyzji".
+
+**Nowa decyzja zapadła 2026-08-19:** klucz traktujemy jak prawdziwy klucz API. Audyt całego
+multirepo wykazał **370 wystąpień w 131 plikach** (2 śledzone pliki w publicznym `aid4u`,
+128 w `aid4u-private`) oraz obecność w **historii gita** publicznego repo (4 commity).
+Wszystkie wystąpienia w working tree podmienione na `$STUDENT_ID` (keyring → `~/.zshenv`).
+Rotacja klucza i ewentualne przepisanie historii pozostają otwarte — patrz **AID-68**.
 
 ---
 

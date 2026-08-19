@@ -70,6 +70,15 @@ w **6 z 10** dostępnych kroków. Odpowiedź: **Domatowo + Skolwin**.
   gubi ostatnie z 51 miast.
 - W katalogu **nie ma kabli ani kontrolerów ładowania** — przykład „kabel 10m"
   z treści zadania jest ilustracyjny, nie pochodzi z tego zbioru.
+- **1234 z 2137 pozycji zapisuje jednostkę ZE SPACJĄ** („10 ohm", „1 A", „100 V",
+  „8 MHz"), a agent Centrali pisze zwarcie („48V"). `tokenize()` scala liczbę
+  z następującą krótką jednostką (≤4 liter, reguła generyczna — nie whitelista),
+  inaczej większość katalogu jest nieosiągalna dla zapytań z parametrem. Nie
+  ugryzło na żywo tylko dlatego, że wszystkie 3 szukane przedmioty należą do
+  zwartej mniejszości (AID-69).
+- **Treść zadania w `doc/zadanie.md` miała wklejony prawdziwy apikey** — podmieniony
+  na `$STUDENT_ID` (2026-08-19, AID-68). Kopiując materiały kursu do repo, sprawdź
+  czy nie ciągną klucza ze sobą.
 
 ## Verification
 - `uv run pytest tasks/s03e04_negotiations/` — 34 testy, zero sieci, na

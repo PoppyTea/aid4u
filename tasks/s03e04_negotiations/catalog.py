@@ -71,9 +71,25 @@ def normalize(text: str) -> str:
     return re.sub(r"\s+", " ", stripped.lower()).strip()
 
 
+# Scala liczbę z następującą po niej krótką jednostką: '10 ohm' → '10ohm', '1 A' → '1a'.
+# Reguła jest GENERYCZNA (dowolny człon ≤4 liter), nie whitelistą jednostek — katalog
+# używa co najmniej A, V, W, Ah, ohm, kOhm, MHz, nF, uF, mm, a agent może napisać
+# dowolną. Limit 4 liter chroni zwykłe słowa: 'cyfra' (5) czy 'metrow' (6) nie scalą się
+# z poprzedzającą liczbą.
+_SPACED_UNIT_RE = re.compile(r"(\d)\s+([a-z]{1,4})\b")
+
+
 def tokenize(text: str) -> list[str]:
-    """Dzieli znormalizowany tekst na tokeny alfanumeryczne (zachowuje '48v', '400w')."""
-    return re.findall(r"[a-z0-9]+", normalize(text))
+    """
+    Dzieli znormalizowany tekst na tokeny alfanumeryczne (zachowuje '48v', '400w').
+
+    Przed podziałem scala jednostki zapisane ze spacją. **1234 z 2137** pozycji
+    katalogu zapisuje jednostkę oddzielnie ('10 ohm', '1 A', '100 V'), podczas gdy
+    agent Centrali pisze zwarcie ('48V') — bez tego scalenia większość katalogu była
+    nieosiągalna dla zapytań z parametrem. Ta sama funkcja obsługuje obie strony
+    porównania, więc normalizacja jest symetryczna.
+    """
+    return re.findall(r"[a-z0-9]+", _SPACED_UNIT_RE.sub(r"\1\2", normalize(text)))
 
 
 def stem(token: str) -> str:

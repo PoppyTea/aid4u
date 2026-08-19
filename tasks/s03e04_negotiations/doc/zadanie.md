@@ -21,7 +21,7 @@ Przykład odpowiedzi:
 
 ```json
 {
-  "apikey": " 7a6dcc7c-07a0-4dce-93f8-f81d68ca0f53",
+  "apikey": "$STUDENT_ID",
   "task": "negotiations",
   "answer": {
     "tools": [
@@ -72,7 +72,7 @@ Weryfikacja jest asynchroniczna — po wysłaniu narzędzi musisz poczekać kilk
 
 ```json
 {
-  "apikey": " 7a6dcc7c-07a0-4dce-93f8-f81d68ca0f53",
+  "apikey": "$STUDENT_ID",
   "task": "negotiations",
   "answer": {
     "action": "check"
