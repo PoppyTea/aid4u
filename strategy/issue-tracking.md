@@ -111,5 +111,25 @@ egzekwowana przez `strategy/rules/cleanup/r18-no-local-issue-registers.md`.
     nodes { identifier title state { name } priority } } }
   ```
 
+## Dostęp gdy MCP Linear nie działa
+
+MCP Linear bywa niedostępny (wygasła autoryzacja, sesja nieinteraktywna, w której
+nie da się przejść OAuth). **To nie blokuje pracy z issues** — jest droga zapasowa
+przez API, potwierdzona 2026-08-19 (team `AID`, 66 issues odczytanych):
+
+- Endpoint: `https://api.linear.app/graphql`, nagłówek `Authorization: <klucz>`
+  (bez prefiksu `Bearer`).
+- Klucz: `LINEAR_API_KEY` **wyłącznie** przez `SecretsManager().get()`
+  (`core/secrets.py`) — nigdy w treści komendy, zmiennej powłoki ani logu, zgodnie
+  z `secrets-management.md`. W praktyce oznacza to `uv run python -c "…"`, w którym
+  klucz nie opuszcza procesu.
+- ⚠️ `/usr/local/bin/linear` **nie jest CLI** — to AppImage aplikacji desktopowej
+  i jest rozpakowany wadliwie (`/linear-linux: nie ma takiego pliku`). Nie jest
+  ścieżką skryptową i nie ma sensu go naprawiać w tym celu.
+
+Ta droga obsługuje też zapisy (`issueUpdate`, `issueCreate`) — mutacje na cudzym
+trackerze wymagają jednak zgody użytkownika na konkretną zmianę, tak samo jak
+każda operacja wychodząca.
+
 ## Child DOX Index
 - None.

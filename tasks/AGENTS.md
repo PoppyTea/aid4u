@@ -94,7 +94,13 @@ zdobywania flag do 20/25, nie proces. Learning-mode wersja tego pliku:
 flaga sezonu. Reguły anomalii zwijają się do `data_bad ∨ note_failure`; LLM
 klasyfikuje wyłącznie unikalne frazy notatek (~325 na żywych danych, nie 9999
 plików). A/B Haiku 4.5 vs Gemini 2.5 Flash: 100% zgodności, wybrano Haiku.
-`s03e03_reactor/` — **solved** (2026-08-17) — flaga `{FLG:INSTALLED}`, druga flaga
+`s03e04_negotiations/` — **solved** (2026-08-19) — flaga `{FLG:WINDFARM}`, trzecia
+flaga sezonu, koszt $0.00. Odwrócone role: my wystawiamy 2 narzędzia HTTP (port 8004), agent
+Centrali je odpytuje i sam zgłasza znalezione miasta (wynik: Domatowo + Skolwin,
+6 z 10 dostępnych kroków). Zero LLM — dopasowanie po rdzeniach tokenów obsługuje
+polską odmianę. Hub wymaga DOKŁADNIE 2 narzędzi i
+klucza `URL` wielkimi literami; odpowiedź 4–500 B, brak odpowiedzi = agent
+przerywa pracę. `s03e03_reactor/` — **solved** (2026-08-17) — flaga `{FLG:INSTALLED}`, druga flaga
 sezonu, 9 ruchów, 0 zgnieceń, koszt $0.00. Deterministyczny receding-horizon BFS,
 zero LLM (najłatwiejszy epizod sezonu — LLM praktycznie zbędny wobec czystego
 algorytmu). Format API (`answer: {"command": ...}`, kolizja sprawdzana PO

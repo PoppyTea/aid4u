@@ -15,7 +15,7 @@ Skondensowane logi wysyłasz do Centrali. Technicy weryfikują, czy na ich podst
 Pobierz pełny plik logów:
 
 ```
-https://hub.ag3nts.org/data/7a6dcc7c-07a0-4dce-93f8-f81d68ca0f53/failure.log
+https://hub.ag3nts.org/data/$STUDENT_ID/failure.log
 ```
 
 #### Jak wysłać odpowiedź?
@@ -24,7 +24,7 @@ Metodą POST na `https://hub.ag3nts.org/verify`:
 
 ```json
 {
-  "apikey": " 7a6dcc7c-07a0-4dce-93f8-f81d68ca0f53",
+  "apikey": "$STUDENT_ID",
   "task": "failure",
   "answer": {
     "logs": "[2026-02-26 06:04] [CRIT] ECCS8 runaway outlet temp. Protection interlock initiated reactor trip.\\n[2026-02-26 06:11] [WARN] PWR01 input ripple crossed warning limits.\\n[2026-02-26 10:15] [CRIT] WTANK07 coolant below critical threshold. Hard trip initiated."
