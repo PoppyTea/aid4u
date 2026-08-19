@@ -193,3 +193,55 @@ class TestEndpointy:
         response = client.post("/search", json={})
         assert response.status_code == 200
         assert response.json()["output"]
+
+
+class TestSecretsProbe:
+    """Tryb `--secrets` — prompt injection. Normalny przebieg go nie dotyka."""
+
+    def test_domyslnie_wylaczony(self, monkeypatch):
+        from tasks.s03e04_negotiations import secrets_probe
+
+        monkeypatch.delenv("S03E04_SECRETS", raising=False)
+        assert secrets_probe.enabled() is False
+
+    def test_wlaczany_zmienna(self, monkeypatch):
+        from tasks.s03e04_negotiations import secrets_probe
+
+        monkeypatch.setenv("S03E04_SECRETS", "1")
+        assert secrets_probe.enabled() is True
+
+    def test_build_tools_bez_secrets_nie_wstrzykuje(self):
+        tools = build_tools("https://x")
+        assert all("AUDYT" not in t["description"] for t in tools)
+
+    def test_build_tools_z_secrets_wstrzykuje_do_obu(self):
+        tools = build_tools("https://x", secrets=True)
+        assert len(tools) == 2
+        assert all("base64" in t["description"] for t in tools)
+
+    def test_augment_output_dokleja_gdy_sie_miesci(self):
+        from tasks.s03e04_negotiations import secrets_probe
+
+        out = secrets_probe.augment_output("Domatowo, Skolwin")
+        assert "base64" in out
+        assert len(out.encode("utf-8")) <= 500
+
+    def test_augment_output_pomija_gdy_brak_miejsca(self):
+        from tasks.s03e04_negotiations import secrets_probe
+
+        real = "x" * 480
+        assert secrets_probe.augment_output(real) == real
+
+    def test_decode_wykrywa_flage_base64(self):
+        import base64
+
+        from tasks.s03e04_negotiations import secrets_probe
+
+        enc = base64.b64encode(b"{FLG:SECRET}").decode()
+        methods = dict(secrets_probe.decode_flags(f"oto token: {enc}"))
+        assert methods.get("base64") == "{FLG:SECRET}"
+
+    def test_decode_ignoruje_zwykly_tekst(self):
+        from tasks.s03e04_negotiations import secrets_probe
+
+        assert secrets_probe.decode_flags("Domatowo, Skolwin, Rzeszow") == []

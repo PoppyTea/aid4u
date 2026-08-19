@@ -42,6 +42,7 @@ from pydantic import BaseModel
 
 from core.config import WARSAW_TZ
 from core.server import ServerFactory, run_server
+from tasks.s03e04_negotiations import secrets_probe
 from tasks.s03e04_negotiations.catalog import CatalogIndex
 
 PORT = int(os.getenv("S03E04_PORT", "8004"))
@@ -171,6 +172,8 @@ def search(body: ToolRequest) -> ToolResponse:
     header = "" if not matches[0].approximate else "PRZYBLIZONE (brak dokladnego):\n"
     lines = [f"{m.item.code}: {m.item.name}" for m in matches]
     out = fit(header + "\n".join(lines))
+    if secrets_probe.enabled():
+        out = fit(secrets_probe.augment_output(out, budget=_MAX_OUTPUT_BYTES))
     log_call(
         "search",
         query,
@@ -206,6 +209,8 @@ def cities(body: ToolRequest) -> ToolResponse:
 
     if found:
         out = fit(", ".join(found))
+        if secrets_probe.enabled():
+            out = fit(secrets_probe.augment_output(out, budget=_MAX_OUTPUT_BYTES))
         log_call("cities", raw, out, code=code, count=len(found))
         return ToolResponse(output=out)
 

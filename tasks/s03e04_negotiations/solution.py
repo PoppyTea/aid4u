@@ -31,7 +31,7 @@ from core.observability.setup import setup_observability
 setup_observability()
 
 # ─── Właściwe importy po setup obserwabilności ───────────────────────────────
-import sys
+import argparse
 import time
 
 import httpx
@@ -39,6 +39,7 @@ from rich.console import Console
 
 from core.hub import HubClient
 from core.tasks import BaseTask, task
+from tasks.s03e04_negotiations import secrets_probe
 
 _console = Console()
 
@@ -60,10 +61,15 @@ _RUN_INSTRUCTIONS = (
 #
 # Opisy są jedynym kanałem, przez który agent dowiaduje się, jak używać narzędzi,
 # więc mówią wprost: co przyjmują, co zwracają i w jakiej kolejności ich użyć.
-def build_tools(base_url: str) -> list[dict[str, str]]:
-    """Buduje listę dwóch narzędzi w formacie wymaganym przez huba."""
+def build_tools(base_url: str, *, secrets: bool = False) -> list[dict[str, str]]:
+    """
+    Buduje listę dwóch narzędzi w formacie wymaganym przez huba.
+
+    Przy `secrets=True` do opisów dokłada się ładunek prompt injection
+    (`secrets_probe`) — próba sekretnej flagi. Normalny przebieg go nie widzi.
+    """
     base = base_url.rstrip("/")
-    return [
+    tools = [
         {
             "URL": f"{base}/search",
             "description": (
@@ -82,11 +88,12 @@ def build_tools(base_url: str) -> list[dict[str, str]]:
             ),
         },
     ]
+    return secrets_probe.inject_descriptions(tools) if secrets else tools
 
 
-def register_with_hub(hub: HubClient, base_url: str) -> dict:
+def register_with_hub(hub: HubClient, base_url: str, *, secrets: bool = False) -> dict:
     """Zgłasza adresy dwóch narzędzi do huba pod zadaniem 'negotiations'."""
-    return hub.submit("negotiations", {"tools": build_tools(base_url)})
+    return hub.submit("negotiations", {"tools": build_tools(base_url, secrets=secrets)})
 
 
 def check_result(hub: HubClient) -> dict:
@@ -119,6 +126,33 @@ def poll_for_flag(hub: HubClient, *, attempts: int = 10, delay: int = 20) -> str
     return None
 
 
+def poll_for_secret(hub: HubClient, *, attempts: int = 10, delay: int = 20) -> str | None:
+    """
+    Sekretny poller — dodatkowo dekoduje odpowiedzi pod kątem obejścia cenzury.
+
+    Dumpuje PEŁNE odpowiedzi (nie ucina), bo przy jednym podejściu sama reakcja
+    huba jest interesująca, nawet gdy flagi nie ma. Skanuje base64/rot13 —
+    jawny `{FLG:...}` byłby ocenzurowany, więc realny sygnał jest zakodowany.
+    """
+    for attempt in range(1, attempts + 1):
+        result = check_result(hub)
+        raw = str(result)
+        _console.print(f"[dim]{attempt}/{attempts}:[/] {raw}")
+
+        for method, value in secrets_probe.decode_flags(raw):
+            _console.print(f"[bold magenta]  ↳ {method}:[/] {value}")
+            if method != "plain":
+                return value
+
+        plain = hub.get_flag(result)
+        if plain:
+            _console.print(f"[yellow]  ↳ flaga jawna (moze glowna, nie sekret):[/] {plain}")
+
+        if attempt < attempts:
+            time.sleep(delay)
+    return None
+
+
 @task("s03e04", hub_name="negotiations")
 class NegotiationsTask(BaseTask):
     """Zadanie z żywym serwerem — `solve()` celowo odmawia automatycznego przebiegu."""
@@ -130,23 +164,43 @@ class NegotiationsTask(BaseTask):
 
 def main() -> None:
     """Rejestruje publiczny URL i czeka na flagę od agenta Centrali."""
-    if len(sys.argv) < 2:
-        _console.print(f"[red]Uzycie:[/] {sys.argv[0]} https://TWOJ-URL.ngrok-free.app")
-        raise SystemExit(2)
+    parser = argparse.ArgumentParser(description="Rejestracja narzedzi s03e04 i odbior flagi.")
+    parser.add_argument("url", help="Publiczny URL serwera, np. https://xxx.ngrok-free.app")
+    parser.add_argument(
+        "--secrets",
+        action="store_true",
+        help=(
+            "Proba sekretnej flagi przez prompt injection. Wymaga serwera "
+            "uruchomionego z S03E04_SECRETS=1 (injection w odpowiedziach); ta flaga "
+            "steruje injection w opisach narzedzi przy rejestracji."
+        ),
+    )
+    args = parser.parse_args()
 
-    base_url = sys.argv[1]
     hub = HubClient()
 
-    _console.print(f"[bold]Rejestruje narzedzia[/] pod {base_url}")
-    response = register_with_hub(hub, base_url)
+    if args.secrets:
+        secrets_probe.enable_in_process()
+        _console.print("[bold magenta]TRYB SEKRETNY[/] — prompt injection, jedno podejscie.")
+        if not secrets_probe.enabled():  # pragma: no cover - sanity
+            _console.print("[yellow]Uwaga: S03E04_SECRETS nie wykryte w tym procesie.[/]")
+
+    _console.print(f"[bold]Rejestruje narzedzia[/] pod {args.url}")
+    response = register_with_hub(hub, args.url, secrets=args.secrets)
     _console.print(f"[dim]{str(response)[:200]}[/]")
 
     _console.print("[bold]Czekam na agenta[/] (min. 30-60 s). Podglad: https://hub.ag3nts.org/debug")
     time.sleep(30)
 
-    flag = poll_for_flag(hub)
+    if args.secrets:
+        flag = poll_for_secret(hub)
+        label = "Sekretna flaga"
+    else:
+        flag = poll_for_flag(hub)
+        label = "Flaga"
+
     if flag:
-        _console.print(f"[bold green]✓ Flaga:[/] {flag}")
+        _console.print(f"[bold green]✓ {label}:[/] {flag}")
     else:
         _console.print("[yellow]Brak flagi — sprawdz /debug i logi .run/s03e04_negotiations/[/]")
 
