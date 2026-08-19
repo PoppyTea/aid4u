@@ -1,3 +1,23 @@
+> **ZARCHIWIZOWANE 2026-08-18** — pozycje z tego dokumentu wyekstrahowane do Linear (team Aid4u).
+> Mapowanie stare-ID → AID-XXX:
+>
+> | Stare ID | AID-XXX | Tytuł |
+> |---|---|---|
+> | R6 (referencja, patrz `closed-prs-qodo-triage.md`) | [AID-15](https://linear.app/aid4u/issue/AID-15) | BaseTask.run() zawsze wysyła odpowiedź drugi raz |
+> | R7 (referencja) | [AID-28](https://linear.app/aid4u/issue/AID-28) | s02e03_failure/s02e04_mailbox: except httpx.HTTPStatusError zbyt szeroki |
+> | R8 (referencja) | [AID-29](https://linear.app/aid4u/issue/AID-29) | HubClient.get_data/get_public brak reraise=True |
+> | A | [AID-30](https://linear.app/aid4u/issue/AID-30) | s02e03_failure: brak globalnego egzekwowania budżetu tokenów |
+> | B | [AID-31](https://linear.app/aid4u/issue/AID-31) | s02e03_failure: render_line() nie sanityzuje \n/\r |
+> | C | [AID-43](https://linear.app/aid4u/issue/AID-43) | Kosmetyka dokumentacji s02e03 |
+> | H | [AID-44](https://linear.app/aid4u/issue/AID-44) | scripts/panic.sh nie wiąże PGID z konkretnym runem |
+> | I | [AID-45](https://linear.app/aid4u/issue/AID-45) | test_killswitch.py:260 -- nieużywany 'stdout' |
+>
+> D, E, F, G — **nie migrowane**: D rozstrzygnięta decyzja (apikey w doc/zadanie.md zostaje),
+> E i G ✅ zrobione (naprawione w `9efab61` przed mergem PR#64), F przesłanka fałszywa
+> (`killswitch.py` sprawdza `is not None`, nie truthy — nie jest bugiem).
+>
+> Pełne opisy żyją teraz wyłącznie w Linear — ten plik zostaje jako historyczny ślad triage'u.
+
 # Triage otwartych uwag CodeRabbit — PR #56, #64
 
 **Data:** 2026-08-16 · **Zakres:** cztery PR-y z realnymi komentarzami inline od `coderabbitai[bot]`

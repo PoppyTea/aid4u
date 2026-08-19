@@ -44,17 +44,20 @@ Baza jest numeryczna (autor wybrał tę zasadę wprost), z jednym świadomym wyj
   `/api/*`, propagacja błędów narzędzia do modelu zamiast generycznego
   `"ERROR: Tool execution failed"`. Uzasadnienie: każda udokumentowana strata $4-10 w
   komentarzach S03E02 wynikała z braku dokładnie tych osłon.
-- [ ] `HubClient.get_public()`/`get_data(tolerate_503=)` (jeśli nie zrobione już przy
-  okazji `feat/hub-get-consolidation`) — odblokowuje `/dane/sensors.zip` (e01) i
+  (→ AID-46, AID-47, AID-48)
+- [x] `HubClient.get_public()`/`get_data(tolerate_503=)` — ✅ zrobione 09.08 (PR
+  `feat/hub-get-consolidation`) — odblokowuje `/dane/sensors.zip` (e01) i
   `/dane/s03e04_csv/` (e04).
 - [ ] Przegląd i aktualizacja `AGENTS.md`/`CLAUDE.md` w całym `aid4u/` oraz w rootcie
   `00_AID4U/` pod kątem nieaktualnych zapisów (np. status sezonów).
+  (→ AID-57)
 
 ## 🟡 Dług przed konkretnym epizodem (nie blokuje reszty)
 
 - [ ] **Przed e04:** migracja ngrok → VPS + kill switch jako webhook (jedna robota,
   ten sam tunel) — uzupełnić `VPS_USER`/`VPS_PATH` w `.env`. Do backlogu, nie
   blokuje — ngrok + istniejący `deploy/` wystarczą na start.
+  (→ AID-58)
 
 ## ✅ Przed e01 — zrobione (2026-08-16, awansowane z oportunistycznego)
 
@@ -68,11 +71,14 @@ Baza jest numeryczna (autor wybrał tę zasadę wprost), z jednym świadomym wyj
 ## 🟢 Oportunistyczne w trakcie sezonu (nie blokuje niczego)
 - [ ] Rejestr narzędzi / schemat-z-sygnatury zamiast trzeciej ręcznie klepanej kopii
   wzorca `Tool + closure + dispatcher` (mamy już trzy: s01e02, s01e03, s02e04).
+  (→ AID-49)
 - [ ] Dynamiczne odkrywanie narzędzi w runtime (blokuje elegancki e05 — dziś
   `run_agent_loop(tools=[...])` bierze tylko statyczną listę).
+  (→ AID-50)
 - [ ] Doprecyzować w `data/AGENTS.md` gdzie faktycznie leży `.cache/` (opis mówi
   "patrz `../core/hub/cache.py`", ale to fizycznie folder w rootcie repo, nie
   wewnątrz `core/`) — realna, potwierdzona pułapka.
+  (→ AID-51)
 
 ## ⏸️ Świadomie odłożone (termin, nie "nigdy")
 
@@ -84,6 +90,7 @@ Baza jest numeryczna (autor wybrał tę zasadę wprost), z jednym świadomym wyj
   `base_url` z SDK) odblokowuje wszystkie cztery naraz. Multimodalność sama
   (`LLMMessage.content: str` → lista bloków) jest droga i dotyka `types.py` +
   `base.py` + 4 adaptery — to osobny, większy kawałek roboty.
+  (→ AID-59)
 - **`pydantic-ai` jako zamiennik własnego `core/llm/`** — nie "kolejna zależność do
   podłączenia", tylko **rozwidlenie drogi** (pokrywa się funkcjonalnie z
   `LLMClient`/adapterami/`run_agent_loop()`/`Tool`). Rozstrzygnąć świadomie na sesji
@@ -95,6 +102,7 @@ Baza jest numeryczna (autor wybrał tę zasadę wprost), z jednym świadomym wyj
   owoc researchu, nie przypadkiem. Do jawnego wpisania w `aid4u/AGENTS.md` jako
   "pierwszy wybór przy projektowaniu/upgradzie", potem decyzja: podłączyć albo
   usunąć — razem z decyzją o `pydantic-ai` powyżej, nie osobno.
+  (→ AID-60)
 
 ## Tematy do doczytania przed S03 (w kolejności zwrotu z inwestycji)
 

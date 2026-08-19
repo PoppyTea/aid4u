@@ -1,3 +1,46 @@
+> **ZARCHIWIZOWANE 2026-08-18** — pozycje z tego dokumentu wyekstrahowane do Linear (team Aid4u).
+> Mapowanie stare-ID → AID-XXX:
+>
+> | Stare ID | AID-XXX | Tytuł |
+> |---|---|---|
+> | Qodo-A1 (=R6) | [AID-15](https://linear.app/aid4u/issue/AID-15) | BaseTask.run() zawsze wysyła odpowiedź drugi raz |
+> | Qodo-A2 | [AID-16](https://linear.app/aid4u/issue/AID-16) | WARSAW_TZ wywalane przy imporcie bez tzdata |
+> | Qodo-A3 | [AID-17](https://linear.app/aid4u/issue/AID-17) | gemini_key_for_tier() nie waliduje 'tier' |
+> | Qodo-A4 | [AID-18](https://linear.app/aid4u/issue/AID-18) | ToolCall.id w adapterze Gemini może się dublować |
+> | Qodo-A5 | *(komentarz do [AID-11](https://linear.app/aid4u/issue/AID-11), nie nowy issue)* | Nazwy sekretów wychodzą do Logfire Cloud -- scalone z pre-istniejącym ticketem "fix/core-secrets.py logging" |
+> | Qodo-A6 | [AID-19](https://linear.app/aid4u/issue/AID-19) | genai-prices w hot-path, niezadeklarowane w pyproject.toml |
+> | Qodo-A7 | [AID-20](https://linear.app/aid4u/issue/AID-20) | SecretsManager.list() tworzy/niszczy ThreadPoolExecutor |
+> | Qodo-A8 | [AID-21](https://linear.app/aid4u/issue/AID-21) | Martwe zdublowane przypisanie logfire_mod |
+> | Qodo-B1 | [AID-22](https://linear.app/aid4u/issue/AID-22) | [ODŁOŻONE/learning-mode] GeoPoint.distance_to() truthiness vs is None |
+> | Qodo-B2 | [AID-23](https://linear.app/aid4u/issue/AID-23) | [ODŁOŻONE/learning-mode] GeoPoint.is_nearest_to() kubełkowanie float |
+> | Qodo-B3, B4 | *(nie migrowane)* | ✅ zrobione — naprawione przez autora 2026-08-15 |
+> | Qodo-aneks-s01e02-tests | [AID-24](https://linear.app/aid4u/issue/AID-24) | [ODŁOŻONE/learning-mode] 2 pominięte testy + 2 martwe asercje |
+> | Qodo-B5 | [AID-25](https://linear.app/aid4u/issue/AID-25) | s01e03_proxy: HubClient() na poziomie modułu wymaga APIKEY przy imporcie |
+> | Qodo-B6 | [AID-26](https://linear.app/aid4u/issue/AID-26) | [ODŁOŻONE] s01e03_proxy: _sessions/history bez locka |
+> | Qodo-B7 | [AID-27](https://linear.app/aid4u/issue/AID-27) | [ODŁOŻONE] s01e03_proxy: check_package/redirect_package raportują sukces mimo ok:false |
+> | Qodo-B8 (=R7) | [AID-28](https://linear.app/aid4u/issue/AID-28) | s02e03_failure: except httpx.HTTPStatusError zbyt szeroki |
+> | Qodo-B9 | [AID-32](https://linear.app/aid4u/issue/AID-32) | s02e03_failure: _LINE_RE wymaga dwucyfrowej godziny |
+> | Qodo-B10 (=CodeRabbit-A) | [AID-30](https://linear.app/aid4u/issue/AID-30) | s02e03_failure: brak globalnego egzekwowania budżetu tokenów |
+> | Qodo-B11 (=CodeRabbit-B) | [AID-31](https://linear.app/aid4u/issue/AID-31) | s02e03_failure: render_line() nie sanityzuje \n/\r |
+> | Qodo-aneks-basedpyright | [AID-33](https://linear.app/aid4u/issue/AID-33) | pyproject.toml inlayHints array-of-tables |
+> | Qodo-aneks (17 plików unittest.mock) | *(komentarz do [AID-14](https://linear.app/aid4u/issue/AID-14), nie nowy issue)* | scalone z pre-istniejącym ticketem "mixing pytest z unitest" |
+> | Qodo-aneks-unclosed-clients | [AID-34](https://linear.app/aid4u/issue/AID-34) | Niezamykane httpx.Client()/TestClient(app) w testach |
+> | Qodo-aneks-missing-agents-md | [AID-35](https://linear.app/aid4u/issue/AID-35) | Brak AGENTS.md w 4 katalogach |
+> | Qodo-aneks-zero-coverage | [AID-36](https://linear.app/aid4u/issue/AID-36) | Zero pokrycia testami s01e04_sendit/s02e03_failure |
+> | Qodo-aneks-fetch-spk | [AID-37](https://linear.app/aid4u/issue/AID-37) | fetch_spk_files.py: brak CSV daje cichy no-op |
+> | Qodo-aneks-s01e03-flag-log | [AID-38](https://linear.app/aid4u/issue/AID-38) | s01e03_proxy: log flagi zawiera pełną treść wiadomości |
+> | Qodo-aneks (test_gemini_integration .env fallback) | *(pokrywa się z pre-istniejącym [AID-5](https://linear.app/aid4u/issue/AID-5))* | get_secrets() nie ładuje .env → fałszywy skip |
+> | Qodo-D-non-code-non-main | [AID-39](https://linear.app/aid4u/issue/AID-39) | [ODRZUCONE] reguła 'non-code files na non-main branch' |
+> | Qodo-D-native-tools-direct | [AID-40](https://linear.app/aid4u/issue/AID-40) | [ODRZUCONE] native_tool_*.py woła Anthropic bezpośrednio |
+> | Qodo-D-chat-handler | [AID-41](https://linear.app/aid4u/issue/AID-41) | [ODRZUCONE] '/chat handler usunięty' |
+> | Qodo-D-flag-pattern-marker | [AID-42](https://linear.app/aid4u/issue/AID-42) | [ODRZUCONE] Brak markera FLAG_PATTERN_DETECTED |
+> | .flags.json publiczne repo | *(nie migrowane)* | pytanie etyczne/regulaminowe, `strategy/open-decisions.md`, nie issue |
+>
+> **Krok 0 (decyzja o subskrypcji Qodo) rozstrzygnięty** — Qodo discontinued 2026-08-16, patrz
+> root `AGENTS.md`.
+>
+> Pełne opisy żyją teraz wyłącznie w Linear — ten plik zostaje jako historyczny ślad triage'u.
+
 # Triage nietkniętych uwag Qodo z zamkniętych PR-ów
 
 **Data:** 2026-08-15 · **Zakres:** wszystkie 59 zamkniętych PR-ów (#1–#66) · **Bot:** `qodo-code-review`

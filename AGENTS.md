@@ -52,6 +52,8 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 | **Sekrety / keyring** | `strategy/secrets-management.md` |
 | **Struktura infrastruktury** | `README.md` |
 | **MCP serwery** | `.claude/settings.json` |
+| **Śledzenie issues (Linear, jedyne źródło prawdy)** | `strategy/issue-tracking.md` |
+| **Kontrola jakości (rutyny/audyty, katalog)** | `strategy/quality-control.md` |
 
 ---
 
@@ -184,14 +186,17 @@ When the user requests a durable behavior change, record it here or in the relev
 
 - **Commit routing (soft guideline, not a hard gate):** any change to code files (`.py` — app or tests, including refactors and non-behavioral cleanups, not just logic fixes) goes through a feature branch + PR — this triggers CodeRabbit (PR overview + inline findings). Everything non-code (markdown docs, config files like `pyproject.toml`, symlinks, data files) commits straight to `main`. Trivial comment/docstring-only edits riding along inside an otherwise doc-focused commit are fine to leave on `main`. Override locally in a child AGENTS.md if a subtree needs different rules.
   - **Qodo discontinued (2026-08-16)** — free tier ended, no longer part of the review pipeline. Historical "Qodo flagged X on PR #N, confirmed false positive" notes elsewhere in this repo (e.g. `tasks/AGENTS.md`, `tasks/s01e02_findhim/AGENTS.md`) remain valid references — those findings did happen and the reasoning for dismissing them still holds — just don't expect new Qodo comments on future PRs.
-  - **`.coderabbit.yaml`** (repo root, added 2026-08-16) configures CodeRabbit: `path_instructions`
-    for recurring false-positive patterns (telemetry-boundary confusion, entrypoint-only
-    `setup_observability()`, doc-file style nits in `tasks/**/doc/`), `knowledge_base.code_guidelines`
-    reading every `AGENTS.md` directly, `auto_review.enabled: false` (matches reality — this repo is
-    public but under 10 stars, so CodeRabbit never auto-reviews regardless of this setting; it's
-    set explicitly so the config doesn't claim otherwise). `.claude/review-rules.md` (rules
-    reconstructed from historical Qodo findings, R1-R8) and `.issues/summaries-4-human/` (triage of
-    CodeRabbit's own historical findings) are the source material this config was built from.
+  - **`.coderabbit.yaml`** (repo root, added 2026-08-16, knowledge sources updated 2026-08-18)
+    configures CodeRabbit: `path_instructions` for recurring false-positive patterns
+    (telemetry-boundary confusion, entrypoint-only `setup_observability()`, doc-file style nits
+    in `tasks/**/doc/`), `knowledge_base.code_guidelines` reading every `AGENTS.md` directly
+    (this is how `strategy/rules/AGENTS.md`'s digest of ERROR-severity rules became visible to
+    CodeRabbit), `knowledge_base.linear` (team Aid4u, key `AID`), `auto_review.enabled: false`
+    (matches reality — this repo is public but under 10 stars, so CodeRabbit never auto-reviews
+    regardless of this setting; it's set explicitly so the config doesn't claim otherwise).
+    `strategy/rules/` (rule files migrated 2026-08-18 from the historical Qodo-derived R1-R8;
+    `.claude/review-rules.md` no longer exists) and Linear (team Aid4u — the full issue history)
+    are the source material this config draws on.
   - **Doc edits bundled into a code PR are fine** when the doc directly describes that PR's own code (e.g. a task's `AGENTS.md` updated alongside its new `solution.py`), or when the user explicitly asked for a dedicated branch to hold a batch of doc/scaffolding work (e.g. season scaffolding).
 - **Batch implementation workflow (2026-07-31):** when the user scopes a multi-part implementation as independent units (e.g. "one native tool per branch," "one feature per PR" — as with the Anthropic native-tools rollout), commit regularly during the work instead of only at the end, and give each unit its own feature branch + tests + PR, opening the PR before starting the next unit. This is the standing pattern whenever the user frames work this way; a single cohesive change still batches into one PR per the commit-routing rule above.
 - **PR review follow-up (2026-08-03, revised 2026-08-16):** after opening a PR, wait 5 minutes, then check for review comments (`gh pr view <N> --json comments`). If none from CodeRabbit yet, wait another 5 minutes and check once more. If still nothing after ~10 minutes total, stop polling and tell the user directly to ping when review comments show up — don't keep silently retrying past that point. **CodeRabbit-specific:** this repo is public but under 10 stars, so CodeRabbit does NOT auto-review — `@coderabbitai review` must be triggered manually per PR, and its free-tier rate limit is tighter than it looks (two manual triggers back-to-back across two PRs hit it on 2026-08-16). Never trigger `@coderabbitai review` without the user's explicit go-ahead for that specific PR — this replaces the earlier assumption that triggering review was a safe default action.
@@ -199,6 +204,7 @@ When the user requests a durable behavior change, record it here or in the relev
   - **Docstrings default ON.** Every function, method, and class gets one explaining what it does and what it's for — even a short one-liner. This is why CodeRabbit's docstring-coverage pre-merge check exists and should stay green.
   - **Inline comments default OFF**, written only when either: (a) the *why* isn't obvious from the code alone (a hidden constraint, an invariant, a workaround for a specific bug), or (b) the *benefit* of a particular *how* isn't obvious — the code does something a specific way and it's not self-evident what's gained by that choice, even when the overall goal is clear.
 - **Kill switch disclosure (2026-08-08):** whenever starting anything long-running (`solve`, an agent loop, a background run), state the exact kill command in the same message — don't assume the user remembers it, and don't assume you (the agent) will still be around to kill it yourself. Guaranteed path: `bash scripts/panic.sh` (kills the whole process group, zero Python/venv dependency — works even if the environment is broken). Graceful path: `uv run run.py panic --graceful` (writes `.run/STOP`, clean `AbortRun` at the next safe checkpoint). See `core/AGENTS.md` for the full kill-switch contract.
+- **Linear as single source of truth for issues (2026-08-18):** Linear (team **Aid4u**, key `AID`) supersedes every ad-hoc local issue/tech-debt register that existed before this date (`.issues/`, `tool-inventory.md`/`season.md` tables, scattered `AGENTS.md` TODOs, etc.) — see `strategy/issue-tracking.md` for the full lifecycle/priority/label policy. Any PR that closes a Linear issue **must** include `Fixes AID-XXX` in its description; Linear's GitHub integration auto-transitions that issue to Done on merge, replacing manual issue-closing bookkeeping. This does not touch the CodeRabbit-consent rule above ("PR review follow-up") — `@coderabbitai review` still requires explicit per-PR user go-ahead.
 
 ## Child DOX Index
 
@@ -208,5 +214,5 @@ When the user requests a durable behavior change, record it here or in the relev
 - `tests/`: Project test suite and verification logic.
 - `data/`: Task datasets — static inputs, fetched doc trees (`data/input/`), run outputs.
 - `deploy/`: VPS deployment, systemd units, tunnel scripts.
-- `.issues/`: Triage długu technicznego z dyskusji na PR-ach, podsumowania dla człowieka.
+- `.issues/`: Historyczne archiwum triage'u sprzed migracji do Linear (2026-08-18) + dom żywych `summaries-4-human/` (narracyjne podsumowania recenzji PR-ów) — dług techniczny sam żyje w Linear, patrz `strategy/issue-tracking.md`.
 - `../misje-poboczne/`: Side missions and specific project artifacts.

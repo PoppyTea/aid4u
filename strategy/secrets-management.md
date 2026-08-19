@@ -56,6 +56,7 @@ Poniższa lista definiuje klucze uznawane za "standardowe" w systemie `SecretsMa
 | `LANGFUSE_SECRET_KEY` | Klucz prywatny do obserwacji Langfuse |
 | `LOGFIRE_TOKEN` | Token do logowania i telemetrii Pydantic Logfire |
 | `VPS_HOST` | Adres hosta do deploymentu / SSH |
+| `LINEAR_API_KEY` | Personal API key Linear (team Aid4u) — centralna baza issues, patrz `strategy/issue-tracking.md` |
 
 ---
 

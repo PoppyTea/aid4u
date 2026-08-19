@@ -1,4 +1,5 @@
-# CodeRabbit config dla aid4u — pierwsza wersja (2026-08-16).
+# CodeRabbit config dla aid4u — pierwsza wersja (2026-08-16), źródła wiedzy zaktualizowane
+# 2026-08-18 (migracja długu technicznego do Linear).
 #
 # Kontekst: repo jest publiczne, ale <10 gwiazdek — CodeRabbit NIE robi automatycznego
 # review dla takich repo niezależnie od `auto_review.enabled` niżej; `@coderabbitai review`
@@ -7,14 +8,21 @@
 # na zawołanie, per AGENTS.md "PR review follow-up" (root AGENTS.md), nie automatyczne.
 #
 # Qodo nie jest już częścią pipeline'u (subskrypcja wygasła 2026-08-16) — CodeRabbit jest
-# jedynym automatycznym recenzentem. `.claude/review-rules.md` (reguły odtworzone z Qodo,
-# R1-R8) i `.issues/summaries-4-human/` (triage historii CodeRabbit) to uzupełniające źródła
-# wiedzy o repo, nie duplikujemy ich treści tutaj.
+# jedynym automatycznym recenzentem. Uzupełniające źródła wiedzy o repo: `strategy/rules/`
+# (reguły recenzji/audytu, dawne R1-R8 odtworzone z Qodo, teraz widoczne dla CodeRabbit przez
+# `knowledge_base.code_guidelines` na `**/AGENTS.md` — `.claude/review-rules.md` już nie
+# istnieje, treść zmigrowana) i Linear (team Aid4u, key `AID` — jedyne źródło prawdy długu
+# technicznego, widoczne przez `knowledge_base.linear` niżej). Nie duplikujemy ich treści tutaj.
 
 reviews:
   auto_review:
     enabled: false
     drafts: false
+
+  # Jawne (nie domyślne) — rutyna `review-ingest` (strategy/quality-control.md) rozpoznaje
+  # zakończoną recenzję CodeRabbit po tych komunikatach statusu; wolimy nie zależeć od
+  # domyślnego zachowania platformy, które może się zmienić.
+  review_status: true
 
   path_instructions:
     - path: "core/llm/client.py"
@@ -56,6 +64,14 @@ reviews:
         stan współdzielony z repo (pliki w .run/, .cache/, prawdziwe API), to zawsze
         realny problem, nie styl.
 
+    - path: "strategy/rules/**"
+      instructions: >
+        Pliki reguł recenzji/audytu wewnętrznych rutyn (`rNN-slug.md` + `AGENTS.md`) —
+        to opisowe kontrakty, nie wykonywalny kod. Oceniaj spójność formatu (frontmatter
+        id/severity/scope/zrodlo obecny i poprawny) i jasność treści reguły; NIE zgłaszaj
+        treści samych reguł (np. "reraise=True wymagane w danym wzorcu") jako problemów
+        w kodzie tego repo — to metadane audytu, nie miejsce do naprawy.
+
 tone_instructions: >
   Solo-projekt kursowy pod presją czasu. Priorytet to
   szybkość dojścia do rozwiązania. Nie proponuj walidacji
@@ -67,3 +83,7 @@ knowledge_base:
     enabled: true
     filePatterns:
       - "**/AGENTS.md"
+  linear:
+    enabled: true
+    team_keys:
+      - "AID"

@@ -44,3 +44,9 @@ Repozytorium dokumentacji strategicznej, protokołów uczenia się, standardów 
 - `./efficiency-mode` - Materiały trybu efficiency mode.
 - `./llm-models.md` - Referencja/ściągawka modeli LLM.
 - `./llm-selection.md` - Strategia wyboru/eskalacji/tier modeli LLM.
+- `./issue-tracking.md` - Cykl życia issue w Linear (jedyne źródło prawdy długu
+  technicznego): priorytety, labele, dedup, lejek diagnoz.
+- `./quality-control.md` - Governance rutyn/audytów: katalog, anatomia promptu,
+  findingi → Linear, higiena harmonogramu.
+- `./rules/` - Reguły recenzji/audytu (`rNN-*.md`), digest ERROR czytany przez
+  CodeRabbit.

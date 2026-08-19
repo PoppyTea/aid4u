@@ -26,24 +26,24 @@ artefaktem krytycznym — to on decyduje o sukcesie, nie Twój kod.
 | Co | Po co | Stan |
 |---|---|---|
 | **`get_public()` w `HubClient`** | `/dane/sensors.zip` (e01), `/dane/s03e04_csv/` (e04) | ✅ dodane przy okazji `s02e05_drone` (PR `feat/hub-get-consolidation`), obsłuży 3 zadania |
-| **Propagacja błędów narzędzi do agenta** | e02 wymaga, by agent **widział** kody ban/rate-limit/503 i reagował | ⚠️ **`run_agent_loop()` połyka wyjątki w stały string `"ERROR: Tool execution failed."`** (`core/llm/client.py`) — model nie dostaje żadnego szczegółu. Obejście ręczne istnieje w s02e04; przy e02 to przestaje być obejściem, a staje się wymogiem |
-| **Publiczny endpoint HTTP** | e04 — ich agent musi się do nas dodzwonić | ✅ ngrok 3.39.10 zainstalowany, ścieżka **udowodniona bojowo** w s01e03; `core/server/factory.py`, `deploy/ngrok_tunnel.sh`, wzorzec systemd. ⚠️ deploy na VPS niedokonfigurowany: `VPS_HOST` jest w `.env`, ale `VPS_USER` i `VPS_PATH` **brakuje** |
+| **Propagacja błędów narzędzi do agenta** | e02 wymaga, by agent **widział** kody ban/rate-limit/503 i reagował | ⚠️ **`run_agent_loop()` połyka wyjątki w stały string `"ERROR: Tool execution failed."`** (`core/llm/client.py`) — model nie dostaje żadnego szczegółu. Obejście ręczne istnieje w s02e04; przy e02 to przestaje być obejściem, a staje się wymogiem (→ AID-48) |
+| **Publiczny endpoint HTTP** | e04 — ich agent musi się do nas dodzwonić | ✅ ngrok 3.39.10 zainstalowany, ścieżka **udowodniona bojowo** w s01e03; `core/server/factory.py`, `deploy/ngrok_tunnel.sh`, wzorzec systemd. ⚠️ deploy na VPS niedokonfigurowany: `VPS_HOST` jest w `.env`, ale `VPS_USER` i `VPS_PATH` **brakuje** (→ AID-58) |
 | **Pipeline dedup + cache + batching** | e01 — 10 000 plików, zadanie *jest* o koszcie | ✅ `LocalCache` (`core/hub/cache.py`) + sprawdzony wzorzec z s02e03 (dedup i filtr przed LLM zbił 2137 linii do 55). `zipfile` w stdlib |
 | **Deterministyczna symulacja / planowanie ścieżki** | e03 (7×5, cykliczne bloki) i e05 (10×10, dwa zasoby) | ❌ brak, ale to czysty Python — BFS/DP nad przestrzenią stanów `(pozycja, faza_bloków, paliwo, jedzenie)` |
 | **Twardy limit rozmiaru wyniku narzędzia** | ⚠️ **Każda zgłoszona strata $4–$10 w S03 pochodzi z niekontrolowanego wyniku narzędzia zalewającego kontekst.** W e02 `cat cooler.bin` wysadza kontekst — ludzie tracili $5–10 na jednym poleceniu | ✅ dodane przy okazji kill switcha (`feat/killswitch`, `truncate_tool_result()`) — sprawdź czy zmergowane przed startem S03 |
-| **Własny rate limiter wychodzący** | e02: shell API ~30 req/min, a 429 prawdopodobnie **przedłuża okno** → naiwne retry pętli się w nieskończoność | ❌ brak dla `/api/*`; `post_api()` ma retry (dodany w s02e04), ale to reakcja, nie prewencja |
-| **Blacklist ścieżek wymuszony w KODZIE** | e02: zakaz `/etc`, `/root`, `/proc` + respektowanie `.gitignore`; złamanie = ban i reset VM. Modele łamią to notorycznie | ❌ brak — i **musi być w kodzie narzędzia, nie w promptcie** (staff explicite błogosławi hardcode) |
+| **Własny rate limiter wychodzący** | e02: shell API ~30 req/min, a 429 prawdopodobnie **przedłuża okno** → naiwne retry pętli się w nieskończoność | ❌ brak dla `/api/*`; `post_api()` ma retry (dodany w s02e04), ale to reakcja, nie prewencja (→ AID-46) |
+| **Blacklist ścieżek wymuszony w KODZIE** | e02: zakaz `/etc`, `/root`, `/proc` + respektowanie `.gitignore`; złamanie = ban i reset VM. Modele łamią to notorycznie | ❌ brak — i **musi być w kodzie narzędzia, nie w promptcie** (staff explicite błogosławi hardcode) (→ AID-47) |
 | **Model klasy Sonnet — ale ostrożnie** | e02 wymaga rozumowania | ✅ mamy, ale patrz ostrzeżenie kosztowe w `community-intel.md` — w **nieosłoniętej** pętli shellowej Sonnet potrafi kosztować $4–7 i i tak nie skończyć, podczas gdy Gemini Flash robi to samo za $0.05 |
 
 ### 🟡 NICE TO HAVE
 
 | Co | Po co | Stan |
 |---|---|---|
-| **Langfuse scores + datasets** | e01 to dosłownie zadanie „evaluation", a lekcja e01 to observability+eval | ⚠️ Langfuse **zainicjalizowany, ale prawie nieużywany** — `@langfuse_observe()` wisi na **jednej** funkcji (`core/hub/client.py`), `propagate_attrs()` **nigdy nie wywołane**, zero scores/datasets/experiments |
-| **Rejestr narzędzi / `@tool` ze schematem z sygnatury** | 3 zadania S03 to pętle narzędziowe | ❌ brak — mamy **trzy ręcznie klepane** executory (s01e02, s01e03, s02e04), każdy z tym samym if/elif |
-| **Embeddingi** | e04: NL („potrzebuję kabla 10 m") → pozycja w CSV; e01: klastrowanie podobnych notatek | ❌ brak w całej warstwie LLM. Tańsza alternatywa: `rapidfuzz` albo jedno tanie wywołanie LLM |
-| **Prawdziwe bloki `tool_result`** | wierność protokołu, korelacja tool-call | ⚠️ typ `ToolResult` **istnieje, ale nieużywany** — wyniki wstrzykiwane jako udawane wiadomości `user` |
-| **Koperta odpowiedzi narzędzia** (`next_action`/`recovery`/`diagnostics`) | wzorzec wprost z lekcji e04 — sterowanie agentem przez wynik narzędzia | ❌ brak |
+| **Langfuse scores + datasets** | e01 to dosłownie zadanie „evaluation", a lekcja e01 to observability+eval | ✅ zrobione 2026-08-16 (`feat/core-observability-langfuse`) |
+| **Rejestr narzędzi / `@tool` ze schematem z sygnatury** | 3 zadania S03 to pętle narzędziowe | ❌ brak — mamy **trzy ręcznie klepane** executory (s01e02, s01e03, s02e04), każdy z tym samym if/elif (→ AID-49) |
+| **Embeddingi** | e04: NL („potrzebuję kabla 10 m") → pozycja w CSV; e01: klastrowanie podobnych notatek | ❌ brak w całej warstwie LLM. Tańsza alternatywa: `rapidfuzz` albo jedno tanie wywołanie LLM (→ AID-54) |
+| **Prawdziwe bloki `tool_result`** | wierność protokołu, korelacja tool-call | ⚠️ typ `ToolResult` **istnieje, ale nieużywany** — wyniki wstrzykiwane jako udawane wiadomości `user` (→ AID-55) |
+| **Koperta odpowiedzi narzędzia** (`next_action`/`recovery`/`diagnostics`) | wzorzec wprost z lekcji e04 — sterowanie agentem przez wynik narzędzia | ❌ brak (→ AID-56) |
 
 ### 🟢 FUN AND EDUCATIONAL
 
@@ -64,18 +64,18 @@ artefaktem krytycznym — to on decyduje o sukcesie, nie Twój kod.
 > nigdy nieimportowanych**: `pydantic-ai` (+`-slim`, +`-harness`), `openai-agents`, `mcp`,
 > `mem0ai`, `openapi-pydantic`, `prompt-toolkit`. Kilka z nich to dokładnie te „baterie",
 > których chce S03 — już zapłacone, tylko niepodłączone. Decyzja (podłączyć albo usunąć) do
-> podjęcia na sesji `pre-s03` — patrz `../season.md`.
+> podjęcia na sesji `pre-s03` — patrz `../season.md`. (→ AID-60)
 
 ### 🔧 WYMAGAJĄCE UPGRADU
 
 | Obszar | Problem | Pilność |
 |---|---|---|
-| **Vision** | `LLMMessage.content` to goły `str` — multimodalność **strukturalnie niemożliwa** bez zmiany `types.py` + `base.py` + 4 adapterów | **Niska dla S03** — żadne z 5 zadań nie wymaga vision (`reactor_preview.html`/`savethem_preview.html` to podglądy dla człowieka, dane idą z API). Termin: najpóźniej S03→S04 |
-| **Middleware omijany** | `.structured()` i `run_agent_loop()` wołają `self._provider` bezpośrednio → **rate-limit i cost-tracking nie działają** dla structured output i pętli agentowych | **Wysoka** — e01 to zadanie o koszcie, a nie mierzymy kosztu tam, gdzie go najwięcej |
-| **Dynamiczne odkrywanie narzędzi** | `run_agent_loop(tools=[...])` bierze **statyczną** listę; e05 wymaga narzędzi odkrywanych w runtime przez `/api/toolsearch` | **Wysoka** (blokuje e05) |
-| **Temperature / sampling** | zahardkodowane `0.0` na poziomie ABC, nieudostępnione przez fasadę; brak n-best, self-consistency, majority vote | **Średnia** — e05 to *cały* motyw „niedeterminizm jako przewaga" |
+| **Vision** | `LLMMessage.content` to goły `str` — multimodalność **strukturalnie niemożliwa** bez zmiany `types.py` + `base.py` + 4 adapterów | **Niska dla S03** — żadne z 5 zadań nie wymaga vision (`reactor_preview.html`/`savethem_preview.html` to podglądy dla człowieka, dane idą z API). Termin: najpóźniej S03→S04 (→ AID-59) |
+| **Middleware omijany** | `.structured()` i `run_agent_loop()` wołają `self._provider` bezpośrednio → **rate-limit i cost-tracking nie działają** dla structured output i pętli agentowych | ✅ zrobione 2026-08-16 (`feat/core-observability-langfuse`) |
+| **Dynamiczne odkrywanie narzędzi** | `run_agent_loop(tools=[...])` bierze **statyczną** listę; e05 wymaga narzędzi odkrywanych w runtime przez `/api/toolsearch` | **Wysoka** (blokuje e05) (→ AID-50) |
+| **Temperature / sampling** | zahardkodowane `0.0` na poziomie ABC, nieudostępnione przez fasadę; brak n-best, self-consistency, majority vote | **Średnia** — e05 to *cały* motyw „niedeterminizm jako przewaga" (→ AID-52) |
 | **Warstwa async** | wszystkie providery synchroniczne → brak równoległych tool-calls | Średnia (wydajność, nie blokada) |
-| **Brak jakiegokolwiek harnessu eval** | zero evals/datasetów/scoringu. `core/llm/classify.py` to jedyny prymityw sędziego; `data/run-history/` to jedyny surowy korpus | **Wysoka koncepcyjnie** — to teza całego sezonu |
+| **Brak jakiegokolwiek harnessu eval** | zero evals/datasetów/scoringu. `core/llm/classify.py` to jedyny prymityw sędziego; `data/run-history/` to jedyny surowy korpus | **Wysoka koncepcyjnie** — to teza całego sezonu (→ AID-53) |
 
 ## Tematy do ogarnięcia (w kolejności zwrotu z inwestycji)
 
