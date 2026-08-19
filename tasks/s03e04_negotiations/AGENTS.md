@@ -81,7 +81,7 @@ w **6 z 10** dostępnych kroków. Odpowiedź: **Domatowo + Skolwin**.
   czy nie ciągną klucza ze sobą.
 
 ## Verification
-- `uv run pytest tasks/s03e04_negotiations/` — 34 testy, zero sieci, na
+- `uv run pytest tasks/s03e04_negotiations/` — 48 testów, zero sieci, na
   prawdziwych CSV (odmiana, literówka, limit bajtów, sierota, kontrakt huba).
 - `uv run pyrefly check tasks/s03e04_negotiations/` — zielone.
 - Smoke lokalny: `uv run python -m tasks.s03e04_negotiations.server`, potem
