@@ -257,7 +257,7 @@ class TestPanicScriptKillsEntireProcessGroup:
                 stderr=subprocess.PIPE,
                 text=True,
             )
-            stdout, stderr = proc.communicate(timeout=10)
+            _stdout, stderr = proc.communicate(timeout=10)
 
             assert proc.returncode != 0
             assert "WŁASNĄ grupę" in stderr
