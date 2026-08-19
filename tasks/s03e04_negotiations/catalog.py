@@ -52,9 +52,14 @@ _MIN_COVERAGE = 0.6
 _FALLBACK_COVERAGE = 0.34
 
 
+# 'ł' to osobna litera, nie litera ze znakiem diakrytycznym — NFKD jej nie
+# rozłoży, więc wymaga jawnego odwzorowania. Bez tego 'żółć' dawało 'zołc'.
+_STROKE = str.maketrans({"ł": "l", "Ł": "L"})
+
+
 def normalize(text: str) -> str:
     """Sprowadza tekst do postaci porównywalnej: bez diakrytyków, małe litery, zbite spacje."""
-    folded = unicodedata.normalize("NFKD", text)
+    folded = unicodedata.normalize("NFKD", text.translate(_STROKE))
     stripped = "".join(c for c in folded if not unicodedata.combining(c))
     return re.sub(r"\s+", " ", stripped.lower()).strip()
 
@@ -284,6 +289,23 @@ class CatalogIndex:
         """Pozycja o podanym kodzie albo None."""
         return self._by_code.get(code.strip().upper())
 
+    def extract_code(self, text: str) -> str | None:
+        """
+        Wyciąga kod pozycji z rozwlekłego zapytania agenta.
+
+        Sam kształt kodu nie wystarcza do rozpoznania: kody mają 6 znaków
+        [A-Z0-9], ale 306 z 2137 nie zawiera ani jednej cyfry, więc nie da się ich
+        odróżnić od zwykłych sześcioliterowych słów ("PROSZE", "SZUKAM"). Dlatego
+        wygrywa pierwszy kandydat, który FAKTYCZNIE istnieje w katalogu; kandydat
+        nieznany wraca dopiero gdy żaden znany się nie trafił — wtedy endpoint
+        powie agentowi wprost, że kod jest nieznany.
+        """
+        candidates = extract_code_candidates(text)
+        for candidate in candidates:
+            if candidate in self._by_code:
+                return candidate
+        return candidates[0] if candidates else None
+
 
 def _build_item(name: str, code: str) -> Item:
     """Rozdziela rdzenie nazwy na słowne i parametryczne (te z cyfrą)."""
@@ -309,12 +331,6 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
 _CODE_RE = re.compile(r"\b([A-Z0-9]{6})\b")
 
 
-def extract_code(text: str) -> str | None:
-    """
-    Wyciąga kod pozycji z tekstu przysłanego przez agenta.
-
-    Agent bywa rozwlekły ("sprawdź proszę kod 7RSVK7"), więc nie zakładamy że
-    `params` to sam kod. Kody mają stały kształt: 6 znaków [A-Z0-9].
-    """
-    found = _CODE_RE.findall(text.strip().upper())
-    return found[0] if found else None
+def extract_code_candidates(text: str) -> list[str]:
+    """Wszystkie sześcioznakowe tokeny [A-Z0-9] z tekstu, w kolejności wystąpienia."""
+    return _CODE_RE.findall(text.strip().upper())
