@@ -21,10 +21,10 @@ Strategia — receding-horizon BFS (Podejście C, `tasks/s03e03_reactor/AGENTS.m
 Samonaprawialne: błąd w modelu fizyki koryguje się w następnym ticku, bo plan
 jest przeliczany od stanu ZAOBSERWOWANEGO przez API, nie od własnej symulacji.
 
-Kontrakt submisji (R6, `.claude/review-rules.md`): to zadanie woła hub
-WIELOKROTNIE wewnątrz `solve()` (jak `s01e05_railway`), więc `_submit()` jest
-nadpisane — nigdy nie wysyła listy ruchów jako osobnej "odpowiedzi", zwraca
-flagę złapaną po drodze.
+Kontrakt submisji (`strategy/rules/common/r13-single-submission-contract.md`,
+AID-15): to zadanie woła hub WIELOKROTNIE wewnątrz `solve()` (jak
+`s01e05_railway`), więc `_submit()` jest nadpisane — nigdy nie wysyła listy
+ruchów jako osobnej "odpowiedzi", zwraca flagę złapaną po drodze.
 """
 
 from __future__ import annotations
