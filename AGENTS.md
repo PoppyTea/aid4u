@@ -103,6 +103,15 @@ task focus                       # jedno zadanie — zawsze zaczynaj tutaj
 4. **Observability:** `setup_observability()` zawsze jako pierwsza linia skryptu.
 5. **Rate Limit:** `503` → użyj `hub.get_data(path, tolerate_503=True)`.
 6. **Single focus:** Jeden task TW naraz. `task focus` — nie `task list`, nie pamięć.
+7. **Sekretne flagi — świadomie odłożone do 20 flag.** Kurs ma obok flag głównych
+   flagi **sekretne**: ten sam format `{FLG:...}`, ale zdobywane nieoczywistą,
+   ukrytą drogą, poza główną ścieżką zadania. Odblokowują dodatkowe materiały
+   edukacyjne. **Nie są priorytetem, dopóki nie zaliczymy 20 zadań** — nie
+   zatrzymuj się na polowanie na sekret, jeśli flaga główna jest w zasięgu.
+   Jeśli sekret wpada po drodze za darmo (np. epizod, w którym agent Centrali
+   sam go znajduje odpytując nasze narzędzia — patrz `tasks/s03e04_negotiations/`),
+   bierzemy go, ale nie projektujemy pod niego rozwiązania. Po przekroczeniu 20
+   flag wracają jako materiał edukacyjny.
 
 # DOX framework
 
