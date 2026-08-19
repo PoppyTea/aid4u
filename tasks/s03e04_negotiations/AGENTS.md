@@ -86,13 +86,16 @@ w **6 z 10** dostępnych kroków. Odpowiedź: **Domatowo + Skolwin**.
 - Tryb `--secrets` (`secrets_probe.py`, env `S03E04_SECRETS`): prompt injection w
   opisach (limit **300 znaków**, `-875`) + wzmocnienie w odpowiedziach; socjotechnika
   („kanał audytu", „darmowy odbiór") + żądanie base64. Poller dekoduje base64/rot13.
-- **Dlaczego nie zadziałało:** po pierwszym zaliczeniu głównej flagi hub oddaje
-  **zbuforowany** wynik i **nie uruchamia agenta ponownie** — 0 nowych wywołań
-  narzędzi w przebiegu sekretnym. Injection nigdy nie dotarł do agenta.
-- **Wniosek na powrót (po 20 flagach):** sekretu trzeba próbować **przed** albo
-  **razem z** pierwszym zaliczeniem (jedna rejestracja, injection od startu), nie w
-  osobnym drugim podejściu z tego samego konta. Ewentualny reset zadania po stronie
-  huba — nieznany.
+- **Co zaobserwowano:** tuż po zaliczeniu głównej flagi hub oddaje **zbuforowany**
+  wynik i **nie uruchamia agenta ponownie** — 0 nowych wywołań narzędzi w przebiegu
+  sekretnym. Injection nigdy nie dotarł do agenta.
+- **Wniosek (korekta użytkownika, wiedza pewna):** sekret JEST osiągalny niezależnie
+  od zaliczenia zadania, więc bufor jest **tymczasowy**, nie trwały. Dwie
+  konsekwencje dla powrotu (po 20 flagach):
+  1. **Odczekać** po zaliczeniu — orientacyjnie **30–60 min** — aż stan się
+     zresetuje i hub ponownie odpali agenta na nowej konfiguracji narzędzi.
+  2. **Nie zaliczyć zadania przypadkiem podczas polowania na sekret** — zaliczenie
+     wpycha w stan zbuforowany, który blokuje kolejne przebiegi na jakiś czas.
 
 ## Child DOX Index
 - None.
