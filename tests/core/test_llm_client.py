@@ -135,10 +135,16 @@ class TestAgentLoop:
         assert result == "Mimo błędu kontynuuję"
         mock_logfire_exception.assert_called_once_with("Tool broken failed")
 
-        # Verify that the exception detail "Narzędzie się posypało" didn't leak into the model's history
+        # KONTRAKT ODWRÓCONY 2026-08-20 (AID-48). Ten test wymagał wcześniej, żeby treść
+        # wyjątku NIE docierała do modelu. To było zbyt szerokie: bez szczegółu model nie
+        # odróżnia "rate limit, poczekaj" od "zły argument, popraw" i pętli się na tym
+        # samym wywołaniu — źródło udokumentowanych strat $4-10 w komentarzach S03E02.
+        # Treść błędu MA teraz trafiać do modelu; ochronę przed wyciekiem przejmuje
+        # `redact()` (patrz tests/core/llm/test_tool_errors.py).
         history = mock_provider.complete_with_tools.call_args[0][0]
-        for msg in history:
-            assert "Narzędzie się posypało" not in msg.content
+        seen = "\n".join(m.content for m in history)
+        assert "Narzędzie się posypało" in seen
+        assert "ERROR: Tool execution failed." not in seen
 
     def test_abort_run_from_tool_executor_propagates_not_swallowed(self, llm, mock_provider):
         """Kontrakt z core/AGENTS.md: AbortRun to sygnał kill switcha, nie awaria narzędzia —
@@ -159,3 +165,100 @@ class TestAgentLoop:
                 tools=[Tool("aborting", "Narzędzie zgłaszające kill switch", {})],
                 tool_executor=aborting_executor,
             )
+
+
+class TestPropagacjaBledowNarzedzi:
+    """
+    AID-48: model musi dostać treść błędu narzędzia, nie stały string.
+
+    Do 2026-08-20 każdy wyjątek zwijał się do "ERROR: Tool execution failed.",
+    przez co agent nie odróżniał rate limitu od złego argumentu i pętlił się.
+    """
+
+    def _run_with_failing_tool(self, llm, mock_provider, exc: Exception) -> str:
+        """Uruchamia jedną iterację pętli z narzędziem, które rzuca `exc`."""
+        mock_provider.complete_with_tools.side_effect = [
+            make_response("", [ToolCall(id="1", name="broken", arguments={})]),
+            make_response("koniec"),
+        ]
+        def executor(name: str, args: dict) -> str:
+            raise exc
+
+        llm.run_agent_loop(
+            [LLMMessage.user("start")],
+            [Tool(name="broken", description="d", parameters={})],
+            executor,
+        )
+        # Historia trafia do providera przy DRUGIM wywołaniu — stamtąd bierzemy
+        # dokładnie to, co realnie zobaczył model po awarii narzędzia.
+        second_call_history = mock_provider.complete_with_tools.call_args_list[1].args[0]
+        return "\n".join(m.content for m in second_call_history)
+
+    def test_model_widzi_kod_http_i_instrukcje(self, llm, mock_provider):
+        exc = RuntimeError("rate limited")
+        response = MagicMock()
+        response.status_code = 429
+        response.text = ""
+        exc.response = response
+
+        seen = self._run_with_failing_tool(llm, mock_provider, exc)
+        assert "429" in seen
+        assert "PRZEJSCIOWY" in seen
+
+    def test_model_nie_dostaje_juz_generycznego_stringa(self, llm, mock_provider):
+        seen = self._run_with_failing_tool(llm, mock_provider, ValueError("zle miasto"))
+        assert "zle miasto" in seen
+        assert "ERROR: Tool execution failed." not in seen
+
+    def test_abortrun_nadal_propaguje(self, llm, mock_provider):
+        """Kill switch to sygnał zabicia, nie awaria narzędzia (kontrakt core/AGENTS.md)."""
+        mock_provider.complete_with_tools.return_value = make_response(
+            "", [ToolCall(id="1", name="broken", arguments={})]
+        )
+
+        def executor(name: str, args: dict) -> str:
+            raise AbortRun("stop")
+
+        with pytest.raises(AbortRun):
+            llm.run_agent_loop(
+                [LLMMessage.user("start")],
+                [Tool(name="broken", description="d", parameters={})],
+                executor,
+            )
+
+
+class TestDynamicznychNarzedzi:
+    """AID-50: narzędzia odkrywane w runtime (s03e05 ma tylko /api/toolsearch)."""
+
+    def test_lista_dziala_jak_wczesniej(self, llm, mock_provider):
+        """Wsteczna zgodność — istniejące zadania przekazują listę."""
+        mock_provider.complete_with_tools.return_value = make_response("gotowe")
+        tools = [Tool(name="a", description="d", parameters={})]
+
+        result = llm.run_agent_loop([LLMMessage.user("x")], tools, lambda n, a: "")
+
+        assert result == "gotowe"
+        assert mock_provider.complete_with_tools.call_args.args[1] == tools
+
+    def test_narzedzie_dodane_w_trakcie_trafia_do_modelu(self, llm, mock_provider):
+        """
+        Sedno AID-50: narzędzie odkryte w iteracji 1 musi być widoczne w iteracji 2.
+        Przy statycznej liście `toolsearch` nie miałby jak nic dołożyć.
+        """
+        discovered = [Tool(name="search", description="d", parameters={})]
+
+        mock_provider.complete_with_tools.side_effect = [
+            make_response("", [ToolCall(id="1", name="search", arguments={})]),
+            make_response("koniec"),
+        ]
+
+        def executor(name: str, args: dict) -> str:
+            discovered.append(Tool(name="maps", description="odkryte", parameters={}))
+            return "znalazlem nowe narzedzie"
+
+        llm.run_agent_loop([LLMMessage.user("x")], lambda: discovered, executor)
+
+        first = [t.name for t in mock_provider.complete_with_tools.call_args_list[0].args[1]]
+        second = [t.name for t in mock_provider.complete_with_tools.call_args_list[1].args[1]]
+        assert first == ["search"]
+        assert second == ["search", "maps"]

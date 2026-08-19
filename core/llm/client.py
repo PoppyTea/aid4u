@@ -21,6 +21,7 @@ from pydantic import BaseModel
 
 from core.llm.base import LLMProvider
 from core.llm.middleware import CostTrackMiddleware, ProviderCallMiddleware, RateLimitMiddleware
+from core.llm.tool_errors import format_tool_error
 from core.llm.types import LLMMessage, Tool
 from core.observability.decorators import langfuse_tool_observation
 from core.runtime import AbortRun, check_abort, truncate_tool_result
@@ -106,7 +107,7 @@ class LLMClient:
     def run_agent_loop(
         self,
         initial_messages: list[LLMMessage],
-        tools: list[Tool],
+        tools: list[Tool] | Callable[[], list[Tool]],
         tool_executor: Callable[[str, dict[str, Any]], str],
         *,
         system: str | None = None,
@@ -118,7 +119,12 @@ class LLMClient:
 
         Args:
             initial_messages: Wiadomości startowe
-            tools: Definicje narzędzi dostępnych dla modelu
+            tools: Definicje narzędzi dostępnych dla modelu — lista albo **funkcja
+                bez argumentów zwracająca listę**, wywoływana na początku KAŻDEJ
+                iteracji. Wariant z funkcją obsługuje narzędzia odkrywane w runtime
+                (`s03e05` ma tylko `/api/toolsearch`, które zwraca 3 dopasowania na
+                zapytanie — statyczna lista nie istnieje). Zadanie trzyma odkryte
+                narzędzia po swojej stronie i zwraca aktualny stan.
             tool_executor: Funkcja wykonująca narzędzia: (name, args) -> str
             system: System prompt
             max_iterations: Zabezpieczenie przed nieskończoną pętlą
@@ -140,10 +146,24 @@ class LLMClient:
 
         history = list(initial_messages)
         last_content = ""
+        resolve_tools = tools if callable(tools) else (lambda: tools)
+        seen_tool_names: set[str] = set()
 
-        with logfire.span("agent_loop", tools=[t.name for t in tools]):
+        with logfire.span("agent_loop"):
             for iteration in range(max_iterations):
                 check_abort()
+
+                # Lista narzędzi jest ustalana CO ITERACJĘ, nie raz na starcie —
+                # inaczej narzędzie odkryte w trakcie runu (toolsearch) nigdy nie
+                # trafiłoby do modelu.
+                current_tools = list(resolve_tools())
+                new_names = {t.name for t in current_tools} - seen_tool_names
+                if new_names:
+                    seen_tool_names |= new_names
+                    logfire.info(
+                        "Agent tools available", tools=sorted(seen_tool_names), added=sorted(new_names)
+                    )
+
                 logfire.info(f"Agent iteration {iteration + 1}/{max_iterations}")
 
                 # `tools=` w kwargs kieruje ProviderCallMiddleware do complete_with_tools()
@@ -151,7 +171,7 @@ class LLMClient:
                 # teraz cost-tracking i generację Langfuse (do 2026-08-16 to wywołanie
                 # omijało łańcuch middleware).
                 response = self._chain.handle(
-                    history, system=system, tools=tools, prompt_name=prompt_name
+                    history, system=system, tools=current_tools, prompt_name=prompt_name
                 )
                 last_content = response.content
 
@@ -177,8 +197,14 @@ class LLMClient:
                         except AbortRun:
                             # Kill switch, nie awaria narzędzia — propaguj, nie połykaj.
                             raise
-                        except Exception:
-                            result = "ERROR: Tool execution failed."
+                        except Exception as exc:
+                            # Model dostaje typ błędu, kod HTTP i instrukcję co dalej —
+                            # bez tego nie odróżnia "rate limit, poczekaj" od "zły
+                            # argument, popraw" i pętli się na tym samym wywołaniu
+                            # (patrz core/llm/tool_errors.py).
+                            result = truncate_tool_result(
+                                format_tool_error(tool_call.name, exc)
+                            )
                             logfire.exception(f"Tool {tool_call.name} failed")
                         else:
                             # Warstwa 2 (per-call): ucina nienormalnie duży wynik zanim
