@@ -7,6 +7,10 @@ przedmioty. Flaga nie powstaje z naszej odpowiedzi — agent sam zgłasza znalez
 miasta, my tylko rejestrujemy adresy i odbieramy wynik. Dopasowanie
 deterministyczne, zero LLM.
 
+**Rozwiązane (2026-08-19)** — flaga `{FLG:WINDFARM}` w `.flags.json`, koszt $0.00.
+Agent szukał turbiny wiatrowej, akumulatora 48V i inwertera 48V; zmieścił się
+w **6 z 10** dostępnych kroków. Odpowiedź: **Domatowo + Skolwin**.
+
 ## Ownership
 - `catalog.py`: czysta logika, zero I/O sieciowego — ładowanie CSV, normalizacja,
   rdzenie, punktacja dopasowania, przecięcie miast. Testowalne offline.
@@ -47,6 +51,12 @@ deterministyczne, zero LLM.
 - Fallback LLM (normalizacja do mianownika) **nie jest zaimplementowany**;
   deterministyczna kaskada wystarczyła. Wracać do tego tylko jeśli `/debug`
   pokaże nietrafione zapytania.
+- **Krótkie kwalifikatory (≤2 znaki) nie liczą się do pokrycia nazwy.** To
+  poprawka z PIERWSZEGO, nieudanego przebiegu na żywo: `Inwerter DC/AC 48V 3000W`
+  miał rdzenie nazwy `('inwerter','dc','ac')`, więc zapytanie `inwerter` dawało
+  pokrycie 1/3 i wypadało nawet z progu awaryjnego. Hub odpowiedział
+  `-790 "The store does not have inverters"`. Log JSONL był jedynym źródłem,
+  które to pokazało — `/debug` huba nie ujawnia naszej decyzji dopasowania.
 
 ## Pułapki danych (zweryfikowane 2026-08-19)
 - **Zduplikowany kod `06OTEA` z komentarzy kursu już NIE ISTNIEJE** — dane

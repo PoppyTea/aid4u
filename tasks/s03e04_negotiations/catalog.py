@@ -49,7 +49,14 @@ _MIN_COVERAGE = 0.6
 # Centrali ma 10 kroków i przerywa pracę bez odpowiedzi, więc oznaczone
 # przybliżenie jest dla niego warte więcej niż pustka — ale musi być oznaczone,
 # żeby mógł je odrzucić zamiast wziąć za pewnik.
-_FALLBACK_COVERAGE = 0.34
+_FALLBACK_COVERAGE = 0.3
+
+# Tokeny tej długości lub krótsze ('DC', 'AC', 'V') to kwalifikatory techniczne,
+# nie człon nazwy. Wliczane do pokrycia rozwadniały rzeczownik główny: 'Inwerter
+# DC/AC 48V 3000W' dawał zapytaniu 'inwerter' pokrycie 1/3, przez co pozycja nie
+# przechodziła nawet progu awaryjnego. Potwierdzone na żywym przebiegu — agent
+# Centrali odbił się o to z błędem -790 "The store does not have inverters".
+_MAX_QUALIFIER_LEN = 2
 
 
 # 'ł' to osobna litera, nie litera ze znakiem diakrytycznym — NFKD jej nie
@@ -307,14 +314,25 @@ class CatalogIndex:
         return candidates[0] if candidates else None
 
 
+def _is_qualifier(token: str) -> bool:
+    """Czy token jest parametrem lub krótkim kwalifikatorem, a nie członem nazwy."""
+    return any(c.isdigit() for c in token) or len(token) <= _MAX_QUALIFIER_LEN
+
+
 def _build_item(name: str, code: str) -> Item:
-    """Rozdziela rdzenie nazwy na słowne i parametryczne (te z cyfrą)."""
+    """
+    Rozdziela rdzenie nazwy na człony właściwe i kwalifikatory.
+
+    Kwalifikatory ('48v', '3000w', 'dc', 'ac') trafiają do `param_stems`, gdzie
+    podbijają ranking, ale nie są wymagane do pokrycia — agent rzadko wymienia
+    komplet parametrów, a nazwa właściwa wystarcza do identyfikacji pozycji.
+    """
     all_stems = stems(name)
     return Item(
         name=name,
         code=code,
-        word_stems=tuple(s for s in all_stems if not any(c.isdigit() for c in s)),
-        param_stems=tuple(s for s in all_stems if any(c.isdigit() for c in s)),
+        word_stems=tuple(s for s in all_stems if not _is_qualifier(s)),
+        param_stems=tuple(s for s in all_stems if _is_qualifier(s)),
     )
 
 

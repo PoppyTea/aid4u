@@ -88,6 +88,19 @@ class TestDopasowanie:
         """
         assert index.search("turbina wiatrowa")
 
+    def test_krotki_kwalifikator_nie_rozwadnia_nazwy(self, index: CatalogIndex):
+        """
+        Regresja z PRZEBIEGU NA ŻYWO: 'Inwerter DC/AC 48V 3000W' miał rdzenie
+        nazwy ('inwerter','dc','ac'), więc zapytanie 'inwerter' dawało pokrycie
+        1/3 i wypadało nawet z progu awaryjnego. Agent Centrali odbił się o to
+        błędem -790 'The store does not have inverters'.
+        """
+        codes = [m.item.code for m in index.search("inwerter")]
+        assert "A94MAZ" in codes and "A94ZZ4" in codes
+
+    def test_kwalifikator_parametryczny_nadal_rozstrzyga_ranking(self, index: CatalogIndex):
+        assert index.search("inwerter ktory pasuje pod 48V")[0].item.code == "A94MAZ"
+
     def test_pozycja_bez_miast_schodzi_na_koniec(self, index: CatalogIndex):
         """
         06OTEB pasuje do '12V' lepiej niż 06OTEA, ale nikt go nie sprzedaje —
