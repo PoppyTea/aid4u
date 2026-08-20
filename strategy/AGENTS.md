@@ -36,6 +36,12 @@ Repozytorium dokumentacji strategicznej, protokołów uczenia się, standardów 
 - `./secrets-management.md` - Strategia bezpieczeństwa i sekretów.
 - `./season-transition.md` - Procedura przejścia między sezonami kursu (sezonoagnostyczna;
   konkretne instancje per-sezon w `tasks/sXX/requirements/`).
+- `./agent-loop-safety.md` - Uzasadnienia osłon pętli agentowej (błędy narzędzi, budżet
+  kosztu, throttle 429, bramka poleceń): dlaczego, kompromisy, znalezione obejścia.
+  Kontrakty żyją w `core/AGENTS.md`, tutaj są powody.
+- `./secret-flags.md` - Metoda polowania na flagi sekretne: zasada naczelna, trzy odruchy
+  do złamania, gdzie szukać. Polityka (priorytet, zapis) jest kontraktem w rootowym
+  `AGENTS.md`, zasada 7.
 - `./observability.md` - Kontrakt warstwy obserwacji (Logfire + Langfuse): podział ról,
   hierarchia zdarzeń, rejestr promptów, decyzja o async.
 - `./open-decisions.md` - Pytania rozstrzygalne międzysezonowo, bez miejsca w roadmapie

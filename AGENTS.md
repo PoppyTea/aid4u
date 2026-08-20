@@ -108,42 +108,13 @@ task focus                       # jedno zadanie — zawsze zaczynaj tutaj
 4. **Observability:** `setup_observability()` zawsze jako pierwsza linia skryptu.
 5. **Rate Limit:** `503` → użyj `hub.get_data(path, tolerate_503=True)`.
 6. **Single focus:** Jeden task TW naraz. `task focus` — nie `task list`, nie pamięć.
-7. **Sekretne flagi — świadomie odłożone do 20 flag.** Zapisujemy je w `.flags.json`
-   pod kluczem `sXXeYY_secret` (konwencja od 2026-08-20, pierwsza: `s03e05_secret`).
-   `run.py status` **egzekwuje** ten podział (`partition_flags()`): flagi sekretne są
-   poza licznikiem do certyfikatu i oznaczone osobno w tabeli — inaczej zaniżałyby
-   „ile jeszcze do 20", czyli liczbę, według której planujemy sezon. Kurs ma obok flag głównych
-   flagi **sekretne**: ten sam format `{FLG:...}`, ale zdobywane nieoczywistą,
-   ukrytą drogą, poza główną ścieżką zadania. Odblokowują dodatkowe materiały
-   edukacyjne. **Nie są priorytetem, dopóki nie zaliczymy 20 zadań** — nie
-   zatrzymuj się na polowanie na sekret, jeśli flaga główna jest w zasięgu.
-   Jeśli sekret wpada po drodze za darmo (np. epizod, w którym agent Centrali
-   sam go znajduje odpytując nasze narzędzia — patrz `tasks/s03e04_negotiations/`),
-   bierzemy go, ale nie projektujemy pod niego rozwiązania. Po przekroczeniu 20
-   flag wracają jako materiał edukacyjny.
-
-   **Jak się ich szuka — zasada z praktyki:** droga do sekretu **bardzo często prowadzi
-   przez eksplorację, która pomija zwykły cel zadania, a bywa że wprost łamie jego
-   zasady.** Trzy odruchy do złamania:
-   - **„Muszę zrobić jedno i drugie."** Zwykle nie. W `s03e05` trasa po flagę sekretną
-     **nie dochodzi do celu** i hub przyjmuje ją mimo `does not reach the goal` — a
-     połączenie obu było matematycznie niemożliwe (17 ruchów przy suficie 12).
-   - **„To łamie reguły zadania, więc nie zadziała."** W jednym z zadań S02 (robot
-     magazynowy, prompt systemowy + wiadomość) sekret dawało wysłanie **samego kodu
-     Konami**, całkowicie ignorując ściany i kolizje. Rozwiązanie „zgodne z duchem"
-     — objazd na taniec ORAZ dojazd do celu, zmieszczony w limitach — działało
-     technicznie i **nie dawało nic**.
-   - **„Brakuje wymaganego elementu, więc to nie ta droga."** Ten sam Konami wymaga
-     przycisków A i B, których robot **nie miał**. Brak też należało zignorować.
-
-   Operacyjnie: jeśli masz hipotezę pasującą do wskazówki, **sprawdź ją**, nawet gdy
-   łamie zasady zadania albo wymaga nieistniejących elementów. Koszt sprawdzenia to
-   jedno zgłoszenie; koszt odrzucenia jej „bo się nie da" to cały wątek w ślepą uliczkę.
-
-# DOX framework
-
-- DOX is highly performant AGENTS.md hierarchy installed here
-- Agent must follow DOX instructions across any edits
+7. **Sekretne flagi — poza priorytetem do 20 flag.** Ten sam format `{FLG:...}` co flagi
+   główne, ale zdobywane ukrytą drogą; odblokowują dodatkowe materiały edukacyjne.
+   Zapisujemy je w `.flags.json` pod kluczem `sXXeYY_secret`, a `run.py status`
+   **egzekwuje** ten podział (`partition_flags()`) — inaczej zaniżałyby „ile jeszcze
+   do 20", czyli liczbę, według której planujemy sezon. Nie zatrzymuj się na polowanie,
+   jeśli flaga główna jest w zasięgu; jeśli sekret wpada po drodze za darmo — bierzemy,
+   ale nie projektujemy pod niego rozwiązania. **Jak ich szukać: `strategy/secret-flags.md`.**
 
 ## Core Contract
 
