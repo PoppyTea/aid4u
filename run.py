@@ -49,6 +49,11 @@ _FLAGS_FILE = Path(".flags.json")
 # Sufiks klucza flagi sekretnej w `.flags.json` (patrz AGENTS.md, zasada 7).
 SECRET_SUFFIX = "_secret"
 
+# Domyślny budżet kosztu na przebieg. Włączony domyślnie, bo każda udokumentowana
+# strata $4-10 w komentarzach kursu do S03E02 wynikała z ZAPOMNIANEJ osłony, nie
+# z jej braku w kodzie. `--max-cost 0` wyłącza.
+DEFAULT_MAX_COST = 1.0
+
 
 def partition_flags(flags: dict[str, str]) -> tuple[dict[str, str], dict[str, str]]:
     """
@@ -115,6 +120,16 @@ def solve(
             "przekroczenie przerywa solve() czysto (AbortRun), bez ubijania procesu."
         ),
     ),
+    max_cost: float | None = typer.Option(
+        DEFAULT_MAX_COST,
+        "--max-cost",
+        help=(
+            "Twardy budżet kosztu LLM w USD na cały przebieg (Warstwa 2 kill switcha). "
+            f"Domyślnie ${DEFAULT_MAX_COST:.2f}; `--max-cost 0` wyłącza. Bezpiecznik, nie "
+            "prewencja — cenę znamy dopiero PO wywołaniu, więc limit ogranicza "
+            "przekroczenie do jednego wywołania."
+        ),
+    ),
 ) -> None:
     """Rozwiąż jedno zadanie."""
     if task_name not in TASK_REGISTRY:
@@ -126,7 +141,9 @@ def solve(
     hub = HubClient()
     llm = _make_llm(model, premium=premium)
     task_cls = TASK_REGISTRY[task_name]
-    task_instance = task_cls(hub, llm, dry_run=dry_run, max_seconds=max_seconds)
+    task_instance = task_cls(
+        hub, llm, dry_run=dry_run, max_seconds=max_seconds, max_cost=max_cost
+    )
 
     try:
         flag = task_instance.run()

@@ -83,6 +83,7 @@ class BaseTask(ABC):
         *,
         dry_run: bool = False,
         max_seconds: float | None = None,
+        max_cost: float | None = None,
     ) -> None:
         """Wstrzykuje zależności (hub/llm), tryb dry-run i opcjonalny budżet wall-clock (Warstwa 2 kill switcha)."""
         self.hub = hub
@@ -90,6 +91,7 @@ class BaseTask(ABC):
         self.cache = LocalCache(self._task_name or self.__class__.__name__)
         self.dry_run = dry_run
         self._max_seconds = max_seconds
+        self._max_cost = max_cost
 
     # ─── Template Method — nie nadpisuj ──────────────────────────────────────
 
@@ -100,7 +102,7 @@ class BaseTask(ABC):
         """
         task_name = self._task_name or self.__class__.__name__
         _console.print(f"\n[bold]Running task:[/] [cyan]{task_name}[/]")
-        start_run(max_seconds=self._max_seconds)
+        start_run(max_seconds=self._max_seconds, max_cost=self._max_cost)
         _console.print(
             "[dim]Kill switch: `bash scripts/panic.sh` (twardy, gwarantowany) albo "
             "`uv run run.py panic --graceful` (czyste zamknięcie).[/]"

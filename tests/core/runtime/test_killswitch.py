@@ -12,30 +12,6 @@ import pytest
 from core.runtime import killswitch
 
 
-@pytest.fixture(autouse=True)
-def _isolated_run_dir(monkeypatch, tmp_path):
-    """
-    Przekierowuje ścieżki `.run/` na `tmp_path` i neutralizuje `os.setsid()` dla
-    wszystkich testów w tym pliku OPRÓCZ `TestPanicScriptKillsEntireProcessGroup`
-    (ten test celowo działa na prawdziwym `.run/` repo i prawdziwym `panic.sh` — nie
-    da się go sensownie izolować, bo skrypt bashowy rozwiązuje ścieżkę względem
-    swojej lokalizacji, nie przez Pythona).
-
-    Bez tego testy jednostkowe: (a) czytałyby/pisały PRAWDZIWY `.run/` repozytorium —
-    kolizja z rzeczywistym przebiegiem uruchomionym równolegle; (b) wołałyby prawdziwy
-    `os.setsid()` na PROCESIE pytest, odłączając go od sesji terminala w trakcie
-    przebiegu testów (realny efekt uboczny, nie tylko teoretyczny).
-    """
-    run_dir = tmp_path / ".run"
-    monkeypatch.setattr(killswitch, "_RUN_DIR", run_dir)
-    monkeypatch.setattr(killswitch, "_PGID_FILE", run_dir / "current.pgid")
-    monkeypatch.setattr(killswitch, "_STOP_FILE", run_dir / "STOP")
-    monkeypatch.setattr(os, "setsid", lambda: None)
-    killswitch.end_run()
-    yield
-    killswitch.end_run()
-
-
 class TestCheckAbort:
     """Warstwa 1 — plik-wartownik .run/STOP."""
 

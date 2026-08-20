@@ -138,6 +138,13 @@ class CostTrackMiddleware(LLMMiddleware):
         except Exception:
             logfire.warning("Failed to track cost", exc_info=True)  # cost tracking jest best-effort
 
+        # Warstwa 2 kill switcha (AID-62): koszt musi trafić do budżetu przebiegu, nie
+        # tylko do telemetrii. `cost=None` przekazujemy świadomie — killswitch ma wtedy
+        # ostrzec, że osłona kosztowa nie zadziałała, zamiast po cichu liczyć zero.
+        from core.runtime import record_cost
+
+        record_cost(cost)
+
         self._end_langfuse_generation(generation, response, cost)
 
         return response

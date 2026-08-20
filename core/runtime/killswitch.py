@@ -13,15 +13,22 @@ Trzy warstwy (patrz `core/AGENTS.md` dla pełnego uzasadnienia projektowego):
   `check_abort()`, wywoływane w bezpiecznych punktach pętli (start iteracji, przed
   tool callem, przed submit), rzuca `AbortRun` — czyste zamknięcie zamiast
   ubicia procesu.
-- **Warstwa 2 (budżety)** — `start_run(max_seconds=...)` ustawia twardy limit
-  wall-clock na cały przebieg, sprawdzany przy każdym `check_abort()`.
+- **Warstwa 2 (budżety)** — `start_run(max_seconds=..., max_cost=...)` ustawia twarde
+  limity wall-clock i kosztu na cały przebieg, sprawdzane przy każdym `check_abort()`.
   `truncate_tool_result()` to osobny mechanizm per-call (NIE przerywa przebiegu,
   tylko koryguje pojedynczy wynik narzędzia) — chroni przed np. `cat` dużego pliku
   zalewającym kontekst (udokumentowana strata $5-10 w komentarzach kursu S03E02).
 
-Budżet kosztu/tokenów jest świadomie NIEZAIMPLEMENTOWANY w tej wersji "basic" —
-wymagałby ekspozycji bieżącego kosztu z `CostTrackMiddleware` w trakcie przebiegu,
-nie tylko na końcu. Zostawione jako przyszłe rozszerzenie `RunBudget`.
+**Budżet kosztu jest BEZPIECZNIKIEM, nie prewencją.** Cenę wywołania LLM znamy dopiero
+PO jego wykonaniu, więc limit ogranicza przekroczenie do jednego wywołania, nie do zera.
+To świadomy kompromis — alternatywą byłoby szacowanie kosztu przed wysłaniem, co przy
+nieznanej długości odpowiedzi jest zgadywaniem.
+
+⚠️ Liczenie kosztu w `CostTrackMiddleware` jest best-effort (opakowane w `except`).
+Gdyby cena nie dała się policzyć przy USTAWIONYM budżecie, osłona po cichu by nie
+działała — dlatego `record_cost(None)` krzyczy w logach zamiast milczeć. To nie jest
+paranoja: ten sam `except` ukrywał martwe `genai_prices.calculate()` przez wiele tygodni
+(patrz `core/AGENTS.md`).
 """
 
 from __future__ import annotations
@@ -39,6 +46,11 @@ _STOP_FILE = _RUN_DIR / "STOP"
 # małe, żeby jeden `cat` dużego pliku nie wysadził kontekstu ani budżetu.
 DEFAULT_MAX_TOOL_RESULT_BYTES = 20_000
 
+# Margines na błąd akumulacji zmiennoprzecinkowej przy sumowaniu kosztów (patrz
+# `RunBudget.check_cost`). Nanodolar jest o rzędy wielkości poniżej najtańszego
+# realnego wywołania, więc nie rozluźnia budżetu w żadnym praktycznym sensie.
+_COST_EPSILON = 1e-9
+
 
 class AbortRun(Exception):
     """Rzucane, gdy przebieg powinien się zatrzymać (Warstwa 1 lub 2). Łapane w `BaseTask.run()`."""
@@ -46,9 +58,11 @@ class AbortRun(Exception):
 
 @dataclass
 class RunBudget:
-    """Twarde limity na cały przebieg `solve()`. Dziś tylko wall-clock — patrz docstring modułu."""
+    """Twarde limity na cały przebieg `solve()`: wall-clock i koszt — patrz docstring modułu."""
 
     max_seconds: float | None = None
+    max_cost: float | None = None
+    spent_usd: float = field(default=0.0, init=False)
     _started_at: float = field(default_factory=time.monotonic, init=False, repr=False)
 
     def check_time(self) -> None:
@@ -59,11 +73,60 @@ class RunBudget:
         if elapsed > self.max_seconds:
             raise AbortRun(f"Przekroczono budżet czasu: {elapsed:.1f}s > {self.max_seconds}s.")
 
+    def check_cost(self) -> None:
+        """
+        Rzuca `AbortRun`, jeśli suma kosztu przekroczyła `max_cost`. No-op gdy limit
+        nieustawiony.
+
+        Porównanie ma margines `_COST_EPSILON`, bo koszt sumuje się w zmiennoprzecinkowym:
+        sto wywołań po $0.01 daje `1.0000000000000007`, co bez marginesu przerywałoby
+        przebieg z budżetem $1.00 **dokładnie na limicie**. Margines dotyczy błędu
+        reprezentacji, nie pobłażliwości wobec budżetu — jest o rzędy wielkości mniejszy
+        niż najtańsze realne wywołanie.
+        """
+        if self.max_cost is None:
+            return
+        if self.spent_usd > self.max_cost + _COST_EPSILON:
+            raise AbortRun(
+                f"Przekroczono budżet kosztu: ${self.spent_usd:.4f} > ${self.max_cost:.2f}."
+            )
+
 
 _active_budget: RunBudget | None = None
 
 
-def start_run(*, max_seconds: float | None = None) -> None:
+def record_cost(usd: float | None) -> None:
+    """
+    Dokłada koszt jednego wywołania LLM do bieżącego przebiegu.
+
+    Wołane przez `CostTrackMiddleware` — kierunek zależności jest celowy: middleware
+    wie, ile kosztowało wywołanie, a kill switch wie, jakie są budżety.
+
+    `usd=None` znaczy „nie udało się policzyć ceny". Przy USTAWIONYM budżecie to cicha
+    awaria osłony, więc ostrzegamy głośno zamiast zignorować — inaczej przebieg
+    wyglądałby na chroniony, nie będąc.
+    """
+    if _active_budget is None:
+        return
+    if usd is None:
+        if _active_budget.max_cost is not None:
+            import logfire
+
+            logfire.warning(
+                "Budżet kosztu ustawiony, ale ceny wywołania nie dało się policzyć "
+                "— osłona kosztowa NIE działa dla tego wywołania",
+                max_cost=_active_budget.max_cost,
+            )
+        return
+    _active_budget.spent_usd += usd
+
+
+def spent_usd() -> float:
+    """Koszt zsumowany w bieżącym przebiegu. Zero, gdy żaden przebieg nie jest aktywny."""
+    return _active_budget.spent_usd if _active_budget is not None else 0.0
+
+
+def start_run(*, max_seconds: float | None = None, max_cost: float | None = None) -> None:
     """
     Wywoływane raz na początku `BaseTask.run()`. Instaluje grupę procesów (Warstwa 0),
     czyści wartownika `.run/STOP` z ewentualnego poprzedniego przebiegu (patrz
@@ -74,6 +137,11 @@ def start_run(*, max_seconds: float | None = None) -> None:
     `max_seconds` sprawdzane przez `is not None`, nie przez truthy-check — `0` to
     poprawny (choć ekstremalny) budżet "przerwij natychmiast", nie "brak budżetu".
     Ujemne wartości nie mają sensu i są odrzucane.
+
+    **`max_cost` ma inną semantykę zera niż `max_seconds`**, i to celowo: `0` znaczy
+    "bez limitu kosztu", bo taka jest semantyka flagi CLI `--max-cost 0` (wyłącz
+    domyślną osłonę). Budżet "przerwij przy pierwszym groszu" nie ma zastosowania,
+    a budżet "wyłącz" ma — patrz `run.py`.
     """
     global _active_budget
     # Walidacja PRZED jakimikolwiek efektami ubocznymi (grupa procesów, plik PGID) —
@@ -81,9 +149,17 @@ def start_run(*, max_seconds: float | None = None) -> None:
     # jest wołane poza try/finally w BaseTask.run(), więc end_run() się nie odpali).
     if max_seconds is not None and max_seconds < 0:
         raise ValueError(f"max_seconds musi być >= 0, dostano {max_seconds}.")
+    if max_cost is not None and max_cost < 0:
+        raise ValueError(f"max_cost musi być >= 0, dostano {max_cost}.")
     _install_process_group()
     _STOP_FILE.unlink(missing_ok=True)
-    _active_budget = RunBudget(max_seconds=max_seconds) if max_seconds is not None else None
+
+    effective_cost = max_cost if (max_cost is not None and max_cost > 0) else None
+    _active_budget = (
+        RunBudget(max_seconds=max_seconds, max_cost=effective_cost)
+        if (max_seconds is not None or effective_cost is not None)
+        else None
+    )
 
 
 def end_run() -> None:
@@ -118,6 +194,7 @@ def check_abort() -> None:
         raise AbortRun("Przerwano przez .run/STOP (graceful stop).")
     if _active_budget is not None:
         _active_budget.check_time()
+        _active_budget.check_cost()
 
 
 def current_pgid_file() -> Path:
