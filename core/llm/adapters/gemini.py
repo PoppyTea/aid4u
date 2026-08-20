@@ -202,12 +202,16 @@ class GeminiAdapter(LLMProvider):
             and response.candidates[0].content
             and response.candidates[0].content.parts
         ):
-            for part in response.candidates[0].content.parts:
+            for index, part in enumerate(response.candidates[0].content.parts):
                 if part.function_call and part.function_call.name:
                     tool_calls.append(
                         ToolCall(
-                            id=part.function_call.id
-                            or part.function_call.name,  # id might be optional in old SDKs, fallback to name
+                            # Fallback zawiera INDEKS części, nie samą nazwę: gdy SDK nie
+                            # poda `id`, a model wywoła to samo narzędzie dwa razy w jednej
+                            # odpowiedzi, oba wywołania dostawały identyczny identyfikator
+                            # i łamały kontrakt „`id` jednoznacznie identyfikuje wywołanie",
+                            # trzymany przez adaptery Anthropic i OpenAI (AID-18).
+                            id=part.function_call.id or f"{part.function_call.name}-{index}",
                             name=part.function_call.name,
                             arguments=part.function_call.args if part.function_call.args else {},
                         )

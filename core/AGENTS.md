@@ -126,6 +126,28 @@ Contains the architectural heart of the system: LLM clients, task management bas
     `tool.<name>` span still holds the call context.
   - Error results also pass through `truncate_tool_result()` — a 5xx body can be a full
     HTML page.
+- **Cost budget is Layer 2 and on by default (AID-62, 2026-08-20).** `RunBudget` carries
+  `max_cost` next to `max_seconds`; `CostTrackMiddleware` feeds `record_cost()` after
+  pricing a call, and `check_abort()` tests both budgets. `run.py` defaults to **$1 per
+  run**; `--max-cost 0` disables it.
+  - It is a **fuse, not prevention**: a call's price is only known after it is made, so
+    the limit bounds the overshoot to one call.
+  - `max_cost=0` means "no limit", unlike `max_seconds=0` which means "stop at once".
+    That asymmetry follows the CLI flag's meaning and is deliberate.
+  - Pricing is best-effort. With a budget set, `record_cost(None)` **warns loudly** —
+    a silent pricing failure would leave a run looking protected while it is not.
+- **`/api/*` is throttled before sending; 429 is not retried in a loop (AID-46,
+  2026-08-20).** One `OutgoingThrottle` per `HubClient` (the hub limits per API key, not
+  per endpoint) enforces a minimum interval **before** each request. A 429 buys one long
+  cooldown and at most one retry; a second 429 propagates to the caller, which reads as
+  an actionable "transient" via `tool_errors`. 429 is deliberately **out** of the tenacity
+  predicate (`_is_retryable_transport_error`) because the S03E02 notes suspect each 429
+  extends the block window, making a retry loop actively harmful. `/verify` keeps its own
+  server-directed path (`retry_after` in the body).
+- **`ToolCall.id` must be unique within one response (AID-18, 2026-08-20).** The Gemini
+  adapter falls back to `f"{name}-{index}"` when the SDK omits an id — the previous
+  fallback to the bare tool name collided whenever a model called the same tool twice in
+  one response, breaking a contract Anthropic and OpenAI adapters already hold.
 - **`run_agent_loop(tools=...)` accepts a callable (AID-50, 2026-08-20).** Pass
   `list[Tool]` as before, or a zero-arg callable returning the current list, re-evaluated
   at the start of every iteration. This is what makes runtime tool discovery possible
