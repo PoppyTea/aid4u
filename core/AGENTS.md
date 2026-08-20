@@ -144,6 +144,26 @@ Contains the architectural heart of the system: LLM clients, task management bas
   predicate (`_is_retryable_transport_error`) because the S03E02 notes suspect each 429
   extends the block window, making a retry loop actively harmful. `/verify` keeps its own
   server-directed path (`retry_after` in the body).
+- **Shell commands pass a code-enforced allowlist, never a prompt rule (AID-47,
+  2026-08-20).** `core/runtime/command_guard.py` validates a command *before* it is
+  sent; refusal raises `CommandRejected`, which the tool dispatcher turns into a tool
+  error the model can act on.
+  - **Allowlist, not denylist**, and this is the whole design: a denylist answers "what
+    to forbid", so every unlisted way to destroy something gets through. `rm -rf /` is
+    only one of many (`mkfs`, `dd of=/dev/sda`, `shred`, `truncate`, `chmod -R 000`).
+    The **default policy contains no writing command at all**; a task that needs one
+    adds it explicitly via `with_commands()`, visible in the diff.
+  - Also rejected: shell metacharacters, control characters (newline chains commands,
+    NUL truncates paths in C tools), variable/`~` expansion, `..`, and **globs inside
+    path-like tokens** — the shell expands those server-side while the guard compares
+    the text *before* expansion, so `/et[c]/passwd` reached `/etc`.
+  - `normalize_path()` must collapse leading `//`: `posixpath.normpath` preserves
+    exactly two leading slashes per POSIX, so `//etc/passwd` slipped past the `/etc`
+    block. Found by an adversarial probe, not by reading the code — which is why the
+    bypass families in `tests/core/runtime/test_command_guard.py` are worth keeping.
+  - **Limit worth knowing:** it inspects command text, not filesystem state, so a
+    symlink into a forbidden directory is invisible to it. If this ever runs locally,
+    the fix is a `realpath` check, not another text rule.
 - **`ToolCall.id` must be unique within one response (AID-18, 2026-08-20).** The Gemini
   adapter falls back to `f"{name}-{index}"` when the SDK omits an id — the previous
   fallback to the bare tool name collided whenever a model called the same tool twice in
