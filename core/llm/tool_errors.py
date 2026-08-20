@@ -23,13 +23,27 @@ import re
 _UUID_RE = re.compile(
     r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.IGNORECASE
 )
-_QUERY_SECRET_RE = re.compile(
-    r"((?:api[-_]?key|apikey|token|secret|password|passwd|key|sig|signature)=)[^&\s\"'>]+",
+# Pole z sekretem — zarówno w query stringu (`apikey=…`), jak i w ciele JSON
+# (`"token": "…"`), bo `format_tool_error()` wkleja ciało odpowiedzi HTTP do
+# kontekstu modelu. Wiodące `\b` jest konieczne, żeby człon `key` nie łapał się
+# w środku zwykłego słowa (np. „monkey=…").
+# Cudzysłów po nazwie pola jest opcjonalny, bo w JSON-ie klucz jest cytowany
+# (`"token": "…"`) — separator stoi wtedy ZA cudzysłowem zamykającym, nie tuż
+# za nazwą.
+_SECRET_FIELD_RE = re.compile(
+    r"\b((?:api[-_]?key|apikey|token|secret|password|passwd|key|sig|signature)"
+    r"[\"']?\s*[=:]\s*[\"']?)[^&\s,\"'}\]>]+",
     re.IGNORECASE,
 )
 _BEARER_RE = re.compile(r"((?:Bearer|Basic)\s+)[A-Za-z0-9._\-+/=]+", re.IGNORECASE)
 # Klucze providerów mają rozpoznawalne prefiksy — łapiemy je nawet poza query stringiem.
-_PROVIDER_KEY_RE = re.compile(r"\b(sk|pk|rk|xoxb|ghp|gho|AIza)[-_][A-Za-z0-9._\-]{8,}", re.IGNORECASE)
+# Google jest osobną gałęzią: jego klucze idą `AIza…` bez separatora, więc wymaganie
+# `[-_]` po prefiksie (jak dla `sk-`/`ghp_`) przepuszczało je w całości.
+_PROVIDER_KEY_RE = re.compile(
+    r"\b(?:sk|pk|rk|xoxb|xoxp|ghp|gho|glpat)[-_][A-Za-z0-9._\-]{8,}"
+    r"|\bAIza[A-Za-z0-9._\-]{8,}",
+    re.IGNORECASE,
+)
 
 # Kody, po których ponowienie ma sens. 429/503 to wprost rate limit i przeciążenie —
 # oba przejściowe. 408/502/504 to problemy transportu/bramy, też przejściowe.
@@ -45,7 +59,7 @@ def redact(text: str) -> str:
     Treść wyjątku sieciowego zwykle zawiera pełny URL — a hub przyjmuje `apikey`
     w query stringu, więc bez tego kroku klucz lądowałby w historii rozmowy.
     """
-    text = _QUERY_SECRET_RE.sub(r"\1<REDACTED>", text)
+    text = _SECRET_FIELD_RE.sub(r"\1<REDACTED>", text)
     text = _BEARER_RE.sub(r"\1<REDACTED>", text)
     text = _PROVIDER_KEY_RE.sub("<REDACTED>", text)
     return _UUID_RE.sub("<REDACTED>", text)

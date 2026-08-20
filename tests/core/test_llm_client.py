@@ -114,9 +114,9 @@ class TestAgentLoop:
         )
         assert mock_provider.complete_with_tools.call_count == 3
 
-    @patch("logfire.exception")
+    @patch("logfire.error")
     def test_tool_executor_error_doesnt_crash_loop(
-        self, mock_logfire_exception, llm, mock_provider
+        self, mock_logfire_error, llm, mock_provider
     ):
         tool_call = ToolCall(id="c1", name="broken", arguments={})
         mock_provider.complete_with_tools.side_effect = [
@@ -133,7 +133,10 @@ class TestAgentLoop:
             tool_executor=bad_executor,
         )
         assert result == "Mimo błędu kontynuuję"
-        mock_logfire_exception.assert_called_once_with("Tool broken failed")
+        # `logfire.exception()` dołączałoby surowy wyjątek do telemetrii; logujemy
+        # zredagowany wynik, żeby redakcja obowiązywała tak samo wobec Logfire.
+        mock_logfire_error.assert_called_once()
+        assert mock_logfire_error.call_args.kwargs["tool_name"] == "broken"
 
         # KONTRAKT ODWRÓCONY 2026-08-20 (AID-48). Ten test wymagał wcześniej, żeby treść
         # wyjątku NIE docierała do modelu. To było zbyt szerokie: bez szczegółu model nie

@@ -114,8 +114,16 @@ Contains the architectural heart of the system: LLM clients, task management bas
   - The safety half of the old rule is now carried by `tool_errors.redact()`, which is
     **mandatory, not cosmetic**: the hub takes `apikey` in the query string, so an
     unredacted network exception would write the live key straight into the model's
-    conversation history. It scrubs UUIDs, `apikey=`/`token=`-style query params,
-    `Bearer` headers and provider key prefixes.
+    conversation history. It scrubs UUIDs, `Bearer`/`Basic` headers, provider key
+    prefixes (`sk-`, `ghp_`, and `AIza…` which carries **no** separator), and
+    secret-named fields with either separator — `apikey=…` **and** JSON `"token": "…"`,
+    since response bodies get pasted into the model's context too.
+  - **Redaction applies to telemetry as well as to the model.** The handler logs the
+    already-redacted result via `logfire.error(...)`, never `logfire.exception(...)`:
+    the latter attaches the *active* exception with its raw message, which is exactly
+    where the `apikey=` URL lives. The traceback is deliberately given up — the
+    exception type plus message carries the diagnosis, and the enclosing
+    `tool.<name>` span still holds the call context.
   - Error results also pass through `truncate_tool_result()` — a 5xx body can be a full
     HTML page.
 - **`run_agent_loop(tools=...)` accepts a callable (AID-50, 2026-08-20).** Pass

@@ -123,3 +123,38 @@ class TestBledyNiesieciowe:
         """Redakcja obowiązuje też na ścieżce niesieciowej."""
         out = format_tool_error("fetch", ValueError(f"url=https://x/?apikey={_FAKE_KEY}"))
         assert _FAKE_KEY not in out
+
+
+class TestRedakcjaPolJson:
+    """
+    Sekrety bywają w ciele odpowiedzi HTTP, nie tylko w query stringu.
+
+    `format_tool_error()` wkleja ciało odpowiedzi do kontekstu modelu, więc pole
+    `"token": "..."` musi być redagowane tak samo jak `?token=...`.
+    """
+
+    def test_token_w_json_jest_redagowany(self):
+        out = redact('body: {"token":"opaque-secret-value"}')
+        assert "opaque-secret-value" not in out
+
+    def test_apikey_w_json_ze_spacjami(self):
+        out = redact('{ "apikey" : "plain-text-secret" }')
+        assert "plain-text-secret" not in out
+
+    def test_klucz_google_bez_separatora(self):
+        """Klucze Google idą `AIza…` wprost — wymóg `[-_]` po prefiksie je przepuszczał."""
+        out = redact("key AIzaSyD9tR4vNm2QpXcYbZ1234567890abcd failed")
+        assert "AIzaSyD9tR4vNm2QpXcYbZ1234567890abcd" not in out
+
+    def test_czlon_key_nie_lapie_sie_w_srodku_slowa(self):
+        """Bez wiodącego `\\b` wzorzec `key` trafiałby w 'monkey' i kaleczył diagnostykę."""
+        assert redact("monkey business") == "monkey business"
+
+    def test_cialo_odpowiedzi_jest_redagowane_w_pelnej_sciezce(self):
+        """Test end-to-end: sekret z ciała HTTP nie może dotrzeć do modelu."""
+        exc = RuntimeError("bad request")
+        response = MagicMock()
+        response.status_code = 400
+        response.text = '{"token":"leaked-token-value"}'
+        exc.response = response  # type: ignore[attr-defined]
+        assert "leaked-token-value" not in format_tool_error("fetch", exc)

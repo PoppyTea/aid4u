@@ -205,7 +205,19 @@ class LLMClient:
                             result = truncate_tool_result(
                                 format_tool_error(tool_call.name, exc)
                             )
-                            logfire.exception(f"Tool {tool_call.name} failed")
+                            # `logfire.exception()` dołącza AKTYWNY wyjątek wraz z jego
+                            # surową treścią — a to właśnie tam siedzi URL z `apikey=`.
+                            # Redakcja obowiązuje tak samo wobec telemetrii jak wobec
+                            # modelu, więc logujemy sformatowany (zredagowany) wynik.
+                            # Świadomie tracimy traceback: sam typ i komunikat wyjątku
+                            # niosą tu diagnostykę, a span `tool.<nazwa>` wyżej trzyma
+                            # kontekst wywołania.
+                            logfire.error(
+                                "Tool execution failed",
+                                tool_name=tool_call.name,
+                                error_type=type(exc).__name__,
+                                error=result,
+                            )
                         else:
                             # Warstwa 2 (per-call): ucina nienormalnie duży wynik zanim
                             # zaleje kontekst — np. `cat` dużego pliku (patrz core/AGENTS.md).
