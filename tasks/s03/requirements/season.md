@@ -39,12 +39,14 @@ Baza jest numeryczna (autor wybrał tę zasadę wprost), z jednym świadomym wyj
 
 ## 🔴 Dług KONIECZNY przed startem (blokuje bezpieczne wejście w S03)
 
-- [ ] **Trzy osłony pętli agentowej** (jeśli nie zrobione już przy okazji
-  `feat/killswitch`): limit rozmiaru wyniku narzędzia, rate limiter wychodzący na
-  `/api/*`, propagacja błędów narzędzia do modelu zamiast generycznego
-  `"ERROR: Tool execution failed"`. Uzasadnienie: każda udokumentowana strata $4-10 w
-  komentarzach S03E02 wynikała z braku dokładnie tych osłon.
-  (→ AID-46, AID-47, AID-48)
+- [~] **Trzy osłony pętli agentowej** — 1 z 3 zrobiona (2026-08-20). Uzasadnienie:
+  każda udokumentowana strata $4-10 w komentarzach S03E02 wynikała z braku dokładnie
+  tych osłon.
+  - [x] **Propagacja błędów narzędzia do modelu** — `core/llm/tool_errors.py` wpięte
+    w `run_agent_loop()`: model dostaje kod HTTP i instrukcję „ponów" / „popraw
+    argumenty" zamiast stałego `"ERROR: Tool execution failed"`. (AID-48)
+  - [ ] Rate limiter wychodzący na `/api/*` (→ AID-46)
+  - [ ] Blacklista ścieżek wymuszona w kodzie narzędzia (→ AID-47)
 - [x] `HubClient.get_public()`/`get_data(tolerate_503=)` — ✅ zrobione 09.08 (PR
   `feat/hub-get-consolidation`) — odblokowuje `/dane/sensors.zip` (e01) i
   `/dane/s03e04_csv/` (e04).
@@ -72,9 +74,9 @@ Baza jest numeryczna (autor wybrał tę zasadę wprost), z jednym świadomym wyj
 - [ ] Rejestr narzędzi / schemat-z-sygnatury zamiast trzeciej ręcznie klepanej kopii
   wzorca `Tool + closure + dispatcher` (mamy już trzy: s01e02, s01e03, s02e04).
   (→ AID-49)
-- [ ] Dynamiczne odkrywanie narzędzi w runtime (blokuje elegancki e05 — dziś
-  `run_agent_loop(tools=[...])` bierze tylko statyczną listę).
-  (→ AID-50)
+- [x] Dynamiczne odkrywanie narzędzi w runtime — zrobione 2026-08-20:
+  `run_agent_loop(tools=...)` przyjmuje też funkcję zwracającą aktualną listę,
+  ewaluowaną co iterację. Odblokowuje e05 (`/api/toolsearch`). (AID-50)
 - [ ] Doprecyzować w `data/AGENTS.md` gdzie faktycznie leży `.cache/` (opis mówi
   "patrz `../core/hub/cache.py`", ale to fizycznie folder w rootcie repo, nie
   wewnątrz `core/`) — realna, potwierdzona pułapka.

@@ -104,6 +104,35 @@ Contains the architectural heart of the system: LLM clients, task management bas
   broken keyring can't accumulate one abandoned thread per call — Python has no
   safe way to kill a blocked thread, so every avoided call matters.
 
+- **Tool failures reach the model with detail, not a generic string (AID-48, 2026-08-20).**
+  `run_agent_loop()` formats every tool exception through `core/llm/tool_errors.py`:
+  exception type, message, **HTTP status when present**, and an explicit instruction
+  ("transient — retry the same call" vs "permanent — fix the arguments"). This
+  **reverses** the earlier contract, which asserted the exception detail must NOT reach
+  the model: without it the agent can't tell a rate limit from a bad argument and loops
+  on the same call — the documented cause of the $4-10 losses in the S03E02 comments.
+  - The safety half of the old rule is now carried by `tool_errors.redact()`, which is
+    **mandatory, not cosmetic**: the hub takes `apikey` in the query string, so an
+    unredacted network exception would write the live key straight into the model's
+    conversation history. It scrubs UUIDs, `Bearer`/`Basic` headers, provider key
+    prefixes (`sk-`, `ghp_`, and `AIza…` which carries **no** separator), and
+    secret-named fields with either separator — `apikey=…` **and** JSON `"token": "…"`,
+    since response bodies get pasted into the model's context too.
+  - **Redaction applies to telemetry as well as to the model.** The handler logs the
+    already-redacted result via `logfire.error(...)`, never `logfire.exception(...)`:
+    the latter attaches the *active* exception with its raw message, which is exactly
+    where the `apikey=` URL lives. The traceback is deliberately given up — the
+    exception type plus message carries the diagnosis, and the enclosing
+    `tool.<name>` span still holds the call context.
+  - Error results also pass through `truncate_tool_result()` — a 5xx body can be a full
+    HTML page.
+- **`run_agent_loop(tools=...)` accepts a callable (AID-50, 2026-08-20).** Pass
+  `list[Tool]` as before, or a zero-arg callable returning the current list, re-evaluated
+  at the start of every iteration. This is what makes runtime tool discovery possible
+  (`s03e05` has no static list — only `/api/toolsearch`, returning 3 matches per query).
+  The task owns the registry; `core` deliberately does not, so AID-49 (tool registry /
+  schema-from-signature) stays an independent decision.
+
 ## Work Guidance
 - Follow the Adapter pattern for new LLM providers.
 - Maintain consistent interface usage across adapters.
