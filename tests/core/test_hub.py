@@ -7,6 +7,7 @@ import respx
 import httpx
 
 from core.hub.client import HubClient, _FLAG_PATTERN
+from core.hub.throttle import OutgoingThrottle
 
 
 class TestFlagExtraction:
@@ -440,6 +441,10 @@ class TestHubClientPostApi:
         self.hub._apikey = "test-key"
         self.hub._base_url = "https://hub.ag3nts.org"
         self.hub._http = httpx.Client()
+        # Throttle bez odstępu i bez cooldownu — testy sprawdzają POLITYKĘ 429,
+        # nie to, czy `time.sleep()` działa. Z domyślnymi wartościami każdy test
+        # z dwoma wywołaniami spałby 2.5 s, a test cooldownu — ponad minutę.
+        self.hub._throttle = OutgoingThrottle(min_interval_s=0, cooldown_s=0)
 
     def teardown_method(self):
         """Zamyka httpx.Client po każdym teście."""

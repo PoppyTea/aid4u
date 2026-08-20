@@ -17,6 +17,7 @@ import logfire
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from core.config import get_config
+from core.hub.throttle import OutgoingThrottle
 
 _FLAG_PATTERN = re.compile(r"\{FLG:[^}]+\}")
 
@@ -38,14 +39,17 @@ def _is_retryable_http_error(exc: BaseException) -> bool:
     return isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code >= 500
 
 
-def _is_retryable_api_error(exc: BaseException) -> bool:
-    """Jak _is_retryable_http_error, plus 429 — endpointy /api/* (np. zmail) rate-limitują
-    (potwierdzone empirycznie: `{"code": -9999, "message": "Za często wykonujesz zapytania."}`)
-    i w odróżnieniu od /verify NIE zwracają `retry_after` w ciele odpowiedzi, więc backoff tu
-    jest ślepy (rosnący margines), nie odczytany z serwera jak w _post_verify_resilient()."""
-    if _is_retryable_http_error(exc):
-        return True
-    return isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 429
+def _is_retryable_transport_error(exc: BaseException) -> bool:
+    """
+    Awarie warte ponowienia na `/api/*`: 5xx i błędy transportu.
+
+    **429 celowo NIE jest tutaj** (zmiana z 2026-08-20, AID-46). Endpointy `/api/*`
+    nie zwracają `retry_after` w ciele (inaczej niż `/verify`), a intel do `s03e02`
+    podejrzewa, że każde 429 przedłuża okno blokady — więc ślepy backoff w pętli
+    dokładał kary zamiast je przeczekać. Rate limit obsługuje teraz `post_api()`
+    jednym odczekaniem przez `OutgoingThrottle`.
+    """
+    return _is_retryable_http_error(exc)
 
 
 class HubClient:
@@ -58,6 +62,9 @@ class HubClient:
         self._base_url = cfg.hub_base_url
         # httpx jest auto-instrumentowany przez Logfire po setup_observability()
         self._http = httpx.Client(timeout=30.0)
+        # Jeden throttle na klienta — limit huba jest per klucz API, nie per endpoint,
+        # więc liczenie odstępu osobno dla /api/shell i /api/toolsearch by go łamało.
+        self._throttle = OutgoingThrottle()
 
     # ─── Submit ──────────────────────────────────────────────────────────────
 
@@ -211,23 +218,44 @@ class HubClient:
         return response.content
 
     @retry(
-        retry=retry_if_exception(_is_retryable_api_error),
+        retry=retry_if_exception(_is_retryable_transport_error),
         stop=stop_after_attempt(6),
         wait=wait_exponential(min=3, max=30),
         reraise=True,
     )
     def post_api(self, path: str, payload: dict) -> dict:
-        """POST do dowolnego endpointu hubu (np. /api/zmail, /api/packages).
+        """POST do dowolnego endpointu hubu (np. /api/zmail, /api/shell, /api/toolsearch).
 
-        Retry na 429/5xx/transport errors z exponential backoffem — patrz
-        _is_retryable_api_error(). 4xx inne niż 429 (np. zły parametr akcji) propagują się
-        natychmiast, tak jak wcześniej. `reraise=True` — po wyczerpaniu prób woła się
-        oryginalny httpx.HTTPStatusError/TransportError, nie tenacity.RetryError, żeby
-        wywołujący (np. zmail_action) mógł dalej rozróżniać typy błędów po except.
+        **Rate limiting (AID-46): throttle PRZED wysłaniem, nie retry po 429.**
+        Każde wywołanie czeka na swoją kolej w `OutgoingThrottle` (jeden na klienta —
+        limit huba jest per klucz, nie per endpoint). Po 429 następuje JEDNO długie
+        odczekanie i najwyżej jedna ponowna próba; drugie 429 propaguje się do
+        wywołującego. To zmiana polityki wobec poprzedniego backoffu 6×3-30s:
+        intel społeczności do `s03e02` podejrzewa, że każde 429 PRZEDŁUŻA okno
+        blokady, więc seria ponowień aktywnie szkodziła. Model dostaje czytelny
+        sygnał przez `core/llm/tool_errors.py` i sam decyduje o ponowieniu.
+
+        5xx i błędy transportu nadal retry'ują z exponential backoffem — to zwykłe
+        awarie, nie kara za nasze zachowanie. 4xx inne niż 429 (np. zły parametr
+        akcji) propagują się natychmiast. `reraise=True` — wywołujący dostaje
+        oryginalny httpx.HTTPStatusError, nie tenacity.RetryError.
         """
         payload = {**payload, "apikey": self._apikey}
-        response = self._http.post(f"{self._base_url}{path}", json=payload)
-        response.raise_for_status()
+        url = f"{self._base_url}{path}"
+
+        self._throttle.wait_turn()
+        try:
+            response = self._http.post(url, json=payload)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code != 429:
+                raise
+            logfire.warning(
+                "Rate limit na /api/* — jedno odczekanie, bez pętli ponowień", path=path
+            )
+            self._throttle.cooldown()
+            response = self._http.post(url, json=payload)
+            response.raise_for_status()
         return response.json()
 
     # ─── Flag extraction ─────────────────────────────────────────────────────
