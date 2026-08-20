@@ -46,6 +46,25 @@ app = typer.Typer(
 console = Console()
 _FLAGS_FILE = Path(".flags.json")
 
+# Sufiks klucza flagi sekretnej w `.flags.json` (patrz AGENTS.md, zasada 7).
+SECRET_SUFFIX = "_secret"
+
+
+def partition_flags(flags: dict[str, str]) -> tuple[dict[str, str], dict[str, str]]:
+    """
+    Rozdziela flagi na główne i sekretne.
+
+    Flagi sekretne NIE liczą się do certyfikatu — to osobna ścieżka, odblokowująca
+    materiały edukacyjne. Wliczanie ich zaniżałoby „ile jeszcze do 20", czyli
+    dokładnie tę liczbę, według której planujemy sezon.
+
+    Returns:
+        Para `(główne, sekretne)`, obie zachowujące oryginalne klucze.
+    """
+    secrets = {n: f for n, f in flags.items() if n.endswith(SECRET_SUFFIX)}
+    main = {n: f for n, f in flags.items() if n not in secrets}
+    return main, secrets
+
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 
@@ -177,17 +196,25 @@ def status() -> None:
     """Pokaż postępy — zdobyte flagi i licznik punktów."""
     flags = _load_flags()
     total = len(TASK_REGISTRY)
-    done = len(flags)
+
+    main_flags, secrets = partition_flags(flags)
+    done = len(main_flags)
 
     console.print(f"\n[bold]Postępy:[/] {done}/{total} zadań")
-    console.print(f"[bold]Do certyfikatu (20 pkt):[/] {max(0, 20 - done)} zadań pozostało\n")
+    console.print(f"[bold]Do certyfikatu (20 pkt):[/] {max(0, 20 - done)} zadań pozostało")
+    if secrets:
+        console.print(f"[magenta]Flagi sekretne:[/] {len(secrets)} (poza licznikiem)")
+    console.print()
 
     if flags:
         table = Table(show_header=True)
         table.add_column("Zadanie", style="cyan")
         table.add_column("Flaga", style="green")
-        for name, flag in sorted(flags.items()):
-            table.add_row(name, flag)
+        table.add_column("Typ", style="dim")
+        for name, flag in sorted(main_flags.items()):
+            table.add_row(name, flag, "główna")
+        for name, flag in sorted(secrets.items()):
+            table.add_row(name.removesuffix(SECRET_SUFFIX), flag, "[magenta]sekretna[/]")
         console.print(table)
     else:
         console.print("[dim]Brak zdobytych flag. Zacznij od: uv run run.py solve s01e01[/]")

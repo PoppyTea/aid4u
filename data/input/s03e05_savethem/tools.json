@@ -1,0 +1,34 @@
+{
+  "books": {
+    "name": "books",
+    "url": "/api/books",
+    "description": "Old books and notebooks with various notes.",
+    "parameter": "query",
+    "score": 7,
+    "matched_keywords": [
+      "notes",
+      "note"
+    ]
+  },
+  "maps": {
+    "name": "maps",
+    "url": "/api/maps",
+    "description": "Terrain maps and map-related location resources.",
+    "parameter": "query",
+    "score": 5,
+    "matched_keywords": [
+      "terrain"
+    ]
+  },
+  "wehicles": {
+    "name": "wehicles",
+    "url": "/api/wehicles",
+    "description": "Information about vehicles and means of transportation.",
+    "parameter": "query",
+    "score": 7,
+    "matched_keywords": [
+      "vehicle",
+      "vehicles"
+    ]
+  }
+}

@@ -12,14 +12,17 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 > przywraca go nieddestrukcyjnie. Kurs ma nadal służyć edukacyjnie po zdobyciu 20 flag —
 > to świadomy, tymczasowy kompromis, nie zmiana celu.
 
-> ✅ **Sezon 1 + Sezon 2 zamknięte, Sezon 3 w toku** — 12 flag w `.flags.json`
+> ✅ **Sezon 1 + Sezon 2 zamknięte, Sezon 3 w toku** — 14 flag w `.flags.json`
 > (`s01e03_proxy`, żywy serwer/ngrok, strukturalnie nie przechodzi przez
 > `solve()→submit()`, więc jego flaga nigdy nie trafia do pliku; cecha tego typu
 > zadania, nie błąd). **s03e01 zaliczone (2026-08-16)** — `{FLG:BUGGYSYSTEM}`,
 > pierwsza flaga sezonu. **s03e03 zaliczone (2026-08-17)** — `{FLG:INSTALLED}`,
 > druga flaga sezonu, deterministyczny BFS zero-LLM, 9 ruchów, koszt $0.00.
 > **s03e04 zaliczone (2026-08-19)** — `{FLG:WINDFARM}`, trzecia flaga sezonu, zero
-> LLM, koszt $0.00; agent Centrali zmieścił się w 6 z 10 kroków. Kolejność
+> LLM, koszt $0.00; agent Centrali zmieścił się w 6 z 10 kroków.
+> **s03e05 zaliczone (2026-08-20)** — `{FLG:INTACTCITY}` za pierwszym podejściem, plus
+> **pierwsza zdobyta flaga sekretna** `{FLG:ABEAVER}`; zero LLM, koszt $0.00.
+> Zostaje wyłącznie e02. Kolejność
 > ataku `e01 → e03 → e04 → e05 → e02` (e02 na końcu świadomie, patrz
 > `tasks/s03/requirements/season.md`), stack własny `core/llm/` (nie `pydantic-ai`,
 > patrz `core-stack-decision.md`). Szczegóły i checklisty: `tasks/s03/requirements/`.
@@ -105,7 +108,11 @@ task focus                       # jedno zadanie — zawsze zaczynaj tutaj
 4. **Observability:** `setup_observability()` zawsze jako pierwsza linia skryptu.
 5. **Rate Limit:** `503` → użyj `hub.get_data(path, tolerate_503=True)`.
 6. **Single focus:** Jeden task TW naraz. `task focus` — nie `task list`, nie pamięć.
-7. **Sekretne flagi — świadomie odłożone do 20 flag.** Kurs ma obok flag głównych
+7. **Sekretne flagi — świadomie odłożone do 20 flag.** Zapisujemy je w `.flags.json`
+   pod kluczem `sXXeYY_secret` (konwencja od 2026-08-20, pierwsza: `s03e05_secret`).
+   `run.py status` **egzekwuje** ten podział (`partition_flags()`): flagi sekretne są
+   poza licznikiem do certyfikatu i oznaczone osobno w tabeli — inaczej zaniżałyby
+   „ile jeszcze do 20", czyli liczbę, według której planujemy sezon. Kurs ma obok flag głównych
    flagi **sekretne**: ten sam format `{FLG:...}`, ale zdobywane nieoczywistą,
    ukrytą drogą, poza główną ścieżką zadania. Odblokowują dodatkowe materiały
    edukacyjne. **Nie są priorytetem, dopóki nie zaliczymy 20 zadań** — nie
@@ -114,6 +121,24 @@ task focus                       # jedno zadanie — zawsze zaczynaj tutaj
    sam go znajduje odpytując nasze narzędzia — patrz `tasks/s03e04_negotiations/`),
    bierzemy go, ale nie projektujemy pod niego rozwiązania. Po przekroczeniu 20
    flag wracają jako materiał edukacyjny.
+
+   **Jak się ich szuka — zasada z praktyki:** droga do sekretu **bardzo często prowadzi
+   przez eksplorację, która pomija zwykły cel zadania, a bywa że wprost łamie jego
+   zasady.** Trzy odruchy do złamania:
+   - **„Muszę zrobić jedno i drugie."** Zwykle nie. W `s03e05` trasa po flagę sekretną
+     **nie dochodzi do celu** i hub przyjmuje ją mimo `does not reach the goal` — a
+     połączenie obu było matematycznie niemożliwe (17 ruchów przy suficie 12).
+   - **„To łamie reguły zadania, więc nie zadziała."** W jednym z zadań S02 (robot
+     magazynowy, prompt systemowy + wiadomość) sekret dawało wysłanie **samego kodu
+     Konami**, całkowicie ignorując ściany i kolizje. Rozwiązanie „zgodne z duchem"
+     — objazd na taniec ORAZ dojazd do celu, zmieszczony w limitach — działało
+     technicznie i **nie dawało nic**.
+   - **„Brakuje wymaganego elementu, więc to nie ta droga."** Ten sam Konami wymaga
+     przycisków A i B, których robot **nie miał**. Brak też należało zignorować.
+
+   Operacyjnie: jeśli masz hipotezę pasującą do wskazówki, **sprawdź ją**, nawet gdy
+   łamie zasady zadania albo wymaga nieistniejących elementów. Koszt sprawdzenia to
+   jedno zgłoszenie; koszt odrzucenia jej „bo się nie da" to cały wątek w ślepą uliczkę.
 
 # DOX framework
 
