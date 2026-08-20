@@ -12,5 +12,6 @@
   "s03e03": "{FLG:INSTALLED}",
   "s03e04": "{FLG:WINDFARM}",
   "s03e05": "{FLG:INTACTCITY}",
-  "s03e05_secret": "{FLG:ABEAVER}"
+  "s03e05_secret": "{FLG:ABEAVER}",
+  "s03e02": "{FLG:CANTTOUCHTHIS}"
 }

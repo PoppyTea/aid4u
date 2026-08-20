@@ -12,7 +12,7 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 > przywraca go nieddestrukcyjnie. Kurs ma nadal służyć edukacyjnie po zdobyciu 20 flag —
 > to świadomy, tymczasowy kompromis, nie zmiana celu.
 
-> ✅ **Sezon 1 + Sezon 2 zamknięte, Sezon 3 w toku** — 14 flag w `.flags.json`
+> ✅ **SEZON 3 ZAMKNIĘTY (5/5)** — 15 flag w `.flags.json`
 > (`s01e03_proxy`, żywy serwer/ngrok, strukturalnie nie przechodzi przez
 > `solve()→submit()`, więc jego flaga nigdy nie trafia do pliku; cecha tego typu
 > zadania, nie błąd). **s03e01 zaliczone (2026-08-16)** — `{FLG:BUGGYSYSTEM}`,
@@ -22,7 +22,10 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 > LLM, koszt $0.00; agent Centrali zmieścił się w 6 z 10 kroków.
 > **s03e05 zaliczone (2026-08-20)** — `{FLG:INTACTCITY}` za pierwszym podejściem, plus
 > **pierwsza zdobyta flaga sekretna** `{FLG:ABEAVER}`; zero LLM, koszt $0.00.
-> Zostaje wyłącznie e02. Kolejność
+> **s03e02 zaliczone (2026-08-20)** — `{FLG:CANTTOUCHTHIS}`, zero LLM, koszt $0.00;
+> domyka sezon. Cztery osłony (AID-62/46/18/47) zbudowane przed nim faktycznie
+> zadziałały: bramka odrzuciła `rm`, `reboot` i wszystkie ścieżki z `.gitignore`.
+> Kolejność
 > ataku `e01 → e03 → e04 → e05 → e02` (e02 na końcu świadomie, patrz
 > `tasks/s03/requirements/season.md`), stack własny `core/llm/` (nie `pydantic-ai`,
 > patrz `core-stack-decision.md`). Szczegóły i checklisty: `tasks/s03/requirements/`.
