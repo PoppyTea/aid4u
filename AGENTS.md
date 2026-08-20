@@ -12,14 +12,17 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 > przywraca go nieddestrukcyjnie. Kurs ma nadal służyć edukacyjnie po zdobyciu 20 flag —
 > to świadomy, tymczasowy kompromis, nie zmiana celu.
 
-> ✅ **Sezon 1 + Sezon 2 zamknięte, Sezon 3 w toku** — 12 flag w `.flags.json`
+> ✅ **Sezon 1 + Sezon 2 zamknięte, Sezon 3 w toku** — 14 flag w `.flags.json`
 > (`s01e03_proxy`, żywy serwer/ngrok, strukturalnie nie przechodzi przez
 > `solve()→submit()`, więc jego flaga nigdy nie trafia do pliku; cecha tego typu
 > zadania, nie błąd). **s03e01 zaliczone (2026-08-16)** — `{FLG:BUGGYSYSTEM}`,
 > pierwsza flaga sezonu. **s03e03 zaliczone (2026-08-17)** — `{FLG:INSTALLED}`,
 > druga flaga sezonu, deterministyczny BFS zero-LLM, 9 ruchów, koszt $0.00.
 > **s03e04 zaliczone (2026-08-19)** — `{FLG:WINDFARM}`, trzecia flaga sezonu, zero
-> LLM, koszt $0.00; agent Centrali zmieścił się w 6 z 10 kroków. Kolejność
+> LLM, koszt $0.00; agent Centrali zmieścił się w 6 z 10 kroków.
+> **s03e05 zaliczone (2026-08-20)** — `{FLG:INTACTCITY}` za pierwszym podejściem, plus
+> **pierwsza zdobyta flaga sekretna** `{FLG:ABEAVER}`; zero LLM, koszt $0.00.
+> Zostaje wyłącznie e02. Kolejność
 > ataku `e01 → e03 → e04 → e05 → e02` (e02 na końcu świadomie, patrz
 > `tasks/s03/requirements/season.md`), stack własny `core/llm/` (nie `pydantic-ai`,
 > patrz `core-stack-decision.md`). Szczegóły i checklisty: `tasks/s03/requirements/`.
@@ -105,7 +108,9 @@ task focus                       # jedno zadanie — zawsze zaczynaj tutaj
 4. **Observability:** `setup_observability()` zawsze jako pierwsza linia skryptu.
 5. **Rate Limit:** `503` → użyj `hub.get_data(path, tolerate_503=True)`.
 6. **Single focus:** Jeden task TW naraz. `task focus` — nie `task list`, nie pamięć.
-7. **Sekretne flagi — świadomie odłożone do 20 flag.** Kurs ma obok flag głównych
+7. **Sekretne flagi — świadomie odłożone do 20 flag.** Zapisujemy je w `.flags.json`
+   pod kluczem `sXXeYY_secret` (konwencja od 2026-08-20, pierwsza: `s03e05_secret`),
+   żeby `run.py status` nie mylił ich z flagami głównymi. Kurs ma obok flag głównych
    flagi **sekretne**: ten sam format `{FLG:...}`, ale zdobywane nieoczywistą,
    ukrytą drogą, poza główną ścieżką zadania. Odblokowują dodatkowe materiały
    edukacyjne. **Nie są priorytetem, dopóki nie zaliczymy 20 zadań** — nie

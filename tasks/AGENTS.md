@@ -100,7 +100,12 @@ Centrali je odpytuje i sam zgłasza znalezione miasta (wynik: Domatowo + Skolwin
 6 z 10 dostępnych kroków). Zero LLM — dopasowanie po rdzeniach tokenów obsługuje
 polską odmianę. Hub wymaga DOKŁADNIE 2 narzędzi i
 klucza `URL` wielkimi literami; odpowiedź 4–500 B, brak odpowiedzi = agent
-przerywa pracę. `s03e03_reactor/` — **solved** (2026-08-17) — flaga `{FLG:INSTALLED}`, druga flaga
+przerywa pracę. `s03e05_savethem/` — **solved** (2026-08-20) — `{FLG:INTACTCITY}` za pierwszym
+podejściem + flaga sekretna `{FLG:ABEAVER}`, koszt $0.00. Zero LLM: front Pareto po
+`(wiersz, kolumna, tryb)` nad dwoma niezależnymi budżetami. `dismount` jest warunkiem
+KONIECZNYM — żaden pojedynczy tryb nie mieści się w budżecie na 11 ruchach. Dwie
+pułapki potwierdzone na żywo: budżet OSTRY (zużycie 10.0 = porażka) i backend
+indeksujący od 1 przy mapie od 0. `s03e03_reactor/` — **solved** (2026-08-17) — flaga `{FLG:INSTALLED}`, druga flaga
 sezonu, 9 ruchów, 0 zgnieceń, koszt $0.00. Deterministyczny receding-horizon BFS,
 zero LLM (najłatwiejszy epizod sezonu — LLM praktycznie zbędny wobec czystego
 algorytmu). Format API (`answer: {"command": ...}`, kolizja sprawdzana PO

@@ -10,5 +10,7 @@
   "s02e05": "{FLG:LETSFLY}",
   "s03e01": "{FLG:BUGGYSYSTEM}",
   "s03e03": "{FLG:INSTALLED}",
-  "s03e04": "{FLG:WINDFARM}"
+  "s03e04": "{FLG:WINDFARM}",
+  "s03e05": "{FLG:INTACTCITY}",
+  "s03e05_secret": "{FLG:ABEAVER}"
 }
