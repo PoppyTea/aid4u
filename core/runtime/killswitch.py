@@ -46,6 +46,11 @@ _STOP_FILE = _RUN_DIR / "STOP"
 # małe, żeby jeden `cat` dużego pliku nie wysadził kontekstu ani budżetu.
 DEFAULT_MAX_TOOL_RESULT_BYTES = 20_000
 
+# Margines na błąd akumulacji zmiennoprzecinkowej przy sumowaniu kosztów (patrz
+# `RunBudget.check_cost`). Nanodolar jest o rzędy wielkości poniżej najtańszego
+# realnego wywołania, więc nie rozluźnia budżetu w żadnym praktycznym sensie.
+_COST_EPSILON = 1e-9
+
 
 class AbortRun(Exception):
     """Rzucane, gdy przebieg powinien się zatrzymać (Warstwa 1 lub 2). Łapane w `BaseTask.run()`."""
@@ -69,10 +74,19 @@ class RunBudget:
             raise AbortRun(f"Przekroczono budżet czasu: {elapsed:.1f}s > {self.max_seconds}s.")
 
     def check_cost(self) -> None:
-        """Rzuca `AbortRun`, jeśli suma kosztu przekroczyła `max_cost`. No-op gdy limit nieustawiony."""
+        """
+        Rzuca `AbortRun`, jeśli suma kosztu przekroczyła `max_cost`. No-op gdy limit
+        nieustawiony.
+
+        Porównanie ma margines `_COST_EPSILON`, bo koszt sumuje się w zmiennoprzecinkowym:
+        sto wywołań po $0.01 daje `1.0000000000000007`, co bez marginesu przerywałoby
+        przebieg z budżetem $1.00 **dokładnie na limicie**. Margines dotyczy błędu
+        reprezentacji, nie pobłażliwości wobec budżetu — jest o rzędy wielkości mniejszy
+        niż najtańsze realne wywołanie.
+        """
         if self.max_cost is None:
             return
-        if self.spent_usd > self.max_cost:
+        if self.spent_usd > self.max_cost + _COST_EPSILON:
             raise AbortRun(
                 f"Przekroczono budżet kosztu: ${self.spent_usd:.4f} > ${self.max_cost:.2f}."
             )

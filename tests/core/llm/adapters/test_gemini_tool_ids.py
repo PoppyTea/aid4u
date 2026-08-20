@@ -86,6 +86,7 @@ class TestUnikalnosciId:
         assert "search" in calls[0].id
 
     def test_rozne_narzedzia_tez_sa_rozroznialne(self, adapter):
+        """Różne narzędzia w jednej odpowiedzi też dostają odrębne id."""
         calls = call_tools(adapter, response_with(part("search"), part("maps")))
         assert {c.name for c in calls} == {"search", "maps"}
         assert calls[0].id != calls[1].id
@@ -100,5 +101,6 @@ class TestUnikalnosciId:
         assert calls[0].id != calls[1].id
 
     def test_trzy_wywolania_daja_trzy_rozne_id(self, adapter):
+        """Trzy wywołania dają trzy różne identyfikatory, nie dwa."""
         calls = call_tools(adapter, response_with(part("search"), part("search"), part("search")))
         assert len({c.id for c in calls}) == 3

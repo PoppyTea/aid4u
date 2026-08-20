@@ -62,6 +62,7 @@ class TestPoleceniaNiszczace:
         ],
     )
     def test_odrzucone_bo_nie_ma_ich_na_allowliscie(self, command):
+        """Polecenie spoza allowlisty odpada niezależnie od tego, co robi."""
         assert "nie jest dozwolone" in rejects(command)
 
     def test_interpreter_z_wbudowanym_lancuchem_odpada_dwukrotnie(self):
@@ -96,6 +97,7 @@ class TestLaczeniaPolecen:
         ],
     )
     def test_metaznaki_odrzucone(self, command):
+        """Metaznak pozwala doczepić drugie polecenie — odpada całe wywołanie."""
         assert "znak powłoki" in rejects(command)
 
     def test_nowa_linia_odpada_jako_znak_sterujacy(self):
@@ -122,6 +124,7 @@ class TestRozwijaniaZmiennych:
         ["cat $HOME/notes", "cat ${HOME}/notes", "ls ~", "ls ~root", "cat $ETC/passwd"],
     )
     def test_rozwiniecia_odrzucone(self, command):
+        """Rozwinięcie po stronie serwera daje ścieżkę, której nie widzimy."""
         assert "Rozwijanie zmiennych" in rejects(command)
 
     def test_zwykly_dolar_w_tekscie_nie_blokuje(self):
@@ -136,6 +139,7 @@ class TestZakazanychSciezek:
         "path", ["/etc", "/etc/passwd", "/root", "/root/.ssh/id_rsa", "/proc/self/environ"]
     )
     def test_zakazane_wprost(self, path):
+        """Ścieżka w zakazanym poddrzewie odpada wprost."""
         assert "zablokowana" in rejects(f"cat {path}")
 
     @pytest.mark.parametrize(
@@ -175,18 +179,22 @@ class TestGitignore:
     """Wymóg `s03e02`: nie czytać tego, co wykluczone przez `.gitignore`."""
 
     def test_dopasowanie_po_nazwie(self):
+        """Wzorzec `.gitignore` dopasowany po nazwie pliku."""
         policy = READ_ONLY.with_ignored({"*.key"})
         assert ".gitignore" in rejects("cat /opt/app/secret.key", policy)
 
     def test_dopasowanie_po_katalogu(self):
+        """Wzorzec katalogowy blokuje wszystko poniżej."""
         policy = READ_ONLY.with_ignored({"node_modules/"})
         assert ".gitignore" in rejects("cat /opt/app/node_modules/x.js", policy)
 
     def test_niepasujaca_sciezka_przechodzi(self):
+        """Plik spoza `.gitignore` pozostaje czytelny."""
         policy = READ_ONLY.with_ignored({"*.key"})
         check_command("cat /opt/app/main.py", policy)
 
     def test_pusta_lista_niczego_nie_blokuje(self):
+        """Bez wzorców `.gitignore` nic nie jest wykluczone."""
         check_command("cat /opt/app/secret.key", READ_ONLY)
 
 
@@ -202,6 +210,7 @@ class TestAllowlisty:
         assert not (writers & READ_ONLY.allowed_commands)
 
     def test_with_commands_dodaje_nie_zastepuje(self):
+        """Poszerzenie polityki dokłada polecenia, nie podmienia zbioru."""
         policy = READ_ONLY.with_commands("sed")
         assert "sed" in policy.allowed_commands
         assert "cat" in policy.allowed_commands
@@ -216,6 +225,7 @@ class TestAllowlisty:
         assert "nie jest dozwolone" in rejects("/usr/bin/rm -rf /")
 
     def test_dozwolone_polecenie_przechodzi(self):
+        """Polecenie z allowlisty przechodzi i zwraca tokeny."""
         assert check_command("ls /opt/firmware", READ_ONLY)[0] == "ls"
 
 
@@ -223,10 +233,12 @@ class TestFlagINieSciezek:
     """Bramka nie może mylić flag ze ścieżkami ani blokować zwykłych argumentów."""
 
     def test_flagi_nie_sa_traktowane_jak_sciezki(self):
+        """Flagi nie mogą udawać ścieżek ani blokować wywołania."""
         check_command("ls -la /opt", READ_ONLY)
         check_command("grep --color=auto wzorzec /opt/plik", READ_ONLY)
 
     def test_zwykly_wzorzec_nie_jest_sciezka(self):
+        """Wzorzec `grep` bez ukośnika nie podlega regułom ścieżek."""
         check_command("grep SAFETY_CHECK /opt/firmware/settings.ini", READ_ONLY)
 
     def test_flaga_z_zakazana_sciezka_w_wartosci(self):
@@ -243,6 +255,7 @@ class TestWejsciaZdegenerowanego:
 
     @pytest.mark.parametrize("command", ["", "   ", "\t"])
     def test_puste_odrzucone(self, command):
+        """Puste wejście odpada, zamiast przechodzić dalej."""
         assert "Puste" in rejects(command)
 
     def test_niedomkniety_cudzyslow_odrzucony(self):
@@ -271,14 +284,17 @@ class TestFunkcjiPomocniczych:
         ],
     )
     def test_normalizacja(self, raw, expected):
+        """Normalizacja zwija `.`, `..` i powtórzone ukośniki."""
         assert normalize_path(raw) == expected
 
     def test_is_forbidden_po_segmentach(self):
+        """Porównanie po segmentach, nie po prefiksie tekstowym."""
         assert is_forbidden("/etc/passwd", READ_ONLY)
         assert is_forbidden("/etc", READ_ONLY)
         assert not is_forbidden("/etcetera", READ_ONLY)
 
     def test_is_ignored_po_nazwie_i_sciezce(self):
+        """Dopasowanie `.gitignore` po nazwie i po pełnej ścieżce."""
         policy = READ_ONLY.with_ignored({"*.log"})
         assert is_ignored("/var/app/debug.log", policy)
         assert not is_ignored("/var/app/debug.txt", policy)
@@ -296,6 +312,7 @@ class TestGlobow:
         "path", ["/et[c]/passwd", "/etc*/passwd", "/et?/passwd", "/opt/*", "/[er]tc/passwd"]
     )
     def test_glob_w_sciezce_odrzucony(self, path):
+        """Glob w ścieżce rozwinąłby się po stronie powłoki, omijając kontrolę."""
         assert "globu" in rejects(f"cat {path}")
 
     def test_wzorzec_grep_bez_ukosnika_przechodzi(self):
@@ -316,10 +333,12 @@ class TestZnakowSterujacych:
     """Bajt zerowy ucina ścieżkę w narzędziach pisanych w C — my widzimy co innego niż system."""
 
     def test_bajt_zerowy_odrzucony(self):
+        """Bajt zerowy ucina ścieżkę w narzędziach pisanych w C."""
         assert "sterujący" in rejects("cat /opt\x00/etc/passwd")
 
     @pytest.mark.parametrize("char", ["\x01", "\x1b", "\x7f"])
     def test_inne_znaki_sterujace_odrzucone(self, char):
+        """Pozostałe znaki sterujące nie mają legalnego zastosowania."""
         assert "sterujący" in rejects(f"cat /opt/plik{char}")
 
     def test_zwykly_tekst_z_polskimi_znakami_przechodzi(self):

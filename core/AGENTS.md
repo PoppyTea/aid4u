@@ -43,14 +43,13 @@ Contains the architectural heart of the system: LLM clients, task management bas
   `RuntimeError` after exhausting attempts. Callers can invoke `submit()` more than
   once per task run for multi-step hub protocols (e.g. `s01e05_railway`), not just
   for the final answer — each call gets the same resilience.
-- `HubClient.post_api()` (used for `/api/*` endpoints, e.g. `zmail`) retries on 429 and
-  5xx/transport errors with exponential backoff (`tenacity`, 6 attempts, 3-30s). Added
-  2026-08-07 after `s02e04_mailbox` hit real rate limiting on `/api/zmail`
-  (`{"code": -9999, "message": "Za często wykonujesz zapytania. Zwolnij."}`) even though
-  the task's own docs never mentioned one — unlike `/verify`, these endpoints don't return
-  a `retry_after` field, so the backoff here is blind/exponential, not server-directed.
-  Other 4xx (e.g. an unknown action name) still propagate immediately — only 429 is treated
-  as transient.
+- `HubClient.post_api()` (used for `/api/*` endpoints, e.g. `zmail`, `shell`,
+  `toolsearch`) retries 5xx/transport errors with exponential backoff (`tenacity`,
+  6 attempts, 3-30s); other 4xx propagate immediately. **429 is handled separately —
+  see the throttle contract under Work Guidance.** Until 2026-08-20 it was retried
+  by the same tenacity predicate; that changed because `/api/*` returns no
+  `retry_after` (unlike `/verify`) and the S03E02 notes suspect each 429 extends the
+  block window, which makes a blind retry loop harmful rather than merely blind.
 - **GET methods consolidated 2026-08-08** (survey across S01-S03 task specs, before adding
   yet another single-purpose fetch method for `s02e05_drone`): `HubClient` exposes exactly
   two public GET methods, not one-per-URL-shape.
@@ -87,9 +86,9 @@ Contains the architectural heart of the system: LLM clients, task management bas
     exposed as `solve --max-seconds`, checked automatically inside `check_abort()`) and
     per-call tool-result size (`truncate_tool_result()`, applied in
     `LLMClient.run_agent_loop()` — corrects a single call, does NOT abort the run).
-    Cost/token budget is NOT implemented yet (would need `CostTrackMiddleware` to expose
-    a running total mid-run, not just at the end) — noted as a gap in `killswitch.py`'s
-    module docstring, not silently absent. (→ AID-62)
+    Cost budget landed 2026-08-20 (`max_cost`, on by default at $1) — full contract
+    under Work Guidance. A *token* budget is still absent; cost is the number that
+    actually bounds the damage, so it came first.
   - Any caller that wraps a tool executor's exceptions (as `run_agent_loop` does) MUST
     re-raise `AbortRun` specifically, not swallow it into a generic error string — it's
     a kill signal, not a tool failure.

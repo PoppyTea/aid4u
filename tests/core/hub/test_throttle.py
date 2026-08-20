@@ -46,22 +46,26 @@ class TestOdstepMiedzyWywolaniami:
     """Limit przestrzegamy PRZED wysłaniem — to jedyny moment, w którym mamy kontrolę."""
 
     def test_pierwsze_wywolanie_nie_czeka(self, clock):
+        """Pierwsze żądanie w przebiegu nie ma na co czekać."""
         t = OutgoingThrottle(min_interval_s=2.5, clock=clock.time, sleep=clock.sleep)
         assert t.wait_turn() == 0.0
         assert clock.slept == []
 
     def test_drugie_wywolanie_dopelnia_odstep(self, clock):
+        """Drugie żądanie tuż po pierwszym musi dopełnić pełny odstęp."""
         t = OutgoingThrottle(min_interval_s=2.5, clock=clock.time, sleep=clock.sleep)
         t.wait_turn()
         assert t.wait_turn() == pytest.approx(2.5)
 
     def test_nie_czeka_gdy_odstep_juz_minal(self, clock):
+        """Gdy odstęp minął naturalnie, nie dokładamy sztucznego czekania."""
         t = OutgoingThrottle(min_interval_s=2.5, clock=clock.time, sleep=clock.sleep)
         t.wait_turn()
         clock.now += 10.0
         assert t.wait_turn() == 0.0
 
     def test_czeka_tylko_brakujaca_reszte(self, clock):
+        """Czekamy różnicę, nie pełny odstęp — inaczej throttle dławiłby dwukrotnie."""
         t = OutgoingThrottle(min_interval_s=2.5, clock=clock.time, sleep=clock.sleep)
         t.wait_turn()
         clock.now += 1.0
@@ -78,6 +82,7 @@ class TestCooldownu:
     """Po 429 czekamy raz i długo, zamiast ponawiać w pętli."""
 
     def test_cooldown_czeka_pelny_okres(self, clock):
+        """Po 429 odczekujemy cały zadeklarowany okres, nie jego część."""
         t = OutgoingThrottle(cooldown_s=65.0, clock=clock.time, sleep=clock.sleep)
         assert t.cooldown() == pytest.approx(65.0)
         assert clock.slept == [65.0]
@@ -108,7 +113,18 @@ class TestPolityki429:
 
     @respx.mock
     def test_jedno_429_jest_przeczekane_i_ponowione(self):
+        """
+        Po 429 następuje odczekanie, a potem JEDNA ponowna próba.
+
+        Liczba żądań to za słaba asercja: przy `cooldown_s=0` test przeszedłby także
+        wtedy, gdyby `post_api()` ponawiało NATYCHMIAST, w ogóle nie wołając
+        `cooldown()`. Liczymy więc wywołania cooldownu wprost.
+        """
         hub = self._client()
+        cooldowns: list[int] = []
+        original = hub._throttle.cooldown
+        hub._throttle.cooldown = lambda: (cooldowns.append(1), original())[1]  # type: ignore[method-assign]
+
         route = respx.post("https://hub.ag3nts.org/api/shell").mock(
             side_effect=[
                 httpx.Response(429, json={"rate_limited": True}),
@@ -117,6 +133,7 @@ class TestPolityki429:
         )
         assert hub.post_api("/api/shell", {"cmd": "ls"}) == {"ok": True}
         assert route.call_count == 2
+        assert len(cooldowns) == 1, "odczekanie po 429 musi faktycznie nastąpić"
         hub._http.close()
 
     @respx.mock
