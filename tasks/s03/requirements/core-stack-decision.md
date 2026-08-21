@@ -4,6 +4,13 @@
 2026-08-16 — Ścieżka A** · **Źródła rozstrzygane:** `season.md` (linie 77-87),
 `source/tool-inventory.md` (sekcja „rozwidlenie drogi", 130-144).
 
+> **Uwaga o źródłach (2026-08-21):** `season.md` został usunięty po domknięciu S03 —
+> mieszał wiedzę ze stanem długu, którego źródłem prawdy jest Linear
+> (`strategy/issue-tracking.md`). Odwołania do niego w treści niżej zostawiono
+> nietknięte jako zapis tego, co faktycznie rozstrzygano 16.08. Nierozstrzygnięty
+> wtedy dług żyje dziś jako AID-49/51/57/58/59/60; kolejność ataku obowiązująca to ta
+> z ramki niżej, nie ta z §4 i §10.
+
 > **Zmiany przyjęte przy akceptacji (2026-08-16):**
 > - **Kolejność ataku: `e01 → e03 → e04 → e05 → e02`** (numeryczna, e02 na końcu) —
 >   zastępuje `e03 → e01 → …` z §4 i §10. Uzasadnienie w `season.md`.

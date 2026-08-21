@@ -26,9 +26,9 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 > domyka sezon. Cztery osłony (AID-62/46/18/47) zbudowane przed nim faktycznie
 > zadziałały: bramka odrzuciła `rm`, `reboot` i wszystkie ścieżki z `.gitignore`.
 > Kolejność
-> ataku `e01 → e03 → e04 → e05 → e02` (e02 na końcu świadomie, patrz
-> `tasks/s03/requirements/season.md`), stack własny `core/llm/` (nie `pydantic-ai`,
-> patrz `core-stack-decision.md`). Szczegóły i checklisty: `tasks/s03/requirements/`.
+> ataku `e01 → e03 → e04 → e05 → e02` (e02 na końcu świadomie) i stack własny
+> `core/llm/` (nie `pydantic-ai`) — jedno i drugie rozstrzygnięte w
+> `tasks/s03/requirements/core-stack-decision.md`. Szczegóły i checklisty: `tasks/s03/requirements/`.
 
 ## 🚀 Szybki start (efficiency mode)
 - **Zadanie dnia:** znajdź folder w `/tasks` → `uv run run.py solve sXXeYY`

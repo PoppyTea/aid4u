@@ -11,11 +11,11 @@ To jest INSTANCJA sezonowa ogólnej procedury opisanej w
 trzyma konkretne fakty i decyzje dla S03.
 
 ## Ownership
-- `season.md`: wymagania/dług przed startem CAŁEGO sezonu.
 - `core-stack-decision.md`: rozstrzygnięcie „własny `core/llm/` vs `pydantic-ai`" (sesja
-  `pre-s03`, 2026-08-15). Rekomendacja: **Ścieżka A** (zostajemy przy własnym core). Czyta się
-  RAZ na starcie sezonu, razem z `season.md`; jego „Krok 0" doprecyzowuje, które poprawki z
-  `source/`-owego triage'u Qodo wchodzą przed którym zadaniem.
+  `pre-s03`, 2026-08-15). Rekomendacja: **Ścieżka A** (zostajemy przy własnym core). Trzyma
+  też przyjętą kolejność ataku na epizody. Czyta się RAZ na starcie sezonu; jego „Krok 0"
+  doprecyzowuje, które poprawki z `source/`-owego triage'u Qodo wchodzą przed którym
+  zadaniem.
 - `s03e01.md` … `s03e05.md`: checklisty przed KONKRETNYM zadaniem. **Trzymają WIEDZĘ,
   nie STAN** (ustalone 2026-08-20 po tym, jak `s03e02.md`/`s03e05.md` opisywały jako
   aktualny stan sprzed AID-48/AID-50): czego wymagać, dlaczego, jakie są pułapki i
@@ -34,7 +34,9 @@ trzyma konkretne fakty i decyzje dla S03.
 - Przed podejściem do KAŻDEGO zadania S03 (od `s03e01` włącznie): obowiązkowy
   przegląd odpowiedniego `s03eXX.md` — to jest "faza prep" z
   `strategy/season-transition.md`, nie osobny rytuał do wymyślania na nowo.
-- `season.md` czyta się RAZ, na starcie sezonu — nie przy każdym zadaniu.
+- Ten folder trzyma WIEDZĘ, nie STAN — zasada obowiązuje tak samo `sXXeYY.md`, jak
+  dokumenty poziomu sezonu. Stan długu czyta się z Linear (label `gate/pre-eXX`), nie
+  z checkboxa w pliku. Kontrakt: `strategy/season-transition.md`.
 - Ten folder nie ma `__init__.py` i nie może go dostać — patrz `../AGENTS.md`.
 
 ## Work Guidance
@@ -46,7 +48,8 @@ trzyma konkretne fakty i decyzje dla S03.
   ten folder trzyma PLAN i CHECKLISTĘ, nie zastępuje właściwej dokumentacji kodu.
 
 ## Verification
-(none yet — patrz backlog w `season.md` o preflight/testach integracyjnych)
+(none yet — wykonywalny preflight dla `sXXeYY-prep` jest opisany, ale niezbudowany:
+patrz `strategy/season-transition.md`, sekcja o wykonywalnym checku.)
 
 ## Child DOX Index
 - `source/`: materiał źródłowy (raport narzędzi + intel społeczności), nieużywany

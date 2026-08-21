@@ -1,9 +1,10 @@
 # S03 — inwentarz narzędzi i tematów (materiał źródłowy)
 
 Pełny raport przygotowany 2026-08-08 (wątek planistyczny s02e05 + przegląd S03).
-Destylat operacyjny (checklisty, dług, kolejność) żyje w `../season.md` i
-`../s03eXX.md` — ten plik to uzasadnienia i pełny kontekst, czytany selektywnie po
-linku, nie w całości przy każdym zadaniu.
+Destylat operacyjny (checklisty per epizod) żyje w `../s03eXX.md`, kolejność ataku i
+rozstrzygnięcie stacku w `../core-stack-decision.md`, a stan długu — w Linear
+(`strategy/issue-tracking.md`). Ten plik to uzasadnienia i pełny kontekst, czytany
+selektywnie po linku, nie w całości przy każdym zadaniu.
 
 ## Czym są zadania S03 (przeczytane w całości)
 
@@ -64,7 +65,7 @@ artefaktem krytycznym — to on decyduje o sukcesie, nie Twój kod.
 > nigdy nieimportowanych**: `pydantic-ai` (+`-slim`, +`-harness`), `openai-agents`, `mcp`,
 > `mem0ai`, `openapi-pydantic`, `prompt-toolkit`. Kilka z nich to dokładnie te „baterie",
 > których chce S03 — już zapłacone, tylko niepodłączone. Decyzja (podłączyć albo usunąć) do
-> podjęcia na sesji `pre-s03` — patrz `../season.md`. (→ AID-60)
+> podjęcia na sesji `pre-s03`. (→ AID-60)
 
 ### 🔧 WYMAGAJĄCE UPGRADU
 
