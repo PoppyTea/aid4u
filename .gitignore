@@ -77,8 +77,10 @@ tasks/s01e02_findhim/tmp-quick-scripting-tests.py
 # intended per-episode structure).
 /doc/
 keyring-index.md
-.claude/state/work_summary.last
-.claude/state/contract_audit.json
+# Stan rutyn audytowych — lokalny cache, źródłem prawdy findingów jest Linear
+# (patrz strategy/quality-control.md). Katalogiem, nie per plik: nowa rutyna = nowy
+# plik stanu, który ma być ignorowany od razu, bez edycji tego pliku.
+.claude/state/
 .ruff_cache/
 .pytest_cache/
 .zed/
