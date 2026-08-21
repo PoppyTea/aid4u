@@ -11,6 +11,15 @@ Repozytorium dokumentacji strategicznej, protokołów uczenia się, standardów 
 
 ## Local Contracts
 - Wszystkie dokumenty strategiczne muszą być zwięzłe i operacyjne.
+- **Szablony żyją wyłącznie w `strategy/templates/`, jeden plik na szablon, i plik JEST
+  szablonem.** Nie opisujemy formatu prozą ani blokiem kodu w innym dokumencie — kopiuje
+  się plik, nie przepisuje z pamięci. Test rozstrzygający: czy ktoś to kopiuje, żeby
+  stworzyć nowy artefakt? Tak → `templates/`. Nie → zostaje na miejscu. Dlatego bloki
+  wejść/wyjść w `skills/skill-contracts.md` **nie** są szablonami: ilustrują kontrakt
+  między skillami, czyta się je w miejscu i nigdy nie kopiuje. Powód reguły: opis formatu
+  trzymany osobno od szablonu rozjeżdża się z nim po cichu — `cheatsheet-frontmatter.md`
+  i sekcja w `skill-contracts.md` opisywały klucz `parent note`, gdy `cheatsheet.md`
+  używał `parent_note`, więc „standard" był nieprawdą w dwóch kopiach naraz.
 - **Zero stanu w `strategy/`.** Pliki tego folderu trzymają wiedzę trwałą — reguły,
   procedury, konwencje, uzasadnienia. Nie trzymają stanu: żadnych checkboxów odbijających
   issue, list „do zrobienia", statusów typu ✅/❌ opisujących bieżący stan repo ani dat
@@ -40,7 +49,7 @@ Repozytorium dokumentacji strategicznej, protokołów uczenia się, standardów 
 ## Child DOX Index
 - `./skills` - Rejestr skilli.
 - `./tasks` - Definicje workflow zadań.
-- `./templates` - Szablony projektowe.
+- `./templates` - Szablony projektowe — jedyny dom szablonów w repo, plik = szablon.
 - `./learning-protocol.md` - Protokół nauki.
 - `./naming-conventions.md` - Standardy nazewnictwa.
 - `./secrets-management.md` - Strategia bezpieczeństwa i sekretów.
