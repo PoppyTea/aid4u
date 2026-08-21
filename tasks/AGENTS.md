@@ -7,9 +7,9 @@ przez żywą rozmowę (ngrok/proxy), flaga poza `.flags.json` z natury tego typu
 patrz `s01e03_proxy/AGENTS.md`. Szczegóły każdego epizodu (wzorzec danych, model użyty,
 pułapki) żyją w jego własnym `AGENTS.md`, nie tutaj — Child DOX Index niżej wskazuje który.
 
-**Sezon 3 w toku** (od 2026-08-16) — kolejność ataku `e01 → e03 → e04 → e05 → e02`
-(e02 na końcu świadomie: najdroższe zadanie sezonu, wymaga osłon pętli agentowej których
-jeszcze nie ma). Stan gotowości, dług i checklisty per-epizod: `tasks/s03/requirements/`.
+**Sezon 3 ZAMKNIĘTY 5/5** (2026-08-16 → 2026-08-20) — kolejność ataku
+`e01 → e03 → e04 → e05 → e02` zadziałała: e02 na końcu, po zbudowaniu czterech osłon
+(AID-62/46/18/47). Cały sezon zero LLM w rozwiązaniach, łączny koszt ~$0.00. Stan gotowości, dług i checklisty per-epizod: `tasks/s03/requirements/`.
 Procedura przejścia między sezonami (sezonoagnostyczna): `strategy/season-transition.md`.
 
 **EFFICIENCY MODE aktywny** (od 2026-07-29) — priorytet: szybkość i skuteczność
@@ -105,7 +105,11 @@ podejściem + flaga sekretna `{FLG:ABEAVER}`, koszt $0.00. Zero LLM: front Paret
 `(wiersz, kolumna, tryb)` nad dwoma niezależnymi budżetami. `dismount` jest warunkiem
 KONIECZNYM — żaden pojedynczy tryb nie mieści się w budżecie na 11 ruchach. Dwie
 pułapki potwierdzone na żywo: budżet OSTRY (zużycie 10.0 = porażka) i backend
-indeksujący od 1 przy mapie od 0. `s03e03_reactor/` — **solved** (2026-08-17) — flaga `{FLG:INSTALLED}`, druga flaga
+indeksujący od 1 przy mapie od 0. `s03e02_firmware/` — **solved** (2026-08-20) — flaga `{FLG:CANTTOUCHTHIS}`, domyka
+sezon. Zero LLM mimo że zadanie sugeruje pętlę agentową: po sondzie `help` przestrzeń
+problemu okazała się mała i deterministyczna. Bramka poleceń (`command_guard`) odrzuciła
+`rm`, `reboot` i wszystkie ścieżki z `.gitignore` — hasło leży w `/home/operator/notes/`,
+NIE w `.env`, który jest pułapką na bana. `s03e03_reactor/` — **solved** (2026-08-17) — flaga `{FLG:INSTALLED}`, druga flaga
 sezonu, 9 ruchów, 0 zgnieceń, koszt $0.00. Deterministyczny receding-horizon BFS,
 zero LLM (najłatwiejszy epizod sezonu — LLM praktycznie zbędny wobec czystego
 algorytmu). Format API (`answer: {"command": ...}`, kolizja sprawdzana PO
