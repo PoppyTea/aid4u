@@ -3,9 +3,9 @@
 ## Purpose
 Pytania rozstrzygalne międzysezonowo, warte zapisania i pamiętania, ale bez konkretnego
 przystanku w `tasks/sXX/requirements/` gdzie by naturalnie wylądowały. Różnica względem
-`season.md`-owego 🔴/🟡/🟢 długu: te pozycje nie blokują żadnego konkretnego epizodu i nie
-mają przypisanego sezonu — czekają na świadomą decyzję przed większą inwestycją czasu
-w dany temat, nie na wykonanie.
+długu w Linear: te pozycje nie blokują żadnego konkretnego epizodu (brak labela `gate/*`)
+i nie mają przypisanego sezonu — czekają na świadomą decyzję przed większą inwestycją
+czasu w dany temat, nie na wykonanie.
 
 ## Ownership
 Ten plik. Gdy pytanie dostaje odpowiedź, przenieś rozstrzygnięcie do właściwego

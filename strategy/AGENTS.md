@@ -11,6 +11,16 @@ Repozytorium dokumentacji strategicznej, protokołów uczenia się, standardów 
 
 ## Local Contracts
 - Wszystkie dokumenty strategiczne muszą być zwięzłe i operacyjne.
+- **Zero stanu w `strategy/`.** Pliki tego folderu trzymają wiedzę trwałą — reguły,
+  procedury, konwencje, uzasadnienia. Nie trzymają stanu: żadnych checkboxów odbijających
+  issue, list „do zrobienia", statusów typu ✅/❌ opisujących bieżący stan repo ani dat
+  ostatniego wykonania. Stan długu ma jeden dom — Linear (`issue-tracking.md`);
+  w tekście zostaje najwyżej kotwica `(→ AID-XXX)`. Dopuszczalne wyjątki: ✅/❌ jako
+  przykłady dobrze/źle (`naming-conventions.md`), trwała właściwość rzeczy zewnętrznej
+  (model wycofany przez dostawcę w `llm-models.md`), placeholdery w szablonach
+  (`templates/`, `skills/skill-contracts.md`) i generyczne kryteria wyjścia z procedury,
+  których się nie odhacza. Powód: dokument bez stanu nie może się zdezaktualizować, więc
+  nie wymaga rytuału synchronizacji, którego i tak nikt nie wykona.
 - Zmiana w strategii zarządzania sekretami lub nazewnictwie wymaga aktualizacji odpowiedniego pliku w tym folderze.
 
 ## Work Guidance

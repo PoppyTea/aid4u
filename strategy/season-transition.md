@@ -43,10 +43,14 @@ naprawy — jak zawsze, per commit-routing w root `AGENTS.md`.
    12_komentarze-do-lekcje-zadania/md/`) — to jest źródło rzeczy, które kosztują
    ludzi realne godziny i dolary, nie tylko teoria z lekcji. Deleguj do subagenta,
    pliki bywają >1000 linii.
-5. **Zapisz wyniki 1-4** do `tasks/sXX/requirements/` — `season.md` (dług/backlog
-   ogólny) + `source/` (materiał źródłowy) + `sXXeYY.md` per epizod (checklisty).
-6. **Rozstrzygnij dług oznaczony 🔴 (konieczny) przed pierwszym epizodem** — reszta
-   (🟡/🟢/upgrady) może poczekać, ale musi być zapisana, nie zapomniana.
+5. **Zapisz wyniki 1-4** — z rozdziałem na dwa nośniki (patrz zasada niżej):
+   **wiedza** → `tasks/sXX/requirements/`: `season.md` (ranking epizodów, kolejność
+   ataku i jej uzasadnienie) + `source/` (materiał źródłowy) + `sXXeYY.md` per epizod;
+   **dług** → Linear, po jednym issue na pozycję, z labelem `gate/pre-eXX` tam, gdzie
+   pozycja blokuje konkretny epizod.
+6. **Rozstrzygnij dług blokujący przed pierwszym epizodem** — reszta może poczekać, ale
+   musi być zapisana jako issue, nie zapomniana. Blokujący = ma label `gate/*`;
+   priorytet czyta się z Linear, nie z koloru kropki w pliku.
 7. **Zaktualizuj `AGENTS.md`/`CLAUDE.md`** dotknięte przez decyzje z kroku 6 —
    standardowy DOX pass, nie osobny rytuał.
 
@@ -96,13 +100,34 @@ CI (`.github/` nie istnieje) — to osobna decyzja infrastrukturalna, nie blokuj
 samej checklisty. I uwaga praktyczna: preflight bijący po żywym hubie zużywa budżet
 rate-limitu — ma być tani i rzadki, nie odpalany przy każdym zapisaniu pliku.
 
+## Zasada: dokumenty sezonu trzymają WIEDZĘ, nigdy STAN
+
+`tasks/sXX/requirements/` — łącznie z `season.md` — zapisuje **czego wymagać, dlaczego,
+jakie są pułapki i w jakiej kolejności**. Nie zapisuje, czy coś jest już zrobione. Zero
+checkboxów `- [ ]`/`- [x]` odbijających issue z Linear, zero kubełków 🔴/🟡/🟢 opisujących
+bieżący stan długu. Dopuszczalna jest wyłącznie kotwica `(→ AID-XXX)` — wskaźnik, nie
+status.
+
+Powód, potwierdzony dwukrotnie: reguła powstała 2026-08-20 dla `sXXeYY.md` po tym, jak
+`s03e02.md`/`s03e05.md` opisywały jako aktualny stan sprzed AID-48/AID-50. Nie
+propagowano jej wtedy na poziom sezonu i `season.md` S03 powtórzył ten sam błąd —
+twierdził „1 z 3 osłon zrobiona", gdy zrobione były trzy (AID-73). Plik czytany raz na
+starcie sezonu starzeje się wolniej, więc kłamie dłużej, zanim ktoś to zauważy.
+
+Rozdział jest tani, bo pokrywa się z granicą własności z `strategy/issue-tracking.md`:
+wiedza nie ma cyklu życia i nie ma czego synchronizować, stan ma jeden dom — Linear.
+Konsekwencja praktyczna: **przy domknięciu sezonu `season.md` nie wymaga aktualizacji**,
+bo nic w nim nie zdezaktualizowało się z definicji.
+
 ## Kryteria wyjścia z `sXX-prep`
 
 Przystanek jest skończony, gdy:
-- [ ] `tasks/sXX/requirements/season.md` istnieje i zawiera przynajmniej dług 🔴.
+- [ ] `tasks/sXX/requirements/season.md` istnieje i zawiera ranking epizodów oraz
+  kolejność ataku z uzasadnieniem.
 - [ ] Każdy epizod ma swój `sXXeYY.md`.
-- [ ] Dług 🔴 jest albo zmergowany, albo świadomie odroczony z jawnym uzasadnieniem
-  (nie po prostu pominięty).
+- [ ] Dług wykryty w krokach 1-4 jest w Linear, a pozycje blokujące mają `gate/*`.
+- [ ] Dług blokujący jest albo zmergowany, albo świadomie odroczony z jawnym
+  uzasadnieniem (nie po prostu pominięty).
 - [ ] Dotknięte `AGENTS.md`/`CLAUDE.md` w repo są zaktualizowane.
 
 Dopiero wtedy zaczyna się pierwszy epizod sezonu.
