@@ -1,0 +1,124 @@
+# S04+S05 — plan końcówki: 5 flag z 10 zadań
+
+Stan na 2026-08-20: **15 flag głównych** (`.flags.json` + `s01e03_proxy` poza plikiem).
+Do certyfikatu brakuje **5**. Zostało **10 zadań** — więc po raz pierwszy w tym projekcie
+możemy **wybierać**, a nie zaliczać wszystko po kolei. Ten plik trzyma wybór i kolejność;
+uzasadnienia źródłowe w `source/tool-inventory.md` i `source/community-intel.md`.
+
+## Ranking wszystkich 10 zadań
+
+| Zadanie | Istota | Zero-LLM? | Infra | Brakujące zdolności | Ryzyko kosztowe | Trudność wg społeczności | Ocena |
+|---|---|---|---|---|---|---|---|
+| **s05e03** `shellaccess` | zdalny `grep` po archiwum, odpowiedź wypisana `echo` | ✅ całkowicie | brak | brak | ~$0 | 🟢 najłatwiejsze | **1** |
+| **s04e05** `foodwarehouse` | SQLite RO + SHA1 + zamówienie na miasto | ✅ | brak | brak | $0–0.05 | 🟢 „poszło od strzała" | **2** |
+| **s04e03** `domatowo` | 11×11, 300 pkt akcji, znajdź i ewakuuj | ✅ | brak | brak | $0–0.0003 | 🟢 „nie jest zbyt trudne" | **3** |
+| **s04e04** `filesystem` | 2,6 kB notatek → 3 katalogi w wirtualnym FS | 🟡 hybryda | brak | brak | $0.15–0.26 | 🟡 polska semantyka | **4** |
+| **s05e04** `goingthere` | 3×12, hinty PL/ENG, SHA1 disarm | 🟡 hybryda | brak | parser hintów (mały) | grosze | 🟡 jedna pułapka pojęciowa | **5** |
+| s04e01 `okoeditor` | 3 edycje wpisów + `done` | ✅ | brak | sesja HTTP + strip HTML | $0–0.14 | 🟡 milcząca weryfikacja | 6 (rezerwa) |
+| s05e05 `timetravel` | maszyna czasu, 3 skoki | ✅ (z obejściem BE) | brak | brak (jeśli backend działa) | $0–5 | 🔴 bez obejścia najtrudniejsze | 7 (rezerwa) |
+| s04e02 `windpower` | harmonogram turbiny w **40 s** | ✅ (jedyna droga) | brak | async/równoległość | $0–0.04 | 🔴 „po 8 godzinach poddaję się" | 8 (rezerwa) |
+| s05e01 `radiomonitoring` | strumień transkrypcji + binarek → raport | ❌ | brak | **vision/OCR (AID-59)** + audio | $0.01–0.50 | 🔴 | ODRZUCONE |
+| s05e02 `phonecall` | rozmowa audio z operatorem | ❌ | brak | **TTS + STT** | **$5 / 12 h** | 🔴🔴 rage-quit sezonu | ODRZUCONE |
+
+## Rekomendowana piątka — kolejność ataku
+
+`s05e03 → s04e05 → s04e03 → s04e04 → s05e04`
+
+Kolejność jest rosnąca po ryzyku, nie po numerze epizodu. Każdy krok domyka jedną flagę
+i nie zostawia niedokończonego stanu, którego potrzebowałby następny.
+
+1. **s05e03 `shellaccess`** — najtańsza flaga w całym kursie i zarazem najtańszy test, czy
+   hub w ogóle wpuszcza nas do S05 bez zaliczonych e01/e02 (patrz „Do sprawdzenia
+   empirycznie" #1). Robimy ją pierwszą właśnie dlatego, że jest jednocześnie zadaniem
+   i sondą.
+2. **s04e05 `foodwarehouse`** — 677 B danych, `reset` gratis, jedna znana pułapka
+   (niepełny odczyt tabeli `destinations`). Zero nowego kodu w `core/`.
+3. **s04e03 `domatowo`** — powtórka `s03e03_reactor` + `s03e05_savethem`: planowanie pod
+   budżetem zasobów. Mamy sprawdzony wzorzec, wskazówka „najwyższe bloki" zawęża
+   przeszukiwanie przed pierwszym ruchem.
+4. **s04e04 `filesystem`** — jedyne z piątki, gdzie LLM realnie coś wnosi (normalizacja
+   polskiej odmiany), ale nad 2,6 kB tekstu to jedno tanie wywołanie, nie pipeline.
+   `batch_mode` + `reset` czynią próby darmowymi.
+5. **s05e04 `goingthere`** — ostatnie, bo wymaga najwięcej kodu (parser hintów, SHA1,
+   retry na losowe błędy API). Za to mamy największą przewagę informacyjną w całej
+   dziesiątce: znamy błąd, na którym wykłada się większość uczestników.
+
+## Dlaczego pozostałe pięć odpada
+
+- **s05e02 `phonecall` — odrzucone twardo.** Wymaga TTS+STT (zero kodu w `core/`), a
+  walidator jest niedeterministyczny: to samo nagranie raz przechodzi, raz nie. Zgłoszenia:
+  „ponad 5h i $5", dwa niezależne „12 godzin". Do tego moderacja komercyjnych modeli potrafi
+  odmówić („przemyt ludzi"). Najgorszy możliwy stosunek wysiłku do flagi.
+- **s05e01 `radiomonitoring` — odrzucone.** Jedyne zadanie wymagające przebudowy `core/llm/`
+  (vision, AID-59 „Odłożone"). Koszt wejścia większy niż całe zadanie.
+- **s04e02 `windpower` — pierwsza rezerwa techniczna, nie odrzucone.** Deterministycznie
+  pęka w 26 s i kosztuje $0, więc merytorycznie jest w naszym typie. Odpada z piątki
+  wyłącznie przez ryzyko harmonogramowe: limit 40 s wymaga równoległych wywołań (nie mamy
+  warstwy async) i strojenia, a społeczność raportuje tydzień prób. Jeśli któraś z piątki
+  się posypie, to jest pierwszy zamiennik.
+- **s04e01 `okoeditor` — druga rezerwa.** Jedyny koszt to sesyjny scraper HTTP (mały), ale
+  ma najgorszy tryb porażki w zestawie: wszystkie trzy `update` zwracają `code:110`, a
+  `done` mimo to odrzuca, bez wskazania który warunek nie przeszedł. Debugowanie na ślepo.
+- **s05e05 `timetravel` — trzecia rezerwa.** Obejście frontendu (`/timetravel_backend`)
+  sprowadza je do skryptu HTTP i sprawdziliśmy, że endpoint żyje — ale zostaje 26 kB
+  dokumentacji do sparsowania, stanowa bateria do zarządzania i trzy skoki po kolei.
+  Najlepszy kandydat na szóstą flagę, gdyby piątka poszła gładko.
+
+## Blokery do zdjęcia
+
+### Przed całą piątką (raz, ~jedna sesja)
+- **Nic infrastrukturalnego.** Żadne z pięciu nie wymaga publicznego endpointu, ngroka,
+  VPS-a, embeddingów, vision ani rejestru narzędzi. `HubClient` w obecnym kształcie
+  (`submit`, `get_public`, `post_api`) pokrywa cały protokół.
+- **AID-58 (ngrok→VPS) można zignorować do końca kursu** — w S04/S05 nie ma odpowiednika
+  s03e04.
+- Utworzyć foldery zadań (`tasks/s04e03_domatowo/` itd.) zgodnie z kontraktem
+  `tasks/AGENTS.md` (płasko pod `tasks/`, każdy z własnym `AGENTS.md`).
+
+### Przed konkretnym zadaniem
+- **s05e03:** ustalić, czy nasza bramka poleceń (`core/runtime/`) nie odrzuci komend
+  wysyłanych na ZDALNY shell — ona chroni lokalny proces, a tu komenda jest treścią
+  requestu. Jeśli koliduje, jawnie ją tu ominąć albo poszerzyć allowlistę o `grep`/`jq`/`echo`.
+- **s04e05:** żaden.
+- **s04e03:** żaden (wzorzec planowania z S03 jest gotowy).
+- **s04e04:** wybrać model do normalizacji polskiej odmiany. Intel wskazuje
+  `gemini-3-flash` jako pewniaka; nasz domyślny `claude-haiku-4-5` jest niesprawdzony na
+  tym konkretnym zadaniu.
+- **s05e04:** dopisać walidację treści odpowiedzi skanera (`core.net.expect_not_html()`) —
+  `/api/frequencyScanner` potrafi zwrócić `502` z pełnym HTML przy statusie sugerującym
+  sukces.
+
+## Do sprawdzenia empirycznie (zanim uznamy plan za pewny)
+
+W S03 dwukrotnie okazało się, że intel społeczności był nieaktualny wobec żywych danych.
+Kolejność poniżej to kolejność ryzyka.
+
+1. **Czy hub gatuje zadania S05 na wcześniejszych epizodach?** Fabuła sugeruje łańcuch
+   (s05e03 „to po to była nam informacja, na którym serwerze…" — pochodzi z s05e02, którego
+   NIE robimy). Mechanicznie w S01–S03 gatingu nie było, ale to założenie, nie fakt.
+   **Test:** jeden `{"task":"shellaccess","answer":{"cmd":"ls -la"}}`. Jeśli odrzuci —
+   cała piątka wymaga przetasowania, bo to samo dotyczy s05e04.
+   *To jest jedyna rzecz, która może wywrócić plan w całości.*
+2. **Czy s04e05 nie zależy od s04e04?** Fabuła e05 mówi „Mamy już informacje, które miasto
+   oferuje jaki towar" (efekt e04), ale `food4cities.json` dostajemy wprost i destinations
+   są w SQLite. **Test:** `{"tool":"help"}` na `foodwarehouse`. Jeśli zależy — zamienić
+   kolejność 2↔4.
+3. **Czy dane s04e02 są te same, co w edycji kursu?** Staff podał konkretne wartości:
+   3 sztormy (04-03 18:00 → 25 m/s, 04-06 18:00 → 22 m/s, 04-07 18:00 → 28 m/s), próg
+   >14 m/s, dokładnie 4 punkty konfiguracji. **Daty są z kwietnia 2026 — prawie na pewno
+   przesunięte.** Próg i liczba punktów mogą być stałe, ale zakładać tego nie wolno.
+   Dotyczy tylko rezerwy, nie piątki.
+4. **Czy `/timetravel_backend` przyjmuje nasz klucz?** Endpoint odpowiada (400 bez klucza),
+   ale nie wiemy, czy `POST` z kluczem faktycznie ustawia PT-A/PT-B/PWR, czy tylko czyta.
+   **Test:** `GET ?apikey=…`. Dotyczy rezerwy.
+5. **Czy backendy podglądów oddają więcej niż oficjalne API?** `POST /domatowo_backend.php`
+   i `POST /goingthere_backend` istnieją osobno od `/verify`. W S03 analogiczny plik
+   podglądu oddał legendę mapy taniej niż API. Jeśli `goingthere_backend` zwraca pozycję
+   skały w NASTĘPNEJ kolumnie, cały parser hintów staje się zbędny. **Test:** jeden `POST`
+   z kluczem, przed pisaniem parsera.
+6. **Czy odpowiedź `database` w s04e05 jest paginowana?** Staff sugeruje, że naiwny
+   `select *` nie oddaje wszystkich wierszy („zwróć uwagę, co jeszcze jest zwracane z bazy").
+   **Test:** porównać `select count(*)` z liczbą zwróconych wierszy.
+7. **Czy ID/indeksowanie zaczyna się od 1 czy od 0?** W S03E05 backend indeksował od 1 przy
+   mapie od 0 — kosztowało to podejście. Dotyczy s04e03 (współrzędne typu `F6`) i s05e04
+   (wiersze 1-3, kolumny 1-12).

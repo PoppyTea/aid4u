@@ -114,3 +114,13 @@ sezonu, 9 ruchów, 0 zgnieceń, koszt $0.00. Deterministyczny receding-horizon B
 zero LLM (najłatwiejszy epizod sezonu — LLM praktycznie zbędny wobec czystego
 algorytmu). Format API (`answer: {"command": ...}`, kolizja sprawdzana PO
 przesunięciu bloków) ustalony empirycznie sondą — lekcja go nie podaje.
+
+**Końcówka kursu (S04+S05, rekonesans 2026-08-20):** `s04/` — `requirements/` z rankingiem
+**wszystkich 10 pozostałych zadań** (S04E01–E05 i S05E01–E05) i wyborem piątki dającej
+certyfikat; nie kontener implementacji, patrz `s04/AGENTS.md`. Zakres celowo obejmuje oba
+sezony naraz, bo wybór jest jeden i przekrojowy. Rekomendowana kolejność ataku:
+`s05e03 → s04e05 → s04e03 → s04e04 → s05e04`, rezerwy `s04e02 → s04e01 → s05e05`,
+odrzucone twardo `s05e02` (TTS+STT, niedeterministyczny walidator, $5/12 h) i `s05e01`
+(vision/OCR — wymaga AID-59, „Odłożone"). Żadne z 10 zadań nie potrzebuje publicznego
+endpointu ani embeddingów. Szczegóły i lista rzeczy do sprawdzenia empirycznie:
+`s04/requirements/season.md`.
