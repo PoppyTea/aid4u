@@ -7,10 +7,15 @@ historyczne archiwum dawnych przebiegów triage'u sprzed migracji (2026-08-18) i
 narracyjnych podsumowań recenzji PR-ów, których Linear nie zastępuje.
 
 ## Ownership
-- `summaries-4-human/`: podsumowania triage'u pisane dla człowieka (kontekst PR-a,
-  kompromisy, plan wdrożenia) — nie dla agenta, Linear trzyma tickety do wykonania.
-  Piszą tu rutyna `review-ingest` i skill `pr-review-triage`, jeden plik `.md` na
-  przebieg (`<NUM>-review.md` dla pojedynczego PR-a).
+- `summaries-4-human/`: podsumowania pisane dla człowieka (kontekst, kompromisy, plan
+  wdrożenia) — nie dla agenta, Linear trzyma tickety do wykonania. Dwa rodzaje wpisów:
+  - **triage PR-a** — piszą rutyna `review-ingest` i skill `pr-review-triage`, jeden plik
+    na przebieg, `<NUM>-review.md`;
+  - **notatka sesyjna** — `RRRR-MM-DD-<temat>.md`, gdy jedna sesja dotknęła wielu rzeczy
+    naraz i część świadomie odłożyła. Zapisuje **to, czego Linear nie trzyma**: co
+    odrzucono i na jakiej podstawie, czego nie robić, jakie rozróżnienie pojęciowe z tego
+    wyszło. Nigdy lista zadań do wykonania — to byłby lokalny rejestr zakazany przez
+    `strategy/rules/cleanup/r18-no-local-issue-registers.md`.
 - `archive/`:
   - `triage-runs/`: dawne zbiorcze przebiegi triage'u (Qodo/CodeRabbit, sprzed migracji
     do Linear) — każdy z bannerem mapującym stare-ID → `AID-XXX`, treść pod bannerem

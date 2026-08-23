@@ -7,18 +7,18 @@ uzasadnienia źródłowe w `source/tool-inventory.md` i `source/community-intel.
 
 ## Ranking wszystkich 10 zadań
 
-| Zadanie | Istota | Zero-LLM? | Infra | Brakujące zdolności | Ryzyko kosztowe | Trudność wg społeczności | Ocena |
-|---|---|---|---|---|---|---|---|
-| **s05e03** `shellaccess` | zdalny `grep` po archiwum, odpowiedź wypisana `echo` | ✅ całkowicie | brak | brak | ~$0 | 🟢 najłatwiejsze | **1** |
-| **s04e05** `foodwarehouse` | SQLite RO + SHA1 + zamówienie na miasto | ✅ | brak | brak | $0–0.05 | 🟢 „poszło od strzała" | **2** |
-| **s04e03** `domatowo` | 11×11, 300 pkt akcji, znajdź i ewakuuj | ✅ | brak | brak | $0–0.0003 | 🟢 „nie jest zbyt trudne" | **3** |
-| **s04e04** `filesystem` | 2,6 kB notatek → 3 katalogi w wirtualnym FS | 🟡 hybryda | brak | brak | $0.15–0.26 | 🟡 polska semantyka | **4** |
-| **s05e04** `goingthere` | 3×12, hinty PL/ENG, SHA1 disarm | 🟡 hybryda | brak | parser hintów (mały) | grosze | 🟡 jedna pułapka pojęciowa | **5** |
-| s04e01 `okoeditor` | 3 edycje wpisów + `done` | ✅ | brak | sesja HTTP + strip HTML | $0–0.14 | 🟡 milcząca weryfikacja | 6 (rezerwa) |
-| s05e05 `timetravel` | maszyna czasu, 3 skoki | ✅ (z obejściem BE) | brak | brak (jeśli backend działa) | $0–5 | 🔴 bez obejścia najtrudniejsze | 7 (rezerwa) |
-| s04e02 `windpower` | harmonogram turbiny w **40 s** | ✅ (jedyna droga) | brak | async/równoległość | $0–0.04 | 🔴 „po 8 godzinach poddaję się" | 8 (rezerwa) |
-| s05e01 `radiomonitoring` | strumień transkrypcji + binarek → raport | ❌ | brak | **vision/OCR (AID-59)** + audio | $0.01–0.50 | 🔴 | ODRZUCONE |
-| s05e02 `phonecall` | rozmowa audio z operatorem | ❌ | brak | **TTS + STT** | **$5 / 12 h** | 🔴🔴 rage-quit sezonu | ODRZUCONE |
+| Zadanie                    | Istota                                               | Zero-LLM?           | Infra | Brakujące zdolności             | Ryzyko kosztowe | Trudność wg społeczności        | Ocena       |
+| -------------------------- | ---------------------------------------------------- | ------------------- | ----- | ------------------------------- | --------------- | ------------------------------- | ----------- |
+| **s05e03** `shellaccess`   | zdalny `grep` po archiwum, odpowiedź wypisana `echo` | ✅ całkowicie       | brak  | brak                            | ~$0             | 🟢 najłatwiejsze                | **1**       |
+| **s04e05** `foodwarehouse` | SQLite RO + SHA1 + zamówienie na miasto              | ✅                  | brak  | brak                            | $0–0.05         | 🟢 „poszło od strzała"          | **2**       |
+| **s04e03** `domatowo`      | 11×11, 300 pkt akcji, znajdź i ewakuuj               | ✅                  | brak  | brak                            | $0–0.0003       | 🟢 „nie jest zbyt trudne"       | **3**       |
+| **s04e04** `filesystem`    | 2,6 kB notatek → 3 katalogi w wirtualnym FS          | 🟡 hybryda          | brak  | brak                            | $0.15–0.26      | 🟡 polska semantyka             | **4**       |
+| **s05e04** `goingthere`    | 3×12, hinty PL/ENG, SHA1 disarm                      | 🟡 hybryda          | brak  | parser hintów (mały)            | grosze          | 🟡 jedna pułapka pojęciowa      | **5**       |
+| s04e01 `okoeditor`         | 3 edycje wpisów + `done`                             | ✅                  | brak  | sesja HTTP + strip HTML         | $0–0.14         | 🟡 milcząca weryfikacja         | 6 (rezerwa) |
+| s05e05 `timetravel`        | maszyna czasu, 3 skoki                               | ✅ (z obejściem BE) | brak  | brak (jeśli backend działa)     | $0–5            | 🔴 bez obejścia najtrudniejsze  | 7 (rezerwa) |
+| s04e02 `windpower`         | harmonogram turbiny w **40 s**                       | ✅ (jedyna droga)   | brak  | async/równoległość              | $0–0.04         | 🔴 „po 8 godzinach poddaję się" | 8 (rezerwa) |
+| s05e01 `radiomonitoring`   | strumień transkrypcji + binarek → raport             | ❌                  | brak  | **vision/OCR (AID-59)** + audio | $0.01–0.50      | 🔴                              | ODRZUCONE   |
+| s05e02 `phonecall`         | rozmowa audio z operatorem                           | ❌                  | brak  | **TTS + STT**                   | **$5 / 12 h**   | 🔴🔴 rage-quit sezonu           | ODRZUCONE   |
 
 ## Rekomendowana piątka — kolejność ataku
 
@@ -67,6 +67,7 @@ i nie zostawia niedokończonego stanu, którego potrzebowałby następny.
 ## Blokery do zdjęcia
 
 ### Przed całą piątką (raz, ~jedna sesja)
+
 - **Nic infrastrukturalnego.** Żadne z pięciu nie wymaga publicznego endpointu, ngroka,
   VPS-a, embeddingów, vision ani rejestru narzędzi. `HubClient` w obecnym kształcie
   (`submit`, `get_public`, `post_api`) pokrywa cały protokół.
@@ -76,6 +77,7 @@ i nie zostawia niedokończonego stanu, którego potrzebowałby następny.
   `tasks/AGENTS.md` (płasko pod `tasks/`, każdy z własnym `AGENTS.md`).
 
 ### Przed konkretnym zadaniem
+
 - **s05e03:** ustalić, czy nasza bramka poleceń (`core/runtime/`) nie odrzuci komend
   wysyłanych na ZDALNY shell — ona chroni lokalny proces, a tu komenda jest treścią
   requestu. Jeśli koliduje, jawnie ją tu ominąć albo poszerzyć allowlistę o `grep`/`jq`/`echo`.
@@ -98,16 +100,16 @@ Kolejność poniżej to kolejność ryzyka.
    NIE robimy). Mechanicznie w S01–S03 gatingu nie było, ale to założenie, nie fakt.
    **Test:** jeden `{"task":"shellaccess","answer":{"cmd":"ls -la"}}`. Jeśli odrzuci —
    cała piątka wymaga przetasowania, bo to samo dotyczy s05e04.
-   *To jest jedyna rzecz, która może wywrócić plan w całości.*
+   _To jest jedyna rzecz, która może wywrócić plan w całości._
 2. **Czy s04e05 nie zależy od s04e04?** Fabuła e05 mówi „Mamy już informacje, które miasto
    oferuje jaki towar" (efekt e04), ale `food4cities.json` dostajemy wprost i destinations
    są w SQLite. **Test:** `{"tool":"help"}` na `foodwarehouse`. Jeśli zależy — zamienić
    kolejność 2↔4.
 3. **Czy dane s04e02 są te same, co w edycji kursu?** Staff podał konkretne wartości:
    3 sztormy (04-03 18:00 → 25 m/s, 04-06 18:00 → 22 m/s, 04-07 18:00 → 28 m/s), próg
-   >14 m/s, dokładnie 4 punkty konfiguracji. **Daty są z kwietnia 2026 — prawie na pewno
-   przesunięte.** Próg i liczba punktów mogą być stałe, ale zakładać tego nie wolno.
-   Dotyczy tylko rezerwy, nie piątki.
+    > 14 m/s, dokładnie 4 punkty konfiguracji. **Daty są z kwietnia 2026 — prawie na pewno
+    > przesunięte.** Próg i liczba punktów mogą być stałe, ale zakładać tego nie wolno.
+    > Dotyczy tylko rezerwy, nie piątki.
 4. **Czy `/timetravel_backend` przyjmuje nasz klucz?** Endpoint odpowiada (400 bez klucza),
    ale nie wiemy, czy `POST` z kluczem faktycznie ustawia PT-A/PT-B/PWR, czy tylko czyta.
    **Test:** `GET ?apikey=…`. Dotyczy rezerwy.
