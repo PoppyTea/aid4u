@@ -59,15 +59,15 @@ Contains the architectural heart of the system: LLM clients, task management bas
     code_execution, bash, text_editor) call `anthropic.Anthropic` directly instead of
     going through `LLMClient`. These aren't portable across providers, so they're a
     deliberate, narrow exception — not a precedent for other bypasses.
-- **No `temperature` anywhere in the LLM layer's public surface** (removed 2026-08-23 with
-  the Anthropic 1.0.0 migration). The parameter sat on the ABC and all three adapters, but
-  `LLMClient` never forwarded it, so nothing above the adapters could ever set it — and
-  anthropic 1.0.0 dropped it from `messages` outright (`TypeError: Messages.create() got
-  an unexpected keyword argument 'temperature'`, measured). Gemini and OpenAI still send a
-  **pinned `temperature=0.0`**: the knob was dead, the value was not — dropping it too
-  would make runs non-reproducible and cost comparisons meaningless. Anthropic is now
-  asymmetric here (its API no longer takes the parameter at all); deliberate sampling
-  control across providers is AID-52, still open.
+- **`temperature` is provider-asymmetric, by force of the Anthropic API.** It stays a real
+  parameter on the ABC and on the Gemini/OpenAI adapters (default `0.0`, `None` means "leave
+  the provider default"). The `AnthropicAdapter` accepts it for ABC conformance and
+  **deliberately does not forward it** — anthropic 1.0.0 removed it from `messages`
+  (`TypeError: Messages.create() got an unexpected keyword argument 'temperature'`,
+  measured 2026-08-23). Note this asymmetry predates the migration: the adapter accepted
+  the argument and silently dropped it long before, so the SDK only made it visible. If
+  Anthropic ever needs it, the route is `extra_body={"temperature": ...}`. Deliberate
+  cross-provider sampling control is AID-52, still open.
 - **The Anthropic SDK rides on `httpx2`, the rest of the repo on `httpx` 0.x.** Both are
   installed and coexist (`anthropic` 1.0.0 imports `httpx2` 2.9.1, verified). Two
   consequences worth knowing before touching either: `core/llm/tool_errors.py` inspects

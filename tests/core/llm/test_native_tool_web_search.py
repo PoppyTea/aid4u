@@ -162,8 +162,9 @@ def test_temperature_is_never_sent(mock_anthropic_client):
     complete_with_web_search("test-key", [LLMMessage.user("Pytanie")])
     complete_with_web_search("test-key", [LLMMessage.user("Pytanie")])
 
-    call_kwargs = mock_client.messages.create.call_args.kwargs
-    assert "temperature" not in call_kwargs
+    assert mock_client.messages.create.call_count == 2
+    for call in mock_client.messages.create.call_args_list:
+        assert "temperature" not in call.kwargs
 
 
 def test_system_role_message_is_rejected(mock_anthropic_client):

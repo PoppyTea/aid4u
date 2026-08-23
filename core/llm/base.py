@@ -32,6 +32,7 @@ class LLMProvider(ABC):
         *,
         system: str | None = None,
         max_tokens: int = 1024,
+        temperature: float | None = 0.0,
     ) -> LLMResponse:
         """Jedno wywołanie tekstowe."""
         ...
