@@ -46,6 +46,11 @@ repo, nigdy z założenia "pamiętam poprzedni raz". Wspólny szkielet:
    „naprawa” (jedno działanie, nie kierunek) / „koszt” (minuty/godzina/więcej). Uwaga bez
    odpowiedzi na "kiedy się zepsuje" nie jest uwagą, jest opinią — nie zgłaszaj jej.
 5. **Read-only wobec kodu** — żadna rutyna audytowa nie modyfikuje `core/`/`tasks/`.
+   Dotyczy to również rosterów modeli: `deprecation-watch` sonduje je od 2026-08-23 realnym
+   wywołaniem API i **zgłasza** rozjazd, ale nigdy sam nie podmienia identyfikatora — awans
+   modelu jest decyzją kosztową użytkownika. To zresztą jedyna rutyna, która wydaje pieniądze
+   (kilka wywołań po jednym tokenie tygodniowo) i jedyna, której wynik zależy od tego, którym
+   kluczem pyta — patrz `strategy/llm-selection.md`, sekcja o grandfatherowanych projektach.
    Jedyny zapis dozwolony poza raportem: własny state file i tickety w Linear Triage.
 
 ### Format state file

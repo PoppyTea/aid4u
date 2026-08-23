@@ -41,7 +41,8 @@ Każde zadanie kursowe przechodzi przez ten pipeline. Nie pomijaj kroków.
 - DONE gdy: testy istnieją i failują
 
 ### 3. Implementacja — `sXXeYY_004`
-- Model domyślny: `gemini-2.5-flash` — szczegóły w `strategy/llm-selection.md`
+- Model: nie wpisuj identyfikatora z pamięci — domyślny bierze `run.py`, a zasady wyboru
+  i eskalacji są w `strategy/llm-selection.md`
 - Dodaj instrumentację Langfuse PRZED pierwszym uruchomieniem: skill `langfuse-observability`
 - `setup_observability()` jako pierwsza linia skryptu (reguła projektu)
 - DONE gdy: `uv run pytest` → wszystkie testy zielone

@@ -128,7 +128,7 @@ Files to rename when convenient (not blocking — do alongside next edit of each
 | `strategy_llm_v1.0.0.md` | `llm-selection.md` | `strategy/` |
 | `strategy_task_decomposition_v1_0_0.md` | `task-decomposition.md` | `strategy/tasks/` |
 | `adhd_workflow_tw.md` | `adhd-workflow.md` | `strategy/tasks/` |
-| `models-reference.md` | `llm-models.md` | `strategy/` |
+| `models-reference.md` | scalone w `llm-selection.md` (2026-08-23) | `strategy/` |
 | `llm-strategy.md` | `llm-selection.md` | `strategy/` (merge with above) |
 
 > Update all `@` imports in `CLAUDE.md` after each rename.

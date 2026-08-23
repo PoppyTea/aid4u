@@ -26,7 +26,7 @@ Repozytorium dokumentacji strategicznej, protokołów uczenia się, standardów 
   ostatniego wykonania. Stan długu ma jeden dom — Linear (`issue-tracking.md`);
   w tekście zostaje najwyżej kotwica `(→ AID-XXX)`. Dopuszczalne wyjątki: ✅/❌ jako
   przykłady dobrze/źle (`naming-conventions.md`), trwała właściwość rzeczy zewnętrznej
-  (model wycofany przez dostawcę w `llm-models.md`), placeholdery w szablonach
+  (model wycofany przez dostawcę), placeholdery w szablonach
   (`templates/`, `skills/skill-contracts.md`) i generyczne kryteria wyjścia z procedury,
   których się nie odhacza. Powód: dokument bez stanu nie może się zdezaktualizować, więc
   nie wymaga rytuału synchronizacji, którego i tak nikt nie wykona.
@@ -67,8 +67,9 @@ Repozytorium dokumentacji strategicznej, protokołów uczenia się, standardów 
   konkretnego sezonu (np. self-hosted kontra cloud Langfuse).
 - `./demo-processing-workflow.md` - Workflow przetwarzania demo/przykładów kursu.
 - `./efficiency-mode` - Materiały trybu efficiency mode.
-- `./llm-models.md` - Referencja/ściągawka modeli LLM.
-- `./llm-selection.md` - Strategia wyboru/eskalacji/tier modeli LLM.
+- `./llm-selection.md` - Strategia wyboru/eskalacji/tier modeli LLM. **Nie zawiera
+  identyfikatorów modeli** — te żyją w rosterach `core/llm/adapters/`; scalone z dawnym
+  `llm-models.md` 2026-08-23.
 - `./issue-tracking.md` - Cykl życia issue w Linear (jedyne źródło prawdy długu
   technicznego): priorytety, labele, dedup, lejek diagnoz.
 - `./quality-control.md` - Governance rutyn/audytów: katalog, anatomia promptu,

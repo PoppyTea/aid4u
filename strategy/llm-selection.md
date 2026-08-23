@@ -1,107 +1,81 @@
 # Strategia wyboru providera LLM
 
-> Stan: 28 lipca 2026 (v2.0.0) — **zmiana kierunku**: podstawową drabiną eskalacji jest teraz
-> rodzina Claude, nie Gemini. Poprzednia wersja (8 lipca 2026, v1.1.0) zakładała odwrotnie —
-> Gemini zawsze jako pierwszy krok, Anthropic jako ostateczność. Zastępuje `strategy_llm_v1.0.0.md`
-> (v1.0.0, Obsidian).
-> Model referencyjny (pełna lista + parametry): `strategy/llm-models.md`.
+> Scala dawne `llm-selection.md` i `llm-models.md` (2026-08-23). Ten plik trzyma **zasady
+> wyboru i eskalacji**. Konkretne identyfikatory modeli **nie żyją tutaj** — źródłem prawdy
+> są rostery `ANTHROPIC_MODELS` / `OPENAI_MODELS` / `GEMINI_MODELS` w `core/llm/adapters/`,
+> egzekwowane przez `create_provider()`. Powód rozdziału: `strategy/` nie trzyma stanu
+> (patrz `strategy/AGENTS.md`), a lista modeli to stan świata zewnętrznego, który zmienia
+> się szybciej, niż ktokolwiek aktualizuje prozę.
 > Sekrety / klucze API: `strategy/secrets-management.md`.
 
 ---
 
 ## Zasada nadrzędna: zacznij od najtańszego Claude, eskaluj w górę drabiny
 
-Każde zadanie zaczynamy od najtańszego modelu w rodzinie Claude (`claude-haiku-4-5-20251001`)
-i eskalujemy w górę drabiny tylko gdy model faktycznie sobie nie radzi — nie z góry. Gemini nie
-jest już domyślnym pierwszym krokiem dla każdego zadania — patrz "Gemini: kiedy sięgać" niżej.
-Obecnie eskalację przeprowadza użytkownik podczas uruchamiania zadania.
-
----
+Każde zadanie zaczynamy od `ANTHROPIC_MODELS["fast"]` i eskalujemy w górę drabiny tylko gdy
+model faktycznie sobie nie radzi — nie z góry. Gemini nie jest domyślnym pierwszym krokiem
+(zmiana kierunku z 28.07.2026; wcześniej było odwrotnie) — patrz „Gemini: kiedy sięgać".
+Eskalację przeprowadza użytkownik przy uruchamianiu zadania.
 
 ## Dwa niezależne wymiary
 
-Strategia ma **dwa niezależne wymiary**, które łatwo pomylić:
+Łatwo je pomylić, a dotyczą różnych providerów:
 
-1. **Ranga w drabinie Claude** (Haiku 4.5 → Sonnet 5 → Opus 5 → Fable 5) — który *model*
-   Anthropic jest użyty. Sterowane parametrem `--model`. To jest **podstawowa** ścieżka
-   eskalacji od 28.07.2026.
-2. **Tier w obrębie Gemini** (`standard` / `premium`) — który *klucz API* jest użyty, gdy
-   zadanie w ogóle korzysta z Gemini (patrz "Gemini: kiedy sięgać" niżej). Sterowane flagą
-   `--premium`/`-p` w `run.py`. Osobna, poboczna ścieżka — nie punkt startowy domyślnie.
+1. **Ranga w drabinie zdolności** (`fast` → `balanced` → `powerful` → `flagship`) — który
+   *model* jest użyty. Sterowane parametrem `--model`. Podstawowa ścieżka eskalacji.
+2. **Tier rozliczeniowy Gemini** (`standard` / `premium`) — który *klucz API* jest użyty.
+   Sterowane flagą `--premium`/`-p`. Osobna, poboczna ścieżka.
 
-Te wymiary dotyczą różnych providerów — nie mieszaj ich w jednej decyzji: najpierw zdecyduj,
-czy zadanie w ogóle potrzebuje Gemini (modalność), dopiero potem — jeśli tak — który tier.
+Najpierw zdecyduj, czy zadanie w ogóle potrzebuje Gemini (modalność), dopiero potem — jeśli
+tak — który tier.
 
 ### Dlaczego dwa klucze Gemini, a nie jeden z przełącznikiem
 
-Darmowy tier Gemini API jest związany z projektem Google Cloud, w którym
-**billing jest wyłączony**. Płatny tier wymaga billingu **włączonego**. To
-własność projektu, nie parametr requestu — jeden klucz API fizycznie nie może
-obsłużyć obu tierów. Stąd dwa osobne klucze w sekretach:
+Darmowy tier Gemini API jest związany z projektem Google Cloud, w którym **billing jest
+wyłączony**; płatny wymaga billingu **włączonego**. To własność projektu, nie parametr
+requestu — jeden klucz fizycznie nie obsłuży obu tierów. Stąd `GEMINI_API_KEY` (projekt bez
+billingu) i `GEMINI_API_KEY_PREMIUM` (osobny projekt z billingiem).
 
-```
-GEMINI_API_KEY           # tier standard — projekt BEZ billingu
-GEMINI_API_KEY_PREMIUM   # tier premium  — osobny projekt Z billingiem
-```
+Konsekwencja praktyczna, zmierzona 2026-08-23: **projekty darmowe bywają grandfatherowane**.
+`gemini-2.5-flash` odpowiada na starym kluczu darmowym, a na premium zwraca 404 („no longer
+available to new users"). Dlatego dostępność modelu sprawdza się realnym wywołaniem **per
+klucz**, nie `models.list()` — katalog globalny wymienia też modele, których danym kluczem
+nie zawołasz.
 
-Wybór klucza żyje **wyłącznie** w `core/llm/factory.py` (parametr `tier`) —
-`GeminiAdapter` nie wie nic o tierach i nie powinien; to celowa decyzja, żeby
-nie robić przełączników wewnątrz adapterów.
-
----
-
-## Gemini: kiedy sięgać, i eskalacja w obrębie tieru (standard → premium)
-
-Gemini nie jest już domyślnym pierwszym krokiem (patrz zmiana z 28.07.2026 wyżej) — sięgaj po
-niego świadomie, gdy zadanie ma **realny atut modalności Gemini** (obrazy/wideo, grounding
-Search/Maps, bardzo duży kontekst). Gdy tak — zaczynasz od tieru standard (darmowy), potem
-premium, dokładnie jak niżej.
-
-| Grupa | Flash-Lite | Flash | Pro |
-|---|---|---|---|
-| **Standard — Free Tier** (domyślny) | najnowszy stabilny (2026/07/14: `gemini-3.1-flash-lite`) | najnowszy stabilny (2026/07/14: `gemini-3.5-flash`) | `gemini-2.5-pro` |
-| **Premium — Płatny** (`--premium`) | najnowszy stabilny | najnowszy stabilny | najnowszy stabilny (2026/07/14: `gemini-3.1-pro-preview`, wciąż preview) |
-
-> "Najnowszy stabilny" to instrukcja utrzymania, nie literalny alias API —
-> podmieniaj konkretny identyfikator w `strategy/llm-models.md`, gdy Google
-> wypuści nowszy stabilny model. Nie potwierdziliśmy istnienia działającego
-> aliasu typu `gemini-flash-latest` dla tego API — do zweryfikowania, jeśli
-> kiedyś zechcemy tego użyć zamiast ręcznej aktualizacji.
-
-Praktyczny wniosek z tej tabeli: w grupie Standard `gemini-2.5-pro` zostaje
-przy 2.5, bo rodzina 3.x nie ma w darmowym tierze groundingu (Search/Maps) i
-w praktyce ma ciaśniejsze limity — nie ma sensu tam eskalować w ramach
-darmowego tieru. W grupie Premium płacimy i tak, więc bierzemy najlepszy
-dostępny Pro.
-
-**Kiedy sięgać po `--premium`:** gdy `gemini-2.5-pro` (darmowy) faktycznie nie
-daje rady, a zadanie nie uzasadnia jeszcze przejścia do OpenAI/Anthropic —
-płatny Flash 3.x bywa tańszy i szybszy niż przeskok do innego providera.
+Wybór klucza żyje **wyłącznie** w `core/llm/factory.py` (parametr `tier`) — `GeminiAdapter`
+nie wie nic o tierach i nie powinien.
 
 ---
 
-## Hierarchia providerów (od 28.07.2026)
+## Gemini: kiedy sięgać
+
+Sięgaj świadomie, gdy zadanie ma **realny atut modalności Gemini** (obrazy/wideo, grounding
+Search/Maps, bardzo duży kontekst). Wtedy zaczynasz od tieru standard, potem premium.
+
+Podział rosteru idzie osią **lite → flash → pro**, a tier rozliczeniowy krzyżuje się z nią
+(stąd `GEMINI_MODELS` jest zagnieżdżony, w przeciwieństwie do pozostałych providerów).
+W grupie standard zostajemy na tym, co darmowy projekt realnie obsługuje; w premium płacimy
+i tak, więc bierzemy najwyższą dostępną wersję.
+
+**Kiedy sięgać po `--premium`:** gdy darmowy tier faktycznie nie daje rady, a zadanie nie
+uzasadnia jeszcze przejścia do innego providera — płatny Flash bywa tańszy i szybszy niż
+przeskok gdzie indziej.
+
+## Hierarchia providerów
 
 ```
-1. claude-haiku-4-5-20251001   ← domyślny start, najtańszy w rodzinie Claude
-2. claude-sonnet-5             ← Haiku konsekwentnie zawodzi (3+ próby)
-3. claude-opus-5               ← Sonnet nie wystarcza, zadanie naprawdę trudne
-4. claude-fable-5              ← ostateczność w rodzinie Claude / [narada nad tym co dalej —
-                                   nie ustalono jeszcze co po Fable]
+1. fast       ← domyślny start, najtańszy w rodzinie Claude
+2. balanced   ← fast konsekwentnie zawodzi (3+ próby)
+3. powerful   ← balanced nie wystarcza, zadanie naprawdę trudne
+4. flagship   ← ostateczność w rodzinie Claude
 
-Gemini (standard → premium)    ← OSOBNA ścieżka, nie stopień tej drabiny — używana gdy
-                                   modalność Gemini jest realnym atutem zadania (patrz
-                                   "Gemini: kiedy sięgać" wyżej)
+Gemini (standard → premium)  ← OSOBNA ścieżka, nie stopień tej drabiny
 ```
 
-> **Zmiana względem poprzedniej wersji (8 lipca 2026):** hierarchia była odwrócona — Gemini
-> zawsze jako pierwszy krok, Anthropic jako ostateczność. Od 28.07.2026 jest odwrotnie: Claude
-> to podstawowa drabina, Gemini to świadomy wybór pod konkretną modalność.
->
-> **OpenAI — poza podstawową drabiną od 28.07.2026.** Kod (`OpenAIAdapter`) i klucz zostają,
-> ale to już nie jest domyślny stopień pośredni — do rewizji, jeśli pojawi się konkretny powód
-> (np. model niedostępny gdzie indziej, koszt). Podobnie OpenRouter (patrz TODO niżej) —
-> nieużywany, `OpenRouterAdapter` to wciąż `TODO` w `factory.py`.
+**OpenAI — poza podstawową drabiną od 28.07.2026.** Adapter i klucz zostają, ale to nie jest
+domyślny stopień pośredni. **OpenRouter** — adapter niezaimplementowany, jedyny `TODO`
+w kodzie `(→ AID-61)`; `factory.py` ma gotową gałąź prefiksu, więc rozszerzenie będzie
+lokalne.
 
 ---
 
@@ -109,83 +83,95 @@ Gemini (standard → premium)    ← OSOBNA ścieżka, nie stopień tej drabiny 
 
 | Sygnał | Akcja |
 |---|---|
-| Model zwraca złe wyniki przy prostym zadaniu | Popraw prompt, spróbuj jeszcze raz — nie eskaluj od razu |
-| Model konsekwentnie myli się w logice (3+ próby) | Przejdź poziom wyżej w drabinie Claude (Haiku → Sonnet → Opus → Fable) |
-| Zadanie ma realną modalność Gemini (obrazy, grounding, ogromny kontekst) | Zacznij od `gemini-2.5-flash` (standard, darmowy), eskaluj do `--premium` zanim rozważysz cokolwiek innego |
-| Zadanie wymaga function calling z wieloma narzędziami | Zacznij od `claude-sonnet-5` (dobry function calling), eskaluj do `claude-opus-5` jeśli się gubi |
-| Zadanie z ostrym limitem czasu (np. windpower — 40s) | `claude-haiku-4-5-20251001` (szybki, tani) — albo `gemini-2.5-flash` jeśli modalność Gemini też gra rolę |
-| Zadanie agentowe z wieloma krokami | `claude-sonnet-5`, nie haiku — eskaluj do `claude-opus-5` przy problemach |
-| Vision (obrazki, PNG planszy) | `gemini-2.5-flash` (darmowy, dobry multimodal) — to jest właśnie sygnał "modalność Gemini ważna" |
-| Złożone rozumowanie wieloetapowe | `claude-sonnet-5` → `claude-opus-5` → `claude-fable-5` |
-
----
+| Złe wyniki przy prostym zadaniu | Popraw prompt, spróbuj ponownie — nie eskaluj od razu |
+| Konsekwentne błędy w logice (3+ próby) | Poziom wyżej w drabinie (`fast` → `balanced` → …) |
+| Realna modalność Gemini (obrazy, grounding, ogromny kontekst) | Gemini standard, potem `--premium` |
+| Function calling z wieloma narzędziami | Zacznij od `balanced`, eskaluj do `powerful` |
+| Ostry limit czasu (np. `windpower` — 40 s) | `fast` — albo Gemini, jeśli modalność też gra rolę |
+| Zadanie agentowe wielokrokowe | `balanced`, nie `fast` |
+| Vision (obrazki, PNG planszy) | Gemini — to jest właśnie sygnał „modalność ważna" |
+| Złożone rozumowanie wieloetapowe | `balanced` → `powerful` → `flagship` |
 
 ## Jak to wygląda w praktyce
 
 ```bash
-# Pierwsze podejście — zawsze najtańszy Claude
-uv run run.py solve s01e02 --model claude-haiku-4-5-20251001
+# Pierwsze podejście — domyślny model, bez podawania --model
+uv run run.py solve s01e02
 
-# Haiku konsekwentnie zawodzi (3+ próby) — poziom wyżej w drabinie Claude
-uv run run.py solve s01e02 --model claude-sonnet-5
+# Eskalacja: identyfikator bierz z rostera adaptera, nie z pamięci.
+# Zła nazwa jest odrzucana przy konstrukcji, z listą dopuszczalnych w treści błędu.
+uv run run.py solve s01e02 --model <ANTHROPIC_MODELS["balanced"]>
 
-# Sonnet nie wystarcza, zadanie naprawdę trudne
-uv run run.py solve s01e02 --model claude-opus-5
-
-# Opus też zawodzi — ostateczność w rodzinie Claude
-uv run run.py solve s01e02 --model claude-fable-5
-
-# Zadanie ma realną modalność Gemini (obrazy, grounding) — osobna ścieżka, nie eskalacja Claude
-uv run run.py solve s01e02 --model gemini-2.5-flash
-uv run run.py solve s01e02 --model gemini-2.5-flash --premium   # standard nie wystarcza
+# Modalność Gemini — osobna ścieżka, nie eskalacja drabiny
+uv run run.py solve s01e02 --model <GEMINI_MODELS["standard"]["balanced"]>
+uv run run.py solve s01e02 --model <GEMINI_MODELS["premium"]["balanced"]> --premium
 ```
 
 ---
 
-## TODO dla implementacji
+## Modele, które agenci halucynują najczęściej
 
-Ustalenia (2026-07-08): OpenRouter wraca jako dwuetapowy plan, nie jako
-osobny stopień w dzisiejszej hierarchii:
+Ta lista **nie jest katalogiem wycofanych modeli** — taki zbiór jest nieskończony
+i niesprawdzalny. To spis konkretnych recydywistów: identyfikatorów, które modele językowe
+wpisują odruchowo, bo dominowały w danych treningowych. To nie luka w wiedzy, tylko
+ciążenie — i dlatego lista jest krótka i celowana, a nie wyczerpująca.
 
-1. **Etap 1 — prosty refaktor `core/llm/adapters/openai.py`:** wydzielić
-   `base_url` jako parametr konstruktora (dziś zahardkodowany przez SDK
-   OpenAI na `api.openai.com`). To jedyna zmiana potrzebna, żeby ten sam
-   adapter obsługiwał OpenRouter (`base_url="https://openrouter.ai/api/v1"`)
-   — OpenRouter jest API-kompatybilny z OpenAI.
-2. **Etap 2 — rozszerzenie o obsługę wielu modeli przez jeden klucz:** gdy to
-   zadziała, OpenRouter może w praktyce **zastąpić bezpośrednie adaptery**
-   OpenAI i Anthropic (jeden klucz, jeden adapter, wiele modeli różnych
-   dostawców). Docelowo `gemini.py` zostałby jedynym adapterem
-   "specjalnym" — bo to jedyny sposób dostępu do prawdziwie darmowego tieru;
-   wszystko płatne (OpenAI, Anthropic, Gemini premium?) mogłoby iść przez
-   OpenRouter.
+- `gpt-4o`, `gpt-4o-mini`
+- `gemini-1.5-*`, `gemini-2.0-*`
+- `claude-3-*` (w tym `claude-3-5-sonnet-*`)
 
-Nie blokuje to obecnej pracy — `factory.py` ma już gałąź `openrouter/*`
-gotową (rzuca `NotImplementedError` przez brakujący `OpenRouterAdapter`),
-więc rozszerzenie jest lokalne i nie wymaga zmian w routingu.
+**Właściwą barierą jest kod, nie ta lista.** `create_provider()` odrzuca każde ID spoza
+rostera i podaje w błędzie poprawne opcje, więc zła nazwa pada natychmiast, a nie po
+kilkunastu sekundach jako błąd opakowany przez SDK. Lista zostaje jako sygnał dla człowieka
+czytającego ten dokument — przy okazji zapisując, po co w ogóle powstała, bo bez tego
+uzasadnienia audyt 2026-08-21 zarekomendował jej usunięcie jako „nieaktualnego rejestru".
+
+Skuteczność samej listy nie została nigdy zmierzona — eksperyment z jej usunięciem czeka
+w `(→ AID-80)`.
 
 ---
 
-## Zmienne środowiskowe (kolejność odzwierciedla priorytety)
+## Sterowanie parametrami — różnice między rodzinami Gemini
+
+Kontrakt „myślenia" różni się między rodzinami i **te dwa warianty się wykluczają** —
+zmieszanie ich w jednym zapytaniu daje 400. Rodzina 2.5 przyjmuje `thinking_budget`
+(`0` = wyłączone), rodzina 3.x oczekuje `thinking_level`. Dodatkowo modele `pro` w rodzinie
+3.x **nie pozwalają wyłączyć myślenia** — zerowy budżet zwraca 400 („This model only works
+in thinking mode").
+
+Egzekwuje to `GeminiAdapter._thinking_config()`, nie ten dokument — kontrakt w
+`core/AGENTS.md`.
+
+Pozostałe różnice, nieujęte w kodzie:
+
+- **`temperature`, `top_p`, `top_k`:** dla rodziny 3.x Google **odradza** ich ustawianie —
+  model jest zoptymalizowany pod domyślne, a ręczne dokręcanie pogarsza jakość. Dla
+  determinizmu użyj precyzyjnej instrukcji systemowej. Rodzina 2.5 nadal dobrze reaguje na
+  `temperature=0.0`.
+- **`candidate_count`:** nieobsługiwane w 3.x, obsługiwane w 2.5.x.
+- **Segmentacja obrazów:** niedostępna w 3.x.
+- **Structured outputs:** mechanizm (`response_mime_type` + `response_schema`) identyczny
+  w obu rodzinach.
+
+---
+
+## Zmienne środowiskowe
+
+Klucze docelowo w systemowym keyring — patrz `strategy/secrets-management.md`.
 
 ```bash
-# ~~.env — fallback (nieczynny - pozbywamy się go stopniowo)~~ ; klucze docelowo w systemowym keyring (patrz secrets-management.md)
-
-# ── Gemini — standard (darmowy) ──────────────────────────────────────────────
-GEMINI_API_KEY="..."
-# Projekt Google Cloud z WYŁĄCZONYM billingiem.
-
-# ── Gemini — premium (płatny) ────────────────────────────────────────────────
-GEMINI_API_KEY_PREMIUM="..."
-# Osobny projekt Google Cloud z WŁĄCZONYM billingiem. Wymagany tylko z --premium.
-
-# ── OpenAI ────────────────────────────────────────────────────────────────────
-OPENAI_API_KEY="..."
-
-# ── Anthropic ─────────────────────────────────────────────────────────────────
-ANTHROPIC_API_KEY="..."
-
-# ── OpenRouter (TODO — patrz sekcja wyżej, kod jeszcze nie istnieje) ─────────
-# OPENROUTER_FREE_API_KEY="..."
-# OPENROUTER_API_KEY="..."
+GEMINI_API_KEY           # tier standard — projekt Google Cloud BEZ billingu
+GEMINI_API_KEY_PREMIUM   # tier premium  — osobny projekt Z billingiem, wymagany przy --premium
+OPENAI_API_KEY
+ANTHROPIC_API_KEY
+# OPENROUTER_API_KEY     # kod jeszcze nie istnieje (→ AID-61)
 ```
+
+## Gdzie w kodzie żyją domyślne wartości
+
+| Plik | Co |
+|---|---|
+| `core/llm/adapters/*.py` | **rostery modeli — źródło prawdy**, plus model domyślny adaptera |
+| `core/llm/factory.py` | routing prefiks → adapter, walidacja modelu, wybór klucza wg `tier` |
+| `core/config.py` | `gemini_key` / `gemini_key_premium` / `gemini_key_for_tier()` |
+| `run.py` (`solve`) | domyślna wartość `--model`, flagi `--premium` i `--allow-unknown-model` |

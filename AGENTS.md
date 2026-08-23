@@ -38,9 +38,15 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
   2. Skonsultuj NotebookLM (komentarze kursu + notatnik zadań) — nierzadko ktoś już opisał
      jak przejść zadanie w godzinę-dwie. To pierwsze źródło, nie ostatnie.
   3. Dopiero jeśli powyższe nic nie dają — projektuj sam, najkrótszą ścieżką do flagi.
-- **Modele LLM:** domyślnie `claude-haiku-4-5-20251001` (drabina Claude — szczegóły w
-  `strategy/llm-selection.md`). Jeśli zauważysz że zadanie skorzystałoby na mocniejszym
-  modelu (Sonnet 5 → Opus 5 → Fable 5) — zgłoś to natychmiast, nie męcz się słabszym.
+- **Modele LLM:** nie wpisuj identyfikatorów z pamięci — źródłem prawdy są rostery
+  `ANTHROPIC_MODELS`/`OPENAI_MODELS`/`GEMINI_MODELS` w `core/llm/adapters/`, a
+  `create_provider()` odrzuca wszystko spoza nich, podając w błędzie poprawne opcje.
+  Zasady wyboru i eskalacji (`fast` → `balanced` → `powerful` → `flagship`, oraz kiedy
+  w ogóle sięgać po Gemini): `strategy/llm-selection.md`. Jeśli zauważysz, że zadanie
+  skorzystałoby na mocniejszym modelu — zgłoś to natychmiast, nie męcz się słabszym.
+  > ⚠️ Domyślny `--model` w `run.py` to model Gemini, a `strategy/llm-selection.md` każe
+  > zaczynać od najtańszego Claude. Rozjazd świadomie nierozstrzygnięty — do decyzji przy
+  > najbliższym zadaniu, które faktycznie użyje LLM.
 - **Subagenci / równoległość:** jeśli zadanie jest na tyle proste, że masz pewność iż
   poradzi sobie Haiku 4.5 — zaproponuj zlecenie albo sam wyślij subagenta. Rozważ pracę nad
   kilkoma zadaniami równolegle, jeśli to przyspieszy dojście do 20 flag.
@@ -54,7 +60,7 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 | Temat | Plik |
 | :--- | :--- |
 | **Strategia LLM (wybór/eskalacja/tier)** | `strategy/llm-selection.md` |
-| **Modele LLM (referencja/ściągawka)** | `strategy/llm-models.md` |
+| **Modele LLM — konkretne ID** | rostery w `core/llm/adapters/` (nie w dokumentacji) |
 | **Protokół nauki (zarchiwizowany, efficiency mode)** | `strategy/learning-protocol.md` |
 | **Konwencje nazewnictwa plików** | `strategy/naming-conventions.md` |
 | **Sekrety / keyring** | `strategy/secrets-management.md` |
