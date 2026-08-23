@@ -35,6 +35,7 @@ import tasks  # noqa: F401 — uruchamia auto-import → rejestruje wszystkie @t
 from core.config import get_config
 from core.hub import HubClient
 from core.llm import LLMClient, create_provider
+from core.llm.adapters.anthropic import ANTHROPIC_MODELS
 from core.runtime import request_stop
 from core.tasks import TASK_REGISTRY
 
@@ -88,9 +89,9 @@ def _save_flag(task_name: str, flag: str) -> None:
 
 
 def _make_llm(model: str, *, premium: bool = False, allow_unknown_model: bool = False) -> LLMClient:
-    """Buduje LLMClient dla podanego modelu (i tieru Gemini standard/premium, jeśli dotyczy)."""
+    """Buduje LLMClient dla podanego modelu (i tieru Gemini free/premium, jeśli dotyczy)."""
     cfg = get_config()
-    tier = "premium" if premium else "standard"
+    tier = "premium" if premium else "free"
     provider = create_provider(model, cfg, tier=tier, allow_unknown_model=allow_unknown_model)
     return LLMClient(provider)
 
@@ -101,7 +102,12 @@ def _make_llm(model: str, *, premium: bool = False, allow_unknown_model: bool = 
 @app.command()
 def solve(
     task_name: str = typer.Argument(..., help="Nazwa zadania, np. s01e01"),
-    model: str = typer.Option("gemini-2.5-flash", "--model", "-m", help="Model LLM"),
+    model: str = typer.Option(
+        ANTHROPIC_MODELS["fast"],
+        "--model",
+        "-m",
+        help="Model LLM — domyślnie najtańszy Claude, patrz strategy/llm-selection.md",
+    ),
     premium: bool = typer.Option(
         False,
         "--premium",

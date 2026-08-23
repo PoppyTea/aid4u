@@ -23,11 +23,16 @@ Eskalację przeprowadza użytkownik przy uruchamianiu zadania.
 
 1. **Ranga w drabinie zdolności** (`fast` → `balanced` → `powerful` → `flagship`) — który
    *model* jest użyty. Sterowane parametrem `--model`. Podstawowa ścieżka eskalacji.
-2. **Tier rozliczeniowy Gemini** (`standard` / `premium`) — który *klucz API* jest użyty.
+2. **Tier rozliczeniowy Gemini** (`free` / `premium`) — który *klucz API* jest użyty.
    Sterowane flagą `--premium`/`-p`. Osobna, poboczna ścieżka.
 
 Najpierw zdecyduj, czy zadanie w ogóle potrzebuje Gemini (modalność), dopiero potem — jeśli
 tak — który tier.
+
+> Tier darmowy nazywa się `free`, **nie `standard`** (zmiana 2026-08-23). „Standard"
+> sugerowało tryb domyślny — a Gemini nim był tylko historycznie i przestał być; dziś
+> domyślny jest najtańszy Claude. Nazwa myliła dokładnie w tym miejscu, w którym
+> potrzebna jest jednoznaczność, bo od niej zależy, którym kluczem poleci zapytanie.
 
 ### Dlaczego dwa klucze Gemini, a nie jeden z przełącznikiem
 
@@ -50,11 +55,11 @@ nie wie nic o tierach i nie powinien.
 ## Gemini: kiedy sięgać
 
 Sięgaj świadomie, gdy zadanie ma **realny atut modalności Gemini** (obrazy/wideo, grounding
-Search/Maps, bardzo duży kontekst). Wtedy zaczynasz od tieru standard, potem premium.
+Search/Maps, bardzo duży kontekst). Wtedy zaczynasz od tieru `free`, potem `premium`.
 
 Podział rosteru idzie osią **lite → flash → pro**, a tier rozliczeniowy krzyżuje się z nią
 (stąd `GEMINI_MODELS` jest zagnieżdżony, w przeciwieństwie do pozostałych providerów).
-W grupie standard zostajemy na tym, co darmowy projekt realnie obsługuje; w premium płacimy
+W grupie `free` zostajemy na tym, co darmowy projekt realnie obsługuje; w premium płacimy
 i tak, więc bierzemy najwyższą dostępną wersję.
 
 **Kiedy sięgać po `--premium`:** gdy darmowy tier faktycznie nie daje rady, a zadanie nie
@@ -69,7 +74,7 @@ przeskok gdzie indziej.
 3. powerful   ← balanced nie wystarcza, zadanie naprawdę trudne
 4. flagship   ← ostateczność w rodzinie Claude
 
-Gemini (standard → premium)  ← OSOBNA ścieżka, nie stopień tej drabiny
+Gemini (free → premium)     ← OSOBNA ścieżka, nie stopień tej drabiny
 ```
 
 **OpenAI — poza podstawową drabiną od 28.07.2026.** Adapter i klucz zostają, ale to nie jest
@@ -79,13 +84,25 @@ lokalne.
 
 ---
 
+## Rekomendacje z komentarzy kursu mają pierwszeństwo przy pierwszym podejściu
+
+Jeśli komentarze do zadania wskazują konkretny model jako opłacalny (duże oszczędności,
+wyraźnie lepsza skuteczność) albo **odradzają** jakiś model — zastosuj się do tego
+**przy pierwszych podejściach**, zamiast startować z domyślnego szczebla drabiny.
+Te wskazówki są empirią z cudzych przebiegów, opłaconą cudzymi tokenami; drabina jest
+heurystyką na wypadek, gdy takiej empirii nie ma. Dopiero gdy rekomendacja zawiedzie,
+wracasz do normalnej eskalacji.
+
+Gdzie szukać: `tasks/sXX/requirements/source/community-intel.md` i `doc/community_notes.md`
+w folderze zadania.
+
 ## Kiedy eskalować model
 
 | Sygnał | Akcja |
 |---|---|
 | Złe wyniki przy prostym zadaniu | Popraw prompt, spróbuj ponownie — nie eskaluj od razu |
 | Konsekwentne błędy w logice (3+ próby) | Poziom wyżej w drabinie (`fast` → `balanced` → …) |
-| Realna modalność Gemini (obrazy, grounding, ogromny kontekst) | Gemini standard, potem `--premium` |
+| Realna modalność Gemini (obrazy, grounding, ogromny kontekst) | Gemini `free`, potem `--premium` |
 | Function calling z wieloma narzędziami | Zacznij od `balanced`, eskaluj do `powerful` |
 | Ostry limit czasu (np. `windpower` — 40 s) | `fast` — albo Gemini, jeśli modalność też gra rolę |
 | Zadanie agentowe wielokrokowe | `balanced`, nie `fast` |
@@ -103,7 +120,7 @@ uv run run.py solve s01e02
 uv run run.py solve s01e02 --model <ANTHROPIC_MODELS["balanced"]>
 
 # Modalność Gemini — osobna ścieżka, nie eskalacja drabiny
-uv run run.py solve s01e02 --model <GEMINI_MODELS["standard"]["balanced"]>
+uv run run.py solve s01e02 --model <GEMINI_MODELS["free"]["balanced"]>
 uv run run.py solve s01e02 --model <GEMINI_MODELS["premium"]["balanced"]> --premium
 ```
 
@@ -160,7 +177,7 @@ Pozostałe różnice, nieujęte w kodzie:
 Klucze docelowo w systemowym keyring — patrz `strategy/secrets-management.md`.
 
 ```bash
-GEMINI_API_KEY           # tier standard — projekt Google Cloud BEZ billingu
+GEMINI_API_KEY           # tier free — projekt Google Cloud BEZ billingu
 GEMINI_API_KEY_PREMIUM   # tier premium  — osobny projekt Z billingiem, wymagany przy --premium
 OPENAI_API_KEY
 ANTHROPIC_API_KEY

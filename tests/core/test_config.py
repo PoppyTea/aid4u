@@ -104,20 +104,31 @@ def test_properties_env_direct_defaults(clean_config):
         assert clean_config.hub_base_url == "https://hub.ag3nts.org"
 
 
-def test_gemini_key_for_tier_standard(clean_config):
+def test_gemini_key_for_tier_free(clean_config):
     with patch.object(
-        Config, "gemini_key", new_callable=lambda: property(lambda self: "standard_key")
+        Config, "gemini_key", new_callable=lambda: property(lambda self: "free_key")
     ):
         with patch.object(
             Config, "gemini_key_premium", new_callable=lambda: property(lambda self: "premium_key")
         ):
-            assert clean_config.gemini_key_for_tier("standard") == "standard_key"
-            assert clean_config.gemini_key_for_tier() == "standard_key"
+            assert clean_config.gemini_key_for_tier("free") == "free_key"
+            assert clean_config.gemini_key_for_tier() == "free_key"
+
+
+@pytest.mark.parametrize("bad_tier", ["standard", "Free", "FREE", "", "darmowy"])
+def test_gemini_key_for_tier_rejects_unknown_tier(clean_config, bad_tier):
+    """
+    Literówka w nazwie tieru musi paść od razu, nie po cichu zwrócić klucz darmowy.
+    `standard` jest tu celowo — to dawna nazwa tieru `free` (zmiana 2026-08-23), więc
+    stary wywołujący ma dostać jasny błąd zamiast pozornie działać.
+    """
+    with pytest.raises(ValueError, match="Nieznany tier Gemini"):
+        clean_config.gemini_key_for_tier(bad_tier)
 
 
 def test_gemini_key_for_tier_premium(clean_config):
     with patch.object(
-        Config, "gemini_key", new_callable=lambda: property(lambda self: "standard_key")
+        Config, "gemini_key", new_callable=lambda: property(lambda self: "free_key")
     ):
         with patch.object(
             Config, "gemini_key_premium", new_callable=lambda: property(lambda self: "premium_key")

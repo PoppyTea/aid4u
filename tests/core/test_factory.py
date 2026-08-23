@@ -11,7 +11,7 @@ from core.llm.factory import create_provider
 
 def _fake_config(**overrides) -> MagicMock:
     cfg = MagicMock()
-    cfg.gemini_key = overrides.get("gemini_key", "standard_key")
+    cfg.gemini_key = overrides.get("gemini_key", "free_key")
     cfg.gemini_key_premium = overrides.get("gemini_key_premium", "premium_key")
     cfg.anthropic_key = overrides.get("anthropic_key", "anthropic_key")
     cfg.openai_key = overrides.get("openai_key", "openai_key")
@@ -19,28 +19,28 @@ def _fake_config(**overrides) -> MagicMock:
     # gemini_key_for_tier to prawdziwa metoda w Config (nie property) — MagicMock
     # domyślnie nie wie, że ma delegować do gemini_key/gemini_key_premium, więc
     # odtwarzamy tu jej rzeczywistą logikę.
-    cfg.gemini_key_for_tier.side_effect = lambda tier="standard": (
+    cfg.gemini_key_for_tier.side_effect = lambda tier="free": (
         cfg.gemini_key_premium if tier == "premium" else cfg.gemini_key
     )
     return cfg
 
 
 class TestGeminiTierRouting:
-    def test_default_tier_uses_standard_key(self):
+    def test_default_tier_uses_free_key(self):
         cfg = _fake_config()
         with patch(
             "core.llm.adapters.gemini.GeminiAdapter.__init__", return_value=None
         ) as mock_init:
             create_provider("gemini-2.5-flash", cfg)
-            mock_init.assert_called_once_with(api_key="standard_key", model="gemini-2.5-flash")
+            mock_init.assert_called_once_with(api_key="free_key", model="gemini-2.5-flash")
 
-    def test_explicit_standard_tier_uses_standard_key(self):
+    def test_explicit_free_tier_uses_free_key(self):
         cfg = _fake_config()
         with patch(
             "core.llm.adapters.gemini.GeminiAdapter.__init__", return_value=None
         ) as mock_init:
-            create_provider("gemini-2.5-flash", cfg, tier="standard")
-            mock_init.assert_called_once_with(api_key="standard_key", model="gemini-2.5-flash")
+            create_provider("gemini-2.5-flash", cfg, tier="free")
+            mock_init.assert_called_once_with(api_key="free_key", model="gemini-2.5-flash")
 
     def test_premium_tier_uses_premium_key(self):
         cfg = _fake_config()
@@ -55,7 +55,7 @@ class TestGeminiTierRouting:
         with pytest.raises(ValueError, match="GEMINI_API_KEY_PREMIUM"):
             create_provider("gemini-3.7-flash", cfg, tier="premium")
 
-    def test_missing_standard_key_raises(self):
+    def test_missing_free_key_raises(self):
         cfg = _fake_config(gemini_key="")
         with pytest.raises(ValueError, match="GEMINI_API_KEY nie jest ustawiony"):
             create_provider("gemini-2.5-flash", cfg)
@@ -143,9 +143,9 @@ class TestModelAllowlist:
             "core.llm.adapters.gemini.GeminiAdapter.__init__", return_value=None
         ) as mock_init:
             create_provider("gemini-9.9-flash", cfg, allow_unknown_model=True)
-            mock_init.assert_called_once_with(api_key="standard_key", model="gemini-9.9-flash")
+            mock_init.assert_called_once_with(api_key="free_key", model="gemini-9.9-flash")
 
-    def test_premium_only_model_passes_on_standard_tier(self):
+    def test_premium_only_model_passes_on_free_tier(self):
         """
         Roster jest sprawdzany jako jeden zbiór, nie per tier rozliczeniowy.
 
@@ -158,7 +158,7 @@ class TestModelAllowlist:
             "core.llm.adapters.gemini.GeminiAdapter.__init__", return_value=None
         ) as mock_init:
             create_provider("gemini-3.7-flash", cfg)
-            mock_init.assert_called_once_with(api_key="standard_key", model="gemini-3.7-flash")
+            mock_init.assert_called_once_with(api_key="free_key", model="gemini-3.7-flash")
 
     def test_unknown_prefix_message_unchanged(self):
         """Nieznany prefix to inna klasa błędu niż nieznany model — nie mieszać."""

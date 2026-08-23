@@ -44,9 +44,10 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
   Zasady wyboru i eskalacji (`fast` → `balanced` → `powerful` → `flagship`, oraz kiedy
   w ogóle sięgać po Gemini): `strategy/llm-selection.md`. Jeśli zauważysz, że zadanie
   skorzystałoby na mocniejszym modelu — zgłoś to natychmiast, nie męcz się słabszym.
-  > ⚠️ Domyślny `--model` w `run.py` to model Gemini, a `strategy/llm-selection.md` każe
-  > zaczynać od najtańszego Claude. Rozjazd świadomie nierozstrzygnięty — do decyzji przy
-  > najbliższym zadaniu, które faktycznie użyje LLM.
+  **Wyjątek — rekomendacje z komentarzy kursu biją drabinę przy pierwszym podejściu.**
+  Jeśli komentarze wskazują konkretny model jako opłacalny albo któryś odradzają, zastosuj
+  się do tego zamiast startować z domyślnego szczebla; to empiria opłacona cudzymi tokenami.
+  Do normalnej eskalacji wracasz dopiero, gdy rekomendacja zawiedzie.
 - **Subagenci / równoległość:** jeśli zadanie jest na tyle proste, że masz pewność iż
   poradzi sobie Haiku 4.5 — zaproponuj zlecenie albo sam wyślij subagenta. Rozważ pracę nad
   kilkoma zadaniami równolegle, jeśli to przyspieszy dojście do 20 flag.

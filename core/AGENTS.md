@@ -25,7 +25,7 @@ Contains the architectural heart of the system: LLM clients, task management bas
     failure surfaces seconds later, wrapped by the SDK. This is not hypothetical — the
     project default was once the nonexistent `gemini-3.1-flash`, found only by
     `client.models.list()` on 2026-08-16.
-  - `GEMINI_MODELS` is nested (`standard`/`premium` → capability tier) because Gemini is
+  - `GEMINI_MODELS` is nested (`free`/`premium` → capability tier) because Gemini is
     the only provider crossing a **billing** tier with a **capability** tier. Validation
     flattens the roster: the billing tier picks the *key*, not which models exist, so
     splitting the allowlist per tier would reject valid ids for no gain.
@@ -35,7 +35,7 @@ Contains the architectural heart of the system: LLM clients, task management bas
     **real call per key**, not `models.list()` alone. Measured 2026-08-23: `models.list()`
     happily returned `gemini-2.5-flash-lite` and `gemini-2.5-pro`, both of which answer
     404 on either key, and `gemini-2.5-flash` answers 404 on the premium key while working
-    on the standard one ("no longer available to new users" — the free project is
+    on the free one ("no longer available to new users" — the free project is
     grandfathered). The global catalogue does not answer "can *this* key call it".
     OpenRouter has no roster (adapter unimplemented, AID-61).
   - **`GeminiAdapter._thinking_config()` picks the thinking contract by model family** —
