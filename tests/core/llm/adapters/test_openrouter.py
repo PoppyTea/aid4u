@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import openai
 import pytest
 from unittest.mock import MagicMock, patch
 from pydantic import BaseModel
@@ -78,6 +79,9 @@ def test_openrouter_adapter_complete(mock_openai_client) -> None:
         ],
         max_tokens=1024,
         temperature=0.0,
+        # `omit` to sentinel SDK — „nie ustawiaj tego parametru". Jawny sentinel zamiast
+        # warunkowego rozpakowania `**{...}`, które gubiło rozpoznanie przeciążenia.
+        reasoning_effort=openai.omit,
     )
 
     # Verify response

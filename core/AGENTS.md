@@ -38,11 +38,30 @@ Contains the architectural heart of the system: LLM clients, task management bas
     on the free one ("no longer available to new users" — the free project is
     grandfathered). The global catalogue does not answer "can *this* key call it".
     OpenRouter has no roster (adapter unimplemented, AID-61).
-  - **`GeminiAdapter._thinking_config()` picks the thinking contract by model family** —
-    2.5.x takes `thinking_budget`, 3.x takes `thinking_level`, and mixing both in one
-    request is a 400. `gemini-3.1-pro-preview` additionally rejects a zero budget outright
-    ("This model only works in thinking mode"), so hardcoding `thinking_budget=0` breaks
-    `complete_structured()` for the premium `powerful` tier.
+- **Thinking levels are one provider-agnostic ladder, defined in `core/llm/thinking.py`.**
+  `none | minimal | low | medium | high | xhigh | max`, borrowed verbatim from
+  `openai.types.shared.ReasoningEffort` — the only provider with named levels covering the
+  whole scale. Adapters never translate levels themselves; they call the module and pass the
+  result through. `thinking=None` (the default) leaves the provider's own default alone and
+  is **not** the same as `"none"`, which explicitly disables thinking.
+  - Providers disagree about what they accept, so an unreachable level raises
+    `ThinkingNotSupported` **before the request goes out**, never as a 400 from the API.
+    The full support matrix, every cell measured with a live call on 2026-08-23, lives in
+    the module docstring — do not restate it elsewhere.
+  - Anthropic has no named levels, so ours map to `budget_tokens` as a **percentage of
+    `max_tokens`** (`max` = 80%, leaving room for the answer itself). Two hard API limits
+    make this leaky: budget must be `>= 1024` **and** strictly `< max_tokens`, so with the
+    default `max_tokens=1024` no level except `none` is reachable. The gate says which
+    number to raise `max_tokens` to instead of silently clamping.
+  - Two traps that documentation does not warn about: `ThinkingLevel.MINIMAL` exists in the
+    Gemini SDK enum but every model rejects it with a 400, and Gemini 3.x accepts
+    `thinking_budget=0` even though it is otherwise driven by `thinking_level` — which is
+    what makes `none` reachable there. `-pro` models are the exception, refusing to disable
+    thinking at all.
+  - **With thinking on, Anthropic returns a `ThinkingBlock` as `content[0]`.** Reading
+    `content[0].text` blindly raises `AttributeError`; `_first_text()` scans for the first
+    text block instead. Unit tests could not catch this — the fakes returned a single text
+    block, and it surfaced only on a live call.
 - All external **LLM provider** API interactions MUST go through `core/llm/client.py`
   (Anthropic/Gemini/OpenAI/OpenRouter — the providers `core/llm/adapters/` abstracts
   over). This does NOT cover observability/telemetry calls (Langfuse, Logfire) —

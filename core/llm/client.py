@@ -20,6 +20,7 @@ from typing import Any, Callable, TypeVar
 from pydantic import BaseModel
 
 from core.llm.base import LLMProvider
+from core.llm.thinking import ThinkingLevel
 from core.llm.middleware import CostTrackMiddleware, ProviderCallMiddleware, RateLimitMiddleware
 from core.llm.tool_errors import format_tool_error
 from core.llm.types import LLMMessage, Tool
@@ -60,9 +61,15 @@ class LLMClient:
         system: str | None = None,
         max_tokens: int = 1024,
         prompt_name: str | None = None,
+        thinking: ThinkingLevel | None = None,
     ) -> str:
         """
         Proste wywołanie tekstowe. Zwraca string.
+
+        `thinking`: wspólna drabina poziomów myślenia (`core/llm/thinking.py`).
+        `None` zostawia domyślne dostawcy — to NIE to samo co `"none"`, które myślenie
+        jawnie wyłącza. Nie każdy poziom jest osiągalny u każdego dostawcy; nieosiągalny
+        daje `ThinkingNotSupported` przed wysłaniem zapytania, nie 400 z API.
 
         `prompt_name`: nazwa promptu zarejestrowana wcześniej przez
         `core.observability.prompts.sync_prompt()` — jeśli podana, generacja
@@ -70,7 +77,11 @@ class LLMClient:
         Opcjonalne — brak podania po prostu nie linkuje generacji do żadnego promptu.
         """
         response = self._chain.handle(
-            messages, system=system, max_tokens=max_tokens, prompt_name=prompt_name
+            messages,
+            system=system,
+            max_tokens=max_tokens,
+            prompt_name=prompt_name,
+            thinking=thinking,
         )
         return response.content
 

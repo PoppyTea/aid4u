@@ -17,6 +17,7 @@ from typing import TypeVar
 
 from pydantic import BaseModel
 
+from core.llm.thinking import ThinkingLevel
 from core.llm.types import LLMMessage, LLMResponse, Tool
 
 T = TypeVar("T", bound=BaseModel)
@@ -33,8 +34,15 @@ class LLMProvider(ABC):
         system: str | None = None,
         max_tokens: int = 1024,
         temperature: float | None = 0.0,
+        thinking: ThinkingLevel | None = None,
     ) -> LLMResponse:
-        """Jedno wywołanie tekstowe."""
+        """
+        Jedno wywołanie tekstowe.
+
+        `thinking=None` zostawia domyślne dostawcy — nie jest tym samym co `"none"`,
+        które myślenie jawnie **wyłącza**. Poziomy i to, który dostawca który obsługuje:
+        `core/llm/thinking.py`.
+        """
         ...
 
     @abstractmethod

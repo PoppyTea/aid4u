@@ -129,3 +129,39 @@ def test_complete_structured_invalid_json(adapter):
 
         with pytest.raises(ValidationError):
             adapter.complete_structured(messages=[LLMMessage.user("Hello")], schema=DummySchema)
+
+
+def test_thinking_block_before_text_does_not_break_extraction():
+    """
+    Regresja zmierzona 2026-08-23: przy włączonym myśleniu Anthropic zwraca
+    `ThinkingBlock` jako `content[0]`, a ten nie ma `.text`. Ślepe `content[0].text`
+    dawało `AttributeError` w środku przebiegu. Testy jednostkowe tego nie widziały,
+    bo atrapy zwracały pojedynczy blok tekstowy — złapane dopiero żywym wywołaniem.
+    """
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock, patch
+
+    from core.llm.adapters.anthropic import AnthropicAdapter
+    from core.llm.types import LLMMessage
+
+    response = SimpleNamespace(
+        content=[
+            SimpleNamespace(type="thinking", thinking="rozumowanie modelu"),
+            SimpleNamespace(type="text", text="właściwa odpowiedź"),
+        ],
+        model="claude-test",
+        usage=SimpleNamespace(input_tokens=10, output_tokens=5),
+    )
+    with patch("anthropic.Anthropic") as mock_anthropic:
+        client = MagicMock()
+        mock_anthropic.return_value = client
+        client.messages.create.return_value = response
+
+        adapter = AnthropicAdapter(api_key="k")
+        result = adapter.complete([LLMMessage.user("hi")], max_tokens=3000, thinking="low")
+
+    assert result.content == "właściwa odpowiedź"
+    assert client.messages.create.call_args.kwargs["thinking"] == {
+        "type": "enabled",
+        "budget_tokens": 1024,
+    }
