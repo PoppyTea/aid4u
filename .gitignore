@@ -1,13 +1,13 @@
 # Claude Code — lokalne nadpisania (nie commituj)
 .claude/settings.local.json
 
+# Środowisko
 __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
 dist/
 
-# Środowisko
 .env
 .env.vps
 .env*
@@ -21,7 +21,7 @@ agents/
 4th-devs/
 /**/.tw_task/**/*
 
-
+**/*tmp.md
 # Cache danych z hubu (nie commituj — każdy ma swój apikey)
 .cache/
 
@@ -51,10 +51,6 @@ data/run-history/
 # Coverage
 .coverage
 html[cov]/
-
-# uv
-uv.lock
-.python-version
 
 # filetypes
 *.txt
