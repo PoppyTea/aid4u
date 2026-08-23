@@ -30,7 +30,10 @@ OPENAI_MODELS = {
 
 
 class OpenAIAdapter(LLMProvider):
+    """Adapter konwertujący OpenAI SDK do interfejsu LLMProvider."""
+
     def __init__(self, api_key: str, model: str = OPENAI_MODELS["fast"]) -> None:
+        """Tworzy klienta OpenAI dla podanego klucza i identyfikatora modelu."""
         import openai
 
         self._client = openai.OpenAI(api_key=api_key)

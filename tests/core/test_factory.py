@@ -111,16 +111,19 @@ class TestModelAllowlist:
     """
 
     def test_hallucinated_gemini_model_rejected(self):
+        """Martwe ID przechodzi router jako poprawny `gemini-*` — musi paść tutaj."""
         cfg = _fake_config()
         with pytest.raises(ValueError, match="Nieznany model Gemini"):
             create_provider("gemini-1.5-pro", cfg)
 
     def test_hallucinated_openai_model_rejected(self):
+        """`gpt-4o` to najczęstszy odruch z korpusu treningowego."""
         cfg = _fake_config()
         with pytest.raises(ValueError, match="Nieznany model OpenAI"):
             create_provider("gpt-4o", cfg)
 
     def test_hallucinated_anthropic_model_rejected(self):
+        """Rodzina claude-3 zniknęła z drabiny, ale nie z pamięci modeli."""
         cfg = _fake_config()
         with pytest.raises(ValueError, match="Nieznany model Anthropic"):
             create_provider("claude-3-5-sonnet-20241022", cfg)

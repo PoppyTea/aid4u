@@ -31,8 +31,18 @@ Contains the architectural heart of the system: LLM clients, task management bas
     splitting the allowlist per tier would reject valid ids for no gain.
   - Escape hatch: `create_provider(..., allow_unknown_model=True)` / `--allow-unknown-model`.
     Using it means the roster needs updating — it is a signal, not a workaround.
-  - Freshness is maintained by `deprecation-watch`, which diffs the rosters against live
-    `models.list()` weekly. OpenRouter has no roster (adapter unimplemented, AID-61).
+  - Freshness is maintained by `deprecation-watch` weekly — and it must probe with a
+    **real call per key**, not `models.list()` alone. Measured 2026-08-23: `models.list()`
+    happily returned `gemini-2.5-flash-lite` and `gemini-2.5-pro`, both of which answer
+    404 on either key, and `gemini-2.5-flash` answers 404 on the premium key while working
+    on the standard one ("no longer available to new users" — the free project is
+    grandfathered). The global catalogue does not answer "can *this* key call it".
+    OpenRouter has no roster (adapter unimplemented, AID-61).
+  - **`GeminiAdapter._thinking_config()` picks the thinking contract by model family** —
+    2.5.x takes `thinking_budget`, 3.x takes `thinking_level`, and mixing both in one
+    request is a 400. `gemini-3.1-pro-preview` additionally rejects a zero budget outright
+    ("This model only works in thinking mode"), so hardcoding `thinking_budget=0` breaks
+    `complete_structured()` for the premium `powerful` tier.
 - All external **LLM provider** API interactions MUST go through `core/llm/client.py`
   (Anthropic/Gemini/OpenAI/OpenRouter — the providers `core/llm/adapters/` abstracts
   over). This does NOT cover observability/telemetry calls (Langfuse, Logfire) —
