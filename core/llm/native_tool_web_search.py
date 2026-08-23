@@ -53,7 +53,6 @@ def complete_with_web_search(
     model: str = ANTHROPIC_MODELS["fast"],
     system: str | None = None,
     max_tokens: int = 1024,
-    temperature: float = 0.0,
     max_uses: int = 5,
     allowed_domains: list[str] | None = None,
     blocked_domains: list[str] | None = None,
@@ -83,7 +82,6 @@ def complete_with_web_search(
     kwargs: dict[str, Any] = {
         "model": model,
         "max_tokens": max_tokens,
-        "temperature": temperature,
         "tools": [tool],
         "messages": _build_messages(messages),
     }

@@ -42,7 +42,6 @@ class AnthropicAdapter(LLMProvider):
         *,
         system: str | None = None,
         max_tokens: int = 1024,
-        temperature: float = 0.0,
     ) -> LLMResponse:
         kwargs: dict[str, Any] = {
             "model": self._model,

@@ -106,7 +106,6 @@ def run_bash_tool_loop(
     model: str = ANTHROPIC_MODELS["fast"],
     system: str | None = None,
     max_tokens: int = 4096,
-    temperature: float = 0.0,
     max_iterations: int = 10,
 ) -> LLMResponse:
     """
@@ -129,7 +128,6 @@ def run_bash_tool_loop(
         kwargs: dict[str, Any] = {
             "model": model,
             "max_tokens": max_tokens,
-            "temperature": temperature,
             "tools": [tool],
             "messages": messages,
         }

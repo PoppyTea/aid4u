@@ -80,7 +80,6 @@ class GeminiAdapter(LLMProvider):
         *,
         system: str | None = None,
         max_tokens: int = 1024,
-        temperature: float = 0.0,
     ) -> LLMResponse:
         from google.genai import types
 
@@ -91,7 +90,11 @@ class GeminiAdapter(LLMProvider):
         config = types.GenerateContentConfig(
             system_instruction=system,
             max_output_tokens=max_tokens,
-            temperature=temperature,
+            # Przypięte 0.0, nie parametr: warstwa nigdy nie potrzebowała innej wartości
+            # (`LLMClient` nawet jej nie przekazywał), ale samo 0.0 pracuje — zdejmij je,
+            # a przebiegi przestaną być porównywalne kosztowo i wynikowo. Sterowanie
+            # samplingiem to osobna sprawa, patrz AID-52.
+            temperature=0.0,
         )
 
         response = self._client.models.generate_content(

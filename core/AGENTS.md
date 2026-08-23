@@ -59,6 +59,24 @@ Contains the architectural heart of the system: LLM clients, task management bas
     code_execution, bash, text_editor) call `anthropic.Anthropic` directly instead of
     going through `LLMClient`. These aren't portable across providers, so they're a
     deliberate, narrow exception — not a precedent for other bypasses.
+- **No `temperature` anywhere in the LLM layer's public surface** (removed 2026-08-23 with
+  the Anthropic 1.0.0 migration). The parameter sat on the ABC and all three adapters, but
+  `LLMClient` never forwarded it, so nothing above the adapters could ever set it — and
+  anthropic 1.0.0 dropped it from `messages` outright (`TypeError: Messages.create() got
+  an unexpected keyword argument 'temperature'`, measured). Gemini and OpenAI still send a
+  **pinned `temperature=0.0`**: the knob was dead, the value was not — dropping it too
+  would make runs non-reproducible and cost comparisons meaningless. Anthropic is now
+  asymmetric here (its API no longer takes the parameter at all); deliberate sampling
+  control across providers is AID-52, still open.
+- **The Anthropic SDK rides on `httpx2`, the rest of the repo on `httpx` 0.x.** Both are
+  installed and coexist (`anthropic` 1.0.0 imports `httpx2` 2.9.1, verified). Two
+  consequences worth knowing before touching either: `core/llm/tool_errors.py` inspects
+  `response` structurally rather than importing `httpx` — a deliberate choice that now
+  pays off, since an `httpx`-typed `isinstance` check would silently stop matching
+  Anthropic errors. And Logfire tracing is **unaffected**: `instrument_anthropic()` patches
+  `client.messages.*` at the SDK level, not the transport, confirmed by a live call
+  emitting a full `gen_ai.*` span on 1.0.0. Do not "fix" this by aligning the two http
+  stacks — nothing is broken.
 - Any new task MUST inherit from `core/tasks/base.py` and be decorated with `@task`.
 - `BaseTask._save_output()` writes every `solve()` run's submitted answer to
   `data/run-history/` (`sXXeYY-MMDD-HHMMSS-<slug>.<ext>`), automatically, after

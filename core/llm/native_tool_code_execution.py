@@ -71,7 +71,6 @@ def complete_with_code_execution(
     model: str = ANTHROPIC_MODELS["fast"],
     system: str | None = None,
     max_tokens: int = 1024,
-    temperature: float = 0.0,
 ) -> CodeExecutionOutcome:
     """Jedno wywołanie z natywnym narzędziem code_execution."""
     client = _get_client(api_key)
@@ -79,7 +78,6 @@ def complete_with_code_execution(
     kwargs: dict[str, Any] = {
         "model": model,
         "max_tokens": max_tokens,
-        "temperature": temperature,
         "tools": [{"type": _TOOL_TYPE, "name": "code_execution"}],
         "messages": _build_messages(messages),
     }

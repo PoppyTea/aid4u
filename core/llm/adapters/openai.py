@@ -49,7 +49,6 @@ class OpenAIAdapter(LLMProvider):
         *,
         system: str | None = None,
         max_tokens: int = 1024,
-        temperature: float = 0.0,
     ) -> LLMResponse:
         oai_messages: list[dict] = []
         if system:
@@ -60,7 +59,8 @@ class OpenAIAdapter(LLMProvider):
             model=self._model,
             messages=oai_messages,
             max_tokens=max_tokens,
-            temperature=temperature,
+            # Przypięte 0.0 — patrz komentarz w adapterze Gemini.
+            temperature=0.0,
         )
         return LLMResponse(
             content=response.choices[0].message.content or "",

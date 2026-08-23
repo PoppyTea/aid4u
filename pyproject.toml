@@ -5,9 +5,9 @@ description = "AI Devs 4 — task runner"
 requires-python = ">=3.13"
 dependencies = [
     # LLM providers
-    "anthropic>=0.40",
-    "openai>=1.50",
-    "google-genai>=2.1.0",
+    "anthropic>=1.0",
+    "openai>=2.48",
+    "google-genai>=2.3",
     # Observability — musi być zainicjalizowane jako PIERWSZE (przed jakimkolwiek I/O)
     "logfire[httpx,system-metrics]>=2.0",
     "logfire-api>=2.0",
