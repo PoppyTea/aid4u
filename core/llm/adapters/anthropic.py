@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from pydantic import BaseModel
 
 from core.llm.base import LLMProvider
 from core.llm.types import LLMMessage, LLMResponse, Tool, ToolCall
+
+if TYPE_CHECKING:
+    from anthropic.types import Message, TextBlock
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -42,8 +45,16 @@ class AnthropicAdapter(LLMProvider):
         *,
         system: str | None = None,
         max_tokens: int = 1024,
-        temperature: float = 0.0,
+        temperature: float | None = 0.0,
     ) -> LLMResponse:
+        """
+        Uzupełnia rozmowę. `temperature` jest przyjmowane dla zgodności z ABC, ale
+        **celowo nieprzekazywane** — anthropic 1.0.0 usunęło ten parametr z metod
+        `messages` (`TypeError: Messages.create() got an unexpected keyword argument
+        'temperature'`, zmierzone 2026-08-23). Adapter ignorował je zresztą i wcześniej,
+        tylko po cichu; jeśli kiedyś będzie potrzebne, droga wiedzie przez
+        `extra_body={"temperature": ...}` (patrz MIGRATION.md SDK) — patrz AID-52.
+        """
         kwargs: dict[str, Any] = {
             "model": self._model,
             "max_tokens": max_tokens,
@@ -52,9 +63,14 @@ class AnthropicAdapter(LLMProvider):
         if system:
             kwargs["system"] = system
 
-        response = self._client.messages.create(**kwargs)
+        # `**kwargs` typu `dict[str, Any]` gubi rozpoznanie przeciążenia, więc SDK
+        # deklaruje `Message | Stream`. Nie streamujemy tu nigdzie — `stream` nie trafia
+        # do `kwargs` w żadnej ścieżce — więc zawężamy jawnie zamiast rozgałęziać.
+        response = cast("Message", self._client.messages.create(**kwargs))
         return LLMResponse(
-            content=response.content[0].text,
+            # `content[0]` to unia bloków — tylko `TextBlock` ma `.text`, a przy zapytaniu
+            # bez `tools` Anthropic zwraca właśnie ten wariant.
+            content=cast("TextBlock", response.content[0]).text,
             model=response.model,
             input_tokens=response.usage.input_tokens,
             output_tokens=response.usage.output_tokens,
@@ -114,14 +130,21 @@ class AnthropicAdapter(LLMProvider):
         if system:
             kwargs["system"] = system
 
-        response = self._client.messages.create(**kwargs)
+        # `**kwargs` typu `dict[str, Any]` gubi rozpoznanie przeciążenia, więc SDK
+        # deklaruje `Message | Stream`. Nie streamujemy tu nigdzie — `stream` nie trafia
+        # do `kwargs` w żadnej ścieżce — więc zawężamy jawnie zamiast rozgałęziać.
+        response = cast("Message", self._client.messages.create(**kwargs))
 
         tool_calls = [
             ToolCall(id=block.id, name=block.name, arguments=block.input)
             for block in response.content
             if block.type == "tool_use"
         ]
-        text = " ".join(block.text for block in response.content if block.type == "text")
+        # `block.type == "text"` nie zawęża unii bloków dla pyrefly (część wariantów,
+        # m.in. wyniki narzędzi natywnych, nie ma `.text`) — `isinstance` zawęża.
+        text = " ".join(
+            cast("TextBlock", block).text for block in response.content if block.type == "text"
+        )
 
         return LLMResponse(
             content=text,

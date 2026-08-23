@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar, cast
 
 from pydantic import BaseModel
 
 from core.llm.base import LLMProvider
 from core.llm.types import LLMMessage, LLMResponse, Tool, ToolCall
+
+if TYPE_CHECKING:
+    from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolParam
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -49,24 +52,30 @@ class OpenAIAdapter(LLMProvider):
         *,
         system: str | None = None,
         max_tokens: int = 1024,
-        temperature: float = 0.0,
+        temperature: float | None = 0.0,
     ) -> LLMResponse:
+        """Uzupełnia rozmowę jednym wywołaniem; `temperature=None` zostawia domyślne providera."""
         oai_messages: list[dict] = []
         if system:
             oai_messages.append({"role": "system", "content": system})
         oai_messages += [{"role": m.role, "content": m.content} for m in messages]
 
+        # `oai_messages`/`oai_tools` budujemy jako gołe `dict`, a SDK oczekuje TypedDict-ów
+        # (`ChatCompletionMessageParam`), więc bez zawężenia żadne przeciążenie nie pasuje.
         response = self._client.chat.completions.create(
             model=self._model,
-            messages=oai_messages,
+            messages=cast("list[ChatCompletionMessageParam]", oai_messages),
             max_tokens=max_tokens,
             temperature=temperature,
         )
+        # `usage` jest opcjonalne w schemacie OpenAI — ten sam wzorzec obronny co
+        # w adapterze Gemini; brak licznika to 0, nie AttributeError w środku przebiegu.
+        usage = response.usage
         return LLMResponse(
             content=response.choices[0].message.content or "",
             model=response.model,
-            input_tokens=response.usage.prompt_tokens,
-            output_tokens=response.usage.completion_tokens,
+            input_tokens=usage.prompt_tokens if usage else 0,
+            output_tokens=usage.completion_tokens if usage else 0,
         )
 
     def complete_structured(
@@ -121,19 +130,23 @@ class OpenAIAdapter(LLMProvider):
 
         response = self._client.chat.completions.create(
             model=self._model,
-            messages=oai_messages,
-            tools=oai_tools,
+            messages=cast("list[ChatCompletionMessageParam]", oai_messages),
+            tools=cast("list[ChatCompletionToolParam]", oai_tools),
             max_tokens=4096,
         )
         msg = response.choices[0].message
+        # `msg.tool_calls` to unia: wywołania funkcyjne mają `.function`, ale custom tools
+        # (nowość schematu OpenAI) już nie. Filtrujemy po `type`, zamiast zakładać.
         tool_calls = [
             ToolCall(id=tc.id, name=tc.function.name, arguments=json.loads(tc.function.arguments))
             for tc in (msg.tool_calls or [])
+            if tc.type == "function"
         ]
+        usage = response.usage
         return LLMResponse(
             content=msg.content or "",
             model=response.model,
-            input_tokens=response.usage.prompt_tokens,
-            output_tokens=response.usage.completion_tokens,
+            input_tokens=usage.prompt_tokens if usage else 0,
+            output_tokens=usage.completion_tokens if usage else 0,
             tool_calls=tool_calls,
         )

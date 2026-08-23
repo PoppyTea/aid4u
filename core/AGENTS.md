@@ -59,6 +59,24 @@ Contains the architectural heart of the system: LLM clients, task management bas
     code_execution, bash, text_editor) call `anthropic.Anthropic` directly instead of
     going through `LLMClient`. These aren't portable across providers, so they're a
     deliberate, narrow exception — not a precedent for other bypasses.
+- **`temperature` is provider-asymmetric, by force of the Anthropic API.** It stays a real
+  parameter on the ABC and on the Gemini/OpenAI adapters (default `0.0`, `None` means "leave
+  the provider default"). The `AnthropicAdapter` accepts it for ABC conformance and
+  **deliberately does not forward it** — anthropic 1.0.0 removed it from `messages`
+  (`TypeError: Messages.create() got an unexpected keyword argument 'temperature'`,
+  measured 2026-08-23). Note this asymmetry predates the migration: the adapter accepted
+  the argument and silently dropped it long before, so the SDK only made it visible. If
+  Anthropic ever needs it, the route is `extra_body={"temperature": ...}`. Deliberate
+  cross-provider sampling control is AID-52, still open.
+- **The Anthropic SDK rides on `httpx2`, the rest of the repo on `httpx` 0.x.** Both are
+  installed and coexist (`anthropic` 1.0.0 imports `httpx2` 2.9.1, verified). Two
+  consequences worth knowing before touching either: `core/llm/tool_errors.py` inspects
+  `response` structurally rather than importing `httpx` — a deliberate choice that now
+  pays off, since an `httpx`-typed `isinstance` check would silently stop matching
+  Anthropic errors. And Logfire tracing is **unaffected**: `instrument_anthropic()` patches
+  `client.messages.*` at the SDK level, not the transport, confirmed by a live call
+  emitting a full `gen_ai.*` span on 1.0.0. Do not "fix" this by aligning the two http
+  stacks — nothing is broken.
 - Any new task MUST inherit from `core/tasks/base.py` and be decorated with `@task`.
 - `BaseTask._save_output()` writes every `solve()` run's submitted answer to
   `data/run-history/` (`sXXeYY-MMDD-HHMMSS-<slug>.<ext>`), automatically, after

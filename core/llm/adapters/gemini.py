@@ -80,8 +80,9 @@ class GeminiAdapter(LLMProvider):
         *,
         system: str | None = None,
         max_tokens: int = 1024,
-        temperature: float = 0.0,
+        temperature: float | None = 0.0,
     ) -> LLMResponse:
+        """Uzupełnia rozmowę jednym wywołaniem; `temperature=None` zostawia domyślne providera."""
         from google.genai import types
 
         # Zachowujemy dotychczasową logikę łączenia wiadomości w jeden prompt,
@@ -122,12 +123,12 @@ class GeminiAdapter(LLMProvider):
         Wybiera sposób sterowania myśleniem wg rodziny modelu — te dwa kontrakty się
         wykluczają i zmieszanie ich w jednym zapytaniu daje 400.
 
-        Rodzina 2.5 przyjmuje `thinking_budget=0` (wyłączenie myślenia). Rodzina 3.x
-        oczekuje `thinking_level`, a `gemini-3.1-pro-preview` odrzuca budżet zerowy
-        wprost: *"Budget 0 is invalid. This model only works in thinking mode."*
-        (zmierzone realnym wywołaniem 2026-08-23). `"low"` to najbliższy odpowiednik
-        dawnej intencji — myślenie zjada tę samą pulę co `max_output_tokens`, więc przy
-        wsadowym structured output potrafiło uciąć JSON w połowie.
+        Rodzina 2.5     -> `thinking_budget=0` (wyłączenie myślenia).
+        Rodzina 3.x     -> `thinking_level`,
+        Rodzina 3.x PRO -> MUSI mieć włączone myślenie. Najniższy poziom to "low".
+        Uwaga: myślenie zjada tę samą pulę co `max_output_tokens`, więc przy
+        "structured output" potrafiło uciąć JSON w połowie.
+        (wszystko zmierzone realnymi wywołaniami 2026-08-23).
         """
         from google.genai import types
 

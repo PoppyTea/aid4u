@@ -146,7 +146,13 @@ def test_default_model_comes_from_anthropic_models_fast(mock_anthropic_client):
     assert call_kwargs["model"] == ANTHROPIC_MODELS["fast"]
 
 
-def test_temperature_defaults_to_zero_and_is_forwarded(mock_anthropic_client):
+def test_temperature_is_never_sent(mock_anthropic_client):
+    """
+    anthropic 1.0.0 usunęło `temperature` z metod `messages` — wysłanie go daje
+    `TypeError: Messages.create() got an unexpected keyword argument 'temperature'`
+    (zmierzone 2026-08-23). Kontrakt odwrócony: wcześniej ten test wymagał, żeby
+    parametr był przekazywany.
+    """
     mock_client = MagicMock()
     mock_anthropic_client.return_value = mock_client
     mock_client.messages.create.return_value = _fake_response(
@@ -154,11 +160,11 @@ def test_temperature_defaults_to_zero_and_is_forwarded(mock_anthropic_client):
     )
 
     complete_with_web_search("test-key", [LLMMessage.user("Pytanie")])
-    complete_with_web_search("test-key", [LLMMessage.user("Pytanie")], temperature=0.7)
+    complete_with_web_search("test-key", [LLMMessage.user("Pytanie")])
 
-    calls = mock_client.messages.create.call_args_list
-    assert calls[0].kwargs["temperature"] == 0.0
-    assert calls[1].kwargs["temperature"] == 0.7
+    assert mock_client.messages.create.call_count == 2
+    for call in mock_client.messages.create.call_args_list:
+        assert "temperature" not in call.kwargs
 
 
 def test_system_role_message_is_rejected(mock_anthropic_client):
