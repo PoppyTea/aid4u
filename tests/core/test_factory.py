@@ -47,13 +47,13 @@ class TestGeminiTierRouting:
         with patch(
             "core.llm.adapters.gemini.GeminiAdapter.__init__", return_value=None
         ) as mock_init:
-            create_provider("gemini-3.5-flash", cfg, tier="premium")
-            mock_init.assert_called_once_with(api_key="premium_key", model="gemini-3.5-flash")
+            create_provider("gemini-3.7-flash", cfg, tier="premium")
+            mock_init.assert_called_once_with(api_key="premium_key", model="gemini-3.7-flash")
 
     def test_premium_tier_missing_key_raises(self):
         cfg = _fake_config(gemini_key_premium="")
         with pytest.raises(ValueError, match="GEMINI_API_KEY_PREMIUM"):
-            create_provider("gemini-3.5-flash", cfg, tier="premium")
+            create_provider("gemini-3.7-flash", cfg, tier="premium")
 
     def test_missing_standard_key_raises(self):
         cfg = _fake_config(gemini_key="")
@@ -86,8 +86,8 @@ class TestTierIgnoredByOtherProviders:
         with patch(
             "core.llm.adapters.openai.OpenAIAdapter.__init__", return_value=None
         ) as mock_init:
-            create_provider("gpt-5.4-nano", cfg, tier="premium")
-            mock_init.assert_called_once_with(api_key="openai_key", model="gpt-5.4-nano")
+            create_provider("gpt-5.6-luna", cfg, tier="premium")
+            mock_init.assert_called_once_with(api_key="openai_key", model="gpt-5.6-luna")
 
     def test_openrouter_ignores_tier(self):
         cfg = _fake_config()
@@ -97,4 +97,82 @@ class TestTierIgnoredByOtherProviders:
             create_provider("openrouter/meta-llama/llama-3-8b", cfg, tier="premium")
             mock_init.assert_called_once_with(
                 api_key="openrouter_key", model="openrouter/meta-llama/llama-3-8b"
+            )
+
+
+class TestModelAllowlist:
+    """
+    Bariera antyhalucynacyjna: sam prefix nie odsiewa martwych ID.
+
+    `gemini-1.5-pro` przechodzi router jako poprawny `gemini-*`, więc bez tej warstwy
+    trafiłby do API i dał błąd dopiero po kilkunastu sekundach, opakowany przez SDK.
+    Regresja realna, nie hipotetyczna — domyślnym modelem repo był kiedyś nieistniejący
+    `gemini-3.1-flash` (patrz docstring `GeminiAdapter`).
+    """
+
+    def test_hallucinated_gemini_model_rejected(self):
+        """Martwe ID przechodzi router jako poprawny `gemini-*` — musi paść tutaj."""
+        cfg = _fake_config()
+        with pytest.raises(ValueError, match="Nieznany model Gemini"):
+            create_provider("gemini-1.5-pro", cfg)
+
+    def test_hallucinated_openai_model_rejected(self):
+        """`gpt-4o` to najczęstszy odruch z korpusu treningowego."""
+        cfg = _fake_config()
+        with pytest.raises(ValueError, match="Nieznany model OpenAI"):
+            create_provider("gpt-4o", cfg)
+
+    def test_hallucinated_anthropic_model_rejected(self):
+        """Rodzina claude-3 zniknęła z drabiny, ale nie z pamięci modeli."""
+        cfg = _fake_config()
+        with pytest.raises(ValueError, match="Nieznany model Anthropic"):
+            create_provider("claude-3-5-sonnet-20241022", cfg)
+
+    def test_error_lists_allowed_ids(self):
+        """Komunikat musi podać poprawną odpowiedź, nie tylko odmówić."""
+        cfg = _fake_config()
+        with pytest.raises(ValueError, match="Nieznany model OpenAI") as exc:
+            create_provider("gpt-4o", cfg)
+        assert "gpt-5.6-luna" in str(exc.value)
+        assert "gpt-5.6-sol" in str(exc.value)
+
+    def test_allow_unknown_model_bypasses_check(self):
+        """Furtka na model nowszy niż roster."""
+        cfg = _fake_config()
+        with patch(
+            "core.llm.adapters.gemini.GeminiAdapter.__init__", return_value=None
+        ) as mock_init:
+            create_provider("gemini-9.9-flash", cfg, allow_unknown_model=True)
+            mock_init.assert_called_once_with(api_key="standard_key", model="gemini-9.9-flash")
+
+    def test_premium_only_model_passes_on_standard_tier(self):
+        """
+        Roster jest sprawdzany jako jeden zbiór, nie per tier rozliczeniowy.
+
+        Tier decyduje o KLUCZU (osobny projekt Google Cloud), nie o tym, czy model
+        istnieje. Rozdzielanie allowlisty per tier dałoby fałszywe odrzucenia przy
+        ręcznym `--model`, a prawdziwy błąd (brak quoty) i tak przychodzi z API.
+        """
+        cfg = _fake_config()
+        with patch(
+            "core.llm.adapters.gemini.GeminiAdapter.__init__", return_value=None
+        ) as mock_init:
+            create_provider("gemini-3.7-flash", cfg)
+            mock_init.assert_called_once_with(api_key="standard_key", model="gemini-3.7-flash")
+
+    def test_unknown_prefix_message_unchanged(self):
+        """Nieznany prefix to inna klasa błędu niż nieznany model — nie mieszać."""
+        cfg = _fake_config()
+        with pytest.raises(ValueError, match="Nieznany prefix modelu"):
+            create_provider("llama-3-70b", cfg)
+
+    def test_openrouter_skips_model_check(self):
+        """OpenRouter nie ma rostera — adapter niezaimplementowany (AID-61)."""
+        cfg = _fake_config()
+        with patch(
+            "core.llm.adapters.openrouter.OpenRouterAdapter.__init__", return_value=None
+        ) as mock_init:
+            create_provider("openrouter/cokolwiek/model", cfg)
+            mock_init.assert_called_once_with(
+                api_key="openrouter_key", model="openrouter/cokolwiek/model"
             )

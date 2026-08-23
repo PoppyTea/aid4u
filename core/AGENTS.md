@@ -14,6 +14,35 @@ Contains the architectural heart of the system: LLM clients, task management bas
   (soft-404 detection) — independent of `HubClient`, not hub-specific.
 
 ## Local Contracts
+- **Model identifiers are validated at construction, against the adapter's roster.**
+  `ANTHROPIC_MODELS` / `OPENAI_MODELS` / `GEMINI_MODELS` in `core/llm/adapters/` are the
+  single source of truth for which models this project may use; `create_provider()`
+  rejects anything else with a `ValueError` that lists the allowed ids. Do not restate
+  model ids in prose anywhere — a second list drifts silently, and `strategy/` is
+  explicitly barred from holding this kind of state.
+  - The rosters are an **anti-hallucination barrier**, not a cheatsheet. Prefix routing
+    alone does not catch a dead id: `gemini-1.5-pro` passes as a valid `gemini-*` and the
+    failure surfaces seconds later, wrapped by the SDK. This is not hypothetical — the
+    project default was once the nonexistent `gemini-3.1-flash`, found only by
+    `client.models.list()` on 2026-08-16.
+  - `GEMINI_MODELS` is nested (`standard`/`premium` → capability tier) because Gemini is
+    the only provider crossing a **billing** tier with a **capability** tier. Validation
+    flattens the roster: the billing tier picks the *key*, not which models exist, so
+    splitting the allowlist per tier would reject valid ids for no gain.
+  - Escape hatch: `create_provider(..., allow_unknown_model=True)` / `--allow-unknown-model`.
+    Using it means the roster needs updating — it is a signal, not a workaround.
+  - Freshness is maintained by `deprecation-watch` weekly — and it must probe with a
+    **real call per key**, not `models.list()` alone. Measured 2026-08-23: `models.list()`
+    happily returned `gemini-2.5-flash-lite` and `gemini-2.5-pro`, both of which answer
+    404 on either key, and `gemini-2.5-flash` answers 404 on the premium key while working
+    on the standard one ("no longer available to new users" — the free project is
+    grandfathered). The global catalogue does not answer "can *this* key call it".
+    OpenRouter has no roster (adapter unimplemented, AID-61).
+  - **`GeminiAdapter._thinking_config()` picks the thinking contract by model family** —
+    2.5.x takes `thinking_budget`, 3.x takes `thinking_level`, and mixing both in one
+    request is a 400. `gemini-3.1-pro-preview` additionally rejects a zero budget outright
+    ("This model only works in thinking mode"), so hardcoding `thinking_budget=0` breaks
+    `complete_structured()` for the premium `powerful` tier.
 - All external **LLM provider** API interactions MUST go through `core/llm/client.py`
   (Anthropic/Gemini/OpenAI/OpenRouter — the providers `core/llm/adapters/` abstracts
   over). This does NOT cover observability/telemetry calls (Langfuse, Logfire) —

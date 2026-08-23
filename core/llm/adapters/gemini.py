@@ -11,21 +11,60 @@ from core.llm.types import LLMMessage, LLMResponse, Tool
 
 T = TypeVar("T", bound=BaseModel)
 
+# Drabina eskalacji Gemini. Jedyny provider o DWÓCH osiach: tier rozliczeniowy
+# (standard/premium — osobne projekty Google Cloud, osobne klucze, patrz `factory.py`)
+# krzyżuje się z tierem zdolności (lite → flash → pro). Stąd zagnieżdżenie, którego nie
+# mają `ANTHROPIC_MODELS`/`OPENAI_MODELS`.
+#
+# To jest BARIERA ANTYHALUCYNACYJNA, nie ściągawka — `create_provider()` odrzuca każde ID
+# spoza tego słownika. Powód nie jest teoretyczny: domyślnym modelem tego repo był kiedyś
+# nieistniejący `gemini-3.1-flash`, wykryty dopiero przez `client.models.list()`
+# 2026-08-16 (patrz docstring klasy niżej).
+#
+# Weryfikacja: `deprecation-watch` diffuje ten roster cotygodniowo — realnym wywołaniem
+# per klucz, nie samym `models.list()` (powód niżej).
+GEMINI_MODELS = {
+    "standard": {
+        "fast": "gemini-3.5-flash-lite",
+        "balanced": "gemini-2.5-flash",  # domyślny model projektu
+        "powerful": "gemini-3.7-flash",
+    },
+    "premium": {
+        "fast": "gemini-3.5-flash-lite",
+        "balanced": "gemini-3.7-flash",
+        # Jedyny pro powyżej rodziny 2.5; istnieje wyłącznie jako `-preview`, więc Google
+        # może go zmienić albo wycofać bez zapowiedzi — `deprecation-watch` wyłapie to
+        # w tygodniu, w którym nastąpi. Na kluczu darmowym zwraca 429 (brak quoty), stąd
+        # inny `powerful` po stronie standard.
+        "powerful": "gemini-3.1-pro-preview",
+    },
+}
+
+# Rodzina 2.5 jest wygaszana i NIE nadaje się na nowe wpisy w rosterze. Zmierzone
+# 2026-08-23 realnym wywołaniem na obu kluczach: `gemini-2.5-flash-lite` i
+# `gemini-2.5-pro` dają 404 wszędzie, a `gemini-2.5-flash` żyje wyłącznie na starym
+# projekcie darmowym — na kluczu premium zwraca 404 z komunikatem "no longer available
+# to new users". Zostaje jako `standard`/`balanced`, bo to domyślny model projektu i
+# znana linia bazowa kosztu, ale jest grandfatherowany, nie wspierany.
+#
+# Lekcja szersza niż ten wpis: `client.models.list()` wymieniał wszystkie sześć modeli,
+# łącznie z tymi dającymi 404. Katalog globalny NIE odpowiada na pytanie "czy tym
+# kluczem to zawołam" — weryfikacja rostera musi iść realnym wywołaniem per klucz.
+
 
 class GeminiAdapter(LLMProvider):
     """
-    Adapter Gemini — domyślny model `gemini-2.5-flash`, zgodnie z `run.py` i
-    `strategy/llm-models.md` ("to jest wartość domyślna --model w run.py i
-    startowy punkt dla każdego zadania"). Poprzedni default (`gemini-3.1-flash`)
-    był nieistniejącym identyfikatorem — sprawdzone 2026-08-16 przez
-    `client.models.list()` na żywym kluczu: rodzina 3.1 ma `-flash-lite`,
-    `-flash-image`, `-pro-preview`, ale nie gołe `-flash`. Nawet gdyby istniał,
-    complete_structured() poniżej steruje myśleniem przez `thinking_budget`
-    (kontrakt 2.5.x) — model 3.x wymaga `thinking_level` i Google zwraca 400
-    przy zmieszaniu obu w jednym zapytaniu (patrz `strategy/llm-models.md`).
+    Adapter Gemini — domyślny model `GEMINI_MODELS["standard"]["balanced"]`, ten sam,
+    który `run.py` podaje jako domyślną wartość `--model`.
+
+    Poprzedni default (`gemini-3.1-flash`) był nieistniejącym identyfikatorem —
+    sprawdzone 2026-08-16 przez `client.models.list()` na żywym kluczu: rodzina 3.1 ma
+    `-flash-lite`, `-flash-image`, `-pro-preview`, ale nie gołe `-flash`. Ten epizod jest
+    powodem, dla którego `create_provider()` waliduje dziś ID wobec `GEMINI_MODELS`.
     """
 
-    def __init__(self, api_key: str, model: str = "gemini-2.5-flash") -> None:
+    def __init__(self, api_key: str, model: str = GEMINI_MODELS["standard"]["balanced"]) -> None:
+        """Tworzy klienta google-genai dla podanego klucza i identyfikatora modelu."""
         from google import genai
 
         self._client = genai.Client(api_key=api_key)
@@ -78,6 +117,24 @@ class GeminiAdapter(LLMProvider):
             output_tokens=output_tokens,
         )
 
+    def _thinking_config(self):
+        """
+        Wybiera sposób sterowania myśleniem wg rodziny modelu — te dwa kontrakty się
+        wykluczają i zmieszanie ich w jednym zapytaniu daje 400.
+
+        Rodzina 2.5 przyjmuje `thinking_budget=0` (wyłączenie myślenia). Rodzina 3.x
+        oczekuje `thinking_level`, a `gemini-3.1-pro-preview` odrzuca budżet zerowy
+        wprost: *"Budget 0 is invalid. This model only works in thinking mode."*
+        (zmierzone realnym wywołaniem 2026-08-23). `"low"` to najbliższy odpowiednik
+        dawnej intencji — myślenie zjada tę samą pulę co `max_output_tokens`, więc przy
+        wsadowym structured output potrafiło uciąć JSON w połowie.
+        """
+        from google.genai import types
+
+        if self._model_name.startswith("gemini-2."):
+            return types.ThinkingConfig(thinking_budget=0)
+        return types.ThinkingConfig(thinking_level="low")
+
     def complete_structured(
         self,
         messages: list[LLMMessage],
@@ -91,20 +148,13 @@ class GeminiAdapter(LLMProvider):
 
         # Nowy SDK wspiera natywnie response_schema (Pydantic),
         # co eliminuje potrzebę ręcznego parsowania JSON-a z Markdowna.
-        #
-        # thinking_budget=0: gemini-2.5-flash domyślnie ma włączone dynamiczne
-        # "myślenie" (thinkingBudget=-1), które zużywa TĘ SAMĄ pulę tokenów co
-        # max_output_tokens. Przy dłuższych/wsadowych odpowiedziach (np. tagowanie
-        # kilkudziesięciu rekordów) model potrafi zużyć cały budżet na wewnętrzne
-        # rozumowanie i urwać się w połowie JSON-a (patrz: dokumentacja Google,
-        # sekcja "Task complexity" — klasyfikacja to podręcznikowy przykład
-        # zadania, gdzie myślenie można i należy wyłączyć).
+        # Sterowanie myśleniem — patrz `_thinking_config()`.
         config = types.GenerateContentConfig(
             system_instruction=system,
             max_output_tokens=8192,
             response_mime_type="application/json",
             response_schema=schema,
-            thinking_config=types.ThinkingConfig(thinking_budget=0),
+            thinking_config=self._thinking_config(),
         )
 
         response = self._client.models.generate_content(
@@ -161,6 +211,7 @@ class GeminiAdapter(LLMProvider):
         system: str | None = None,
     ) -> LLMResponse:
         from google.genai import types
+
         from core.llm.types import ToolCall
 
         prompt = "\n".join(f"{m.role}: {m.content}" for m in messages)

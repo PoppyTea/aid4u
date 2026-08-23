@@ -87,11 +87,11 @@ def _save_flag(task_name: str, flag: str) -> None:
     _FLAGS_FILE.write_text(json.dumps(flags, indent=2, ensure_ascii=False))
 
 
-def _make_llm(model: str, *, premium: bool = False) -> LLMClient:
+def _make_llm(model: str, *, premium: bool = False, allow_unknown_model: bool = False) -> LLMClient:
     """Buduje LLMClient dla podanego modelu (i tieru Gemini standard/premium, jeśli dotyczy)."""
     cfg = get_config()
     tier = "premium" if premium else "standard"
-    provider = create_provider(model, cfg, tier=tier)
+    provider = create_provider(model, cfg, tier=tier, allow_unknown_model=allow_unknown_model)
     return LLMClient(provider)
 
 
@@ -109,6 +109,15 @@ def solve(
         help=(
             "Użyj płatnego tier Gemini (osobny klucz GEMINI_API_KEY_PREMIUM) zamiast "
             "darmowego. Dotyczy tylko modeli gemini-*; inni providerzy ignorują tę flagę."
+        ),
+    ),
+    allow_unknown_model: bool = typer.Option(
+        False,
+        "--allow-unknown-model",
+        help=(
+            "Pomiń sprawdzenie nazwy modelu wobec rostera adaptera. Potrzebne tylko dla "
+            "modelu nowszego niż roster — jeśli używasz tej flagi, dopisz model do "
+            "<PROVIDER>_MODELS w adapterze."
         ),
     ),
     dry_run: bool = typer.Option(False, "--dry-run", help="Pokaż odpowiedź bez wysyłania do hubu"),
@@ -139,7 +148,7 @@ def solve(
         raise typer.Exit(1)
 
     hub = HubClient()
-    llm = _make_llm(model, premium=premium)
+    llm = _make_llm(model, premium=premium, allow_unknown_model=allow_unknown_model)
     task_cls = TASK_REGISTRY[task_name]
     task_instance = task_cls(
         hub, llm, dry_run=dry_run, max_seconds=max_seconds, max_cost=max_cost
