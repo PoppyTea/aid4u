@@ -13,9 +13,24 @@ from core.llm.types import LLMMessage, LLMResponse, Tool, ToolCall
 
 T = TypeVar("T", bound=BaseModel)
 
+# Drabina eskalacji OpenAI. Rodzina 5.6 rozdziela generację od zdolności: numer mówi,
+# które to pokolenie, a Luna/Terra/Sol to trwałe tiery, które awansują własnym tempem.
+#
+# To jest BARIERA ANTYHALUCYNACYJNA, nie ściągawka — `create_provider()` odrzuca każde ID
+# spoza tego słownika. Modele z korpusu treningowego (`gpt-4o`, `gpt-4-turbo`) wchodzą
+# agentom pod palce odruchowo; ten słownik jest jedynym miejscem, które je zatrzymuje.
+# Zmiana wartości = świadoma decyzja o koszcie każdego przebiegu, nie porządki.
+# Weryfikacja: `deprecation-watch` diffuje to cotygodniowo wobec `client.models.list()`.
+OPENAI_MODELS = {
+    "fast": "gpt-5.6-luna",      # domyślny start — najtańszy ($0.20/$1.20 za 1M)
+    "balanced": "gpt-5.6-terra",  # Luna zawodzi — produkcyjne obciążenia ($2/$12)
+    "powerful": "gpt-5.6-sol",    # flagowiec ($5/$30)
+    "flagship": "gpt-5.6-sol",    # rodzina 5.6 nie ma czwartego stopnia
+}
+
 
 class OpenAIAdapter(LLMProvider):
-    def __init__(self, api_key: str, model: str = "gpt-5.4-nano") -> None:
+    def __init__(self, api_key: str, model: str = OPENAI_MODELS["fast"]) -> None:
         import openai
 
         self._client = openai.OpenAI(api_key=api_key)

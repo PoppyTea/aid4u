@@ -11,6 +11,35 @@ from core.llm.types import LLMMessage, LLMResponse, Tool
 
 T = TypeVar("T", bound=BaseModel)
 
+# Drabina eskalacji Gemini. Jedyny provider o DWÓCH osiach: tier rozliczeniowy
+# (standard/premium — osobne projekty Google Cloud, osobne klucze, patrz `factory.py`)
+# krzyżuje się z tierem zdolności (lite → flash → pro). Stąd zagnieżdżenie, którego nie
+# mają `ANTHROPIC_MODELS`/`OPENAI_MODELS`.
+#
+# To jest BARIERA ANTYHALUCYNACYJNA, nie ściągawka — `create_provider()` odrzuca każde ID
+# spoza tego słownika. Powód nie jest teoretyczny: domyślnym modelem tego repo był kiedyś
+# nieistniejący `gemini-3.1-flash`, wykryty dopiero przez `client.models.list()`
+# 2026-08-16 (patrz docstring klasy niżej).
+#
+# Standard zostaje na 2.5 — darmowy tier ma tam znane limity i to jest linia bazowa
+# kosztu, według której planujemy sezon. Weryfikacja: `deprecation-watch` diffuje to
+# cotygodniowo wobec `client.models.list()`.
+GEMINI_MODELS = {
+    "standard": {
+        "fast": "gemini-2.5-flash-lite",
+        "balanced": "gemini-2.5-flash",  # domyślny model projektu
+        "powerful": "gemini-2.5-pro",
+    },
+    "premium": {
+        "fast": "gemini-3.5-flash-lite",
+        "balanced": "gemini-3.7-flash",
+        # Jedyny pro powyżej rodziny 2.5 istnieje wyłącznie jako `-preview`; Google może
+        # go zmienić albo wycofać bez zapowiedzi. Świadomy wybór "najwyższy numer" —
+        # `deprecation-watch` wyłapie zniknięcie w tygodniu, w którym nastąpi.
+        "powerful": "gemini-3.1-pro-preview",
+    },
+}
+
 
 class GeminiAdapter(LLMProvider):
     """
@@ -25,7 +54,7 @@ class GeminiAdapter(LLMProvider):
     przy zmieszaniu obu w jednym zapytaniu (patrz `strategy/llm-models.md`).
     """
 
-    def __init__(self, api_key: str, model: str = "gemini-2.5-flash") -> None:
+    def __init__(self, api_key: str, model: str = GEMINI_MODELS["standard"]["balanced"]) -> None:
         from google import genai
 
         self._client = genai.Client(api_key=api_key)
@@ -161,6 +190,7 @@ class GeminiAdapter(LLMProvider):
         system: str | None = None,
     ) -> LLMResponse:
         from google.genai import types
+
         from core.llm.types import ToolCall
 
         prompt = "\n".join(f"{m.role}: {m.content}" for m in messages)

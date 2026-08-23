@@ -2,15 +2,19 @@
 Factory pattern — tworzy właściwy adapter na podstawie nazwy modelu.
 
 ⚠️  DOMYŚLNY MODEL PROJEKTU: gemini-2.5-flash
-    NIE zmieniaj domyślnych na gpt-4o, gpt-4o-mini ani modele gemini-2.0/1.5 (wycofane).
-    Eskalacja: Gemini (standard→premium) → OpenAI → Anthropic
-    Szczegóły: strategy/llm-models.md i strategy/llm-selection.md
+    Eskalacja: Gemini (standard→premium) → OpenAI → Anthropic (patrz strategy/llm-selection.md).
+
+    Dopuszczalne identyfikatory NIE są wypisane w tym pliku — źródłem prawdy są rostery
+    w adapterach (`ANTHROPIC_MODELS`, `OPENAI_MODELS`, `GEMINI_MODELS`), a `_check_model()`
+    niżej je egzekwuje. Lista w dwóch miejscach rozjeżdża się po cichu; lista w jednym,
+    sprawdzana przy konstrukcji, nie ma jak.
 
 Mapowanie prefixów (router):
     claude-*                      → AnthropicAdapter
-    gemini-*                      → GeminiAdapter  (gemini-2.5-*, gemini-3-*, gemini-3.1-*, gemini-3.5-*)
-    gpt-* / o1-* / o3-* / o4-*   → OpenAIAdapter  (gpt-5.4-*, gpt-5-*, gpt-4.1-*, o4-mini...)
-    openrouter/*                  → OpenRouterAdapter (TODO)
+    gemini-*                      → GeminiAdapter
+    gpt-* / o1-* / o3-* / o4-*   → OpenAIAdapter
+    openrouter/*                  → OpenRouterAdapter (bez rostera — adapter niezaimplementowany,
+                                    patrz AID-61; walidacja modelu go nie dotyczy)
 
 Tier (tylko Gemini):
     Free i paid tier Gemini API są związane z osobnymi projektami Google Cloud
@@ -23,11 +27,61 @@ Tier (tylko Gemini):
 
 from __future__ import annotations
 
+from typing import Any
+
 from core.config import Config
 from core.llm.base import LLMProvider
 
 
-def create_provider(model: str, config: Config, *, tier: str = "standard") -> LLMProvider:
+def _allowed_ids(roster: dict[str, Any]) -> set[str]:
+    """
+    Spłaszcza słownik modeli providera do zbioru dopuszczalnych identyfikatorów.
+
+    Przyjmuje oba kształty rosterów: płaski (`ANTHROPIC_MODELS`, `OPENAI_MODELS`) i
+    zagnieżdżony po tierze rozliczeniowym (`GEMINI_MODELS`). Sprawdzamy przynależność
+    wartości, nie ścieżkę do niej, więc różnica kształtów nie ma tu znaczenia.
+    """
+    ids: set[str] = set()
+    for value in roster.values():
+        if isinstance(value, dict):
+            ids.update(value.values())
+        else:
+            ids.add(value)
+    return ids
+
+
+def _check_model(model: str, roster: dict[str, Any], provider: str, allow_unknown: bool) -> None:
+    """
+    Odrzuca identyfikator modelu spoza rostera providera.
+
+    Bariera antyhalucynacyjna: modele z korpusu treningowego (`gpt-4o`, `gemini-1.5-pro`,
+    `claude-3-*`) wchodzą agentom pod palce odruchowo, a sam prefix ich nie odsiewa —
+    `gemini-1.5-pro` przechodzi jako poprawny `gemini-*` i martwe ID trafia do API, gdzie
+    daje błąd kilkanaście sekund później, opakowany przez SDK i bez wskazania przyczyny.
+    Tutaj pada natychmiast, z listą tego, co wolno.
+
+    `allow_unknown=True` przepuszcza wszystko — furtka na model nowszy niż roster.
+    Jej użycie jest sygnałem, że roster w adapterze wymaga uzupełnienia.
+    """
+    if allow_unknown:
+        return
+    allowed = _allowed_ids(roster)
+    if model not in allowed:
+        raise ValueError(
+            f"Nieznany model {provider}: '{model}'. "
+            f"Dopuszczalne: {', '.join(sorted(allowed))}. "
+            "Jeśli to nowy model, dopisz go do rostera w adapterze albo użyj "
+            "--allow-unknown-model (allow_unknown_model=True)."
+        )
+
+
+def create_provider(
+    model: str,
+    config: Config,
+    *,
+    tier: str = "standard",
+    allow_unknown_model: bool = False,
+) -> LLMProvider:
     """
     Fabryka adapterów. Wywołaj przez LLMClient, nie bezpośrednio.
 
@@ -36,28 +90,33 @@ def create_provider(model: str, config: Config, *, tier: str = "standard") -> LL
         config: Singleton konfiguracji z kluczami API
         tier: 'standard' (domyślny, darmowy) lub 'premium' (płatny) — dotyczy
             wyłącznie modeli gemini-*, ignorowane przez pozostałych providerów.
+        allow_unknown_model: pomija sprawdzenie modelu wobec rostera adaptera.
+            Domyślnie `False` — patrz `_check_model()`.
     """
     model_lower = model.lower()
 
     if model_lower.startswith("claude"):
-        from core.llm.adapters.anthropic import AnthropicAdapter
+        from core.llm.adapters.anthropic import ANTHROPIC_MODELS, AnthropicAdapter
 
+        _check_model(model, ANTHROPIC_MODELS, "Anthropic", allow_unknown_model)
         return AnthropicAdapter(api_key=config.anthropic_key, model=model)
 
     if model_lower.startswith(("gpt-", "o1-", "o3-", "o4-", "o3", "o4")):
-        from core.llm.adapters.openai import OpenAIAdapter
+        from core.llm.adapters.openai import OPENAI_MODELS, OpenAIAdapter
 
         if not config.openai_key:
             raise ValueError("OPENAI_API_KEY nie jest ustawiony")
+        _check_model(model, OPENAI_MODELS, "OpenAI", allow_unknown_model)
         return OpenAIAdapter(api_key=config.openai_key, model=model)
 
     if model_lower.startswith("gemini"):
-        from core.llm.adapters.gemini import GeminiAdapter
+        from core.llm.adapters.gemini import GEMINI_MODELS, GeminiAdapter
 
         api_key = config.gemini_key_for_tier(tier)
         if not api_key:
             key_name = "GEMINI_API_KEY_PREMIUM" if tier == "premium" else "GEMINI_API_KEY"
             raise ValueError(f"{key_name} nie jest ustawiony (tier='{tier}')")
+        _check_model(model, GEMINI_MODELS, "Gemini", allow_unknown_model)
         return GeminiAdapter(api_key=api_key, model=model)
 
     if model_lower.startswith("openrouter/"):

@@ -14,6 +14,25 @@ Contains the architectural heart of the system: LLM clients, task management bas
   (soft-404 detection) — independent of `HubClient`, not hub-specific.
 
 ## Local Contracts
+- **Model identifiers are validated at construction, against the adapter's roster.**
+  `ANTHROPIC_MODELS` / `OPENAI_MODELS` / `GEMINI_MODELS` in `core/llm/adapters/` are the
+  single source of truth for which models this project may use; `create_provider()`
+  rejects anything else with a `ValueError` that lists the allowed ids. Do not restate
+  model ids in prose anywhere — a second list drifts silently, and `strategy/` is
+  explicitly barred from holding this kind of state.
+  - The rosters are an **anti-hallucination barrier**, not a cheatsheet. Prefix routing
+    alone does not catch a dead id: `gemini-1.5-pro` passes as a valid `gemini-*` and the
+    failure surfaces seconds later, wrapped by the SDK. This is not hypothetical — the
+    project default was once the nonexistent `gemini-3.1-flash`, found only by
+    `client.models.list()` on 2026-08-16.
+  - `GEMINI_MODELS` is nested (`standard`/`premium` → capability tier) because Gemini is
+    the only provider crossing a **billing** tier with a **capability** tier. Validation
+    flattens the roster: the billing tier picks the *key*, not which models exist, so
+    splitting the allowlist per tier would reject valid ids for no gain.
+  - Escape hatch: `create_provider(..., allow_unknown_model=True)` / `--allow-unknown-model`.
+    Using it means the roster needs updating — it is a signal, not a workaround.
+  - Freshness is maintained by `deprecation-watch`, which diffs the rosters against live
+    `models.list()` weekly. OpenRouter has no roster (adapter unimplemented, AID-61).
 - All external **LLM provider** API interactions MUST go through `core/llm/client.py`
   (Anthropic/Gemini/OpenAI/OpenRouter — the providers `core/llm/adapters/` abstracts
   over). This does NOT cover observability/telemetry calls (Langfuse, Logfire) —
