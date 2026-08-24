@@ -23,6 +23,7 @@ import json
 import sys
 
 from rich.console import Console
+from rich.markup import escape
 
 from core.hub import HubClient
 
@@ -34,14 +35,22 @@ _console = Console()
 def main(argv: list[str]) -> int:
     """Wysyła kolejno podane wywołania narzędzi i wypisuje odpowiedzi huba."""
     if len(argv) < 2:
-        _console.print("[red]Użycie:[/] uv run python -m tasks.s04e05_foodwarehouse.probe '{\"tool\":\"help\"}' [...]")
+        _console.print(
+            "[red]Użycie:[/] uv run python -m tasks.s04e05_foodwarehouse.probe "
+            r"""'{"tool":"help"}' \[...]"""
+        )
         return 2
 
     hub = HubClient()
     for raw in argv[1:]:
-        _console.print(f"\n[bold cyan]→ {raw}[/]")
+        # `escape()` tutaj i `markup=False` niżej: Rich traktuje `[cokolwiek]` jako
+        # znacznik stylu i przy nieznanej nazwie **po cichu usuwa go z wyjścia**.
+        # Odpowiedzi tego API to JSON pełen tablic, więc bez tego sonda pokazywałaby
+        # okrojoną treść — a jej jedynym zadaniem jest pokazać, co hub naprawdę odesłał.
+        _console.print(f"\n[bold cyan]→ {escape(raw)}[/]")
         response = hub.submit(HUB_TASK, json.loads(raw))
-        _console.print(json.dumps(response, indent=2, ensure_ascii=False))
+        rendered = json.dumps(response, indent=2, ensure_ascii=False)
+        _console.print(rendered, markup=False, highlight=False)
     return 0
 
 
