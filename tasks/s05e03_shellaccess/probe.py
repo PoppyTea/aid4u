@@ -28,6 +28,7 @@ import json
 import sys
 
 from rich.console import Console
+from rich.markup import escape
 
 from core.hub import HubClient
 from core.runtime import CommandRejected
@@ -39,12 +40,20 @@ _console = Console()
 def main(argv: list[str]) -> int:
     """Wykonuje kolejno polecenia podane w argv i wypisuje ich wynik."""
     if len(argv) < 2:
-        _console.print("[red]Użycie:[/] uv run python -m tasks.s05e03_shellaccess.probe '<polecenie>' [...]")
+        _console.print(
+            "[red]Użycie:[/] uv run python -m tasks.s05e03_shellaccess.probe "
+            r"'<polecenie>' \[...]"
+        )
         return 2
 
     shell = ArchiveShell(HubClient())
     for index, cmd in enumerate(argv[1:], start=1):
-        _console.print(f"\n[bold cyan]$ {cmd}[/]")
+        # `escape()` i `markup=False` niżej nie są kosmetyką: Rich traktuje `[cokolwiek]`
+        # jako znacznik stylu i przy nieznanej nazwie **po cichu usuwa go z wyjścia**.
+        # Sonda drukuje surową treść zdalnego archiwum, więc bez tego fragment wyniku
+        # `grep` z nawiasem kwadratowym zniknąłby bez śladu — a to narzędzie, którego
+        # jedynym zadaniem jest pokazać, co naprawdę jest po drugiej stronie.
+        _console.print(f"\n[bold cyan]$ {escape(cmd)}[/]")
         try:
             output = shell.run(cmd)
         except CommandRejected as rejected:
@@ -54,11 +63,15 @@ def main(argv: list[str]) -> int:
         # Pełna odpowiedź tylko dla pierwszego polecenia — dalej interesuje nas
         # sam stdout, a `code`/`message` powtarzają się bez wartości informacyjnej.
         if index == 1:
-            _console.print("[dim]" + json.dumps(
+            status = json.dumps(
                 {k: v for k, v in shell.last_response.items() if k != "output"},
                 ensure_ascii=False,
-            ) + "[/]")
-        _console.print(output or "[dim](puste)[/]")
+            )
+            _console.print(f"[dim]{escape(status)}[/]")
+        if output:
+            _console.print(output, markup=False, highlight=False)
+        else:
+            _console.print("[dim](puste)[/]")
     return 0
 
 

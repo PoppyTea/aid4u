@@ -39,11 +39,11 @@ from core.runtime import check_abort, check_command
 
 HUB_TASK = "shellaccess"
 
-# Pola, w których hub potrafi zwrócić stdout komendy. Kolejność ma znaczenie:
-# `output` jest polem właściwym, reszta to fallback na wypadek innego kształtu
-# odpowiedzi przy błędzie. Ustalone sondą, nie z dokumentacji — treść zadania
-# opisuje tylko żądanie, nie odpowiedź.
-_OUTPUT_FIELDS = ("output", "message", "msg", "answer")
+# Kształt odpowiedzi ustalony sondą, nie z dokumentacji — treść zadania opisuje samo
+# żądanie. `output` niesie stdout, reszta to fallback na wypadek innego kształtu przy
+# błędzie (wtedy komunikat jest jedyną informacją, jaką mamy).
+_STDOUT_FIELD = "output"
+_FALLBACK_FIELDS = ("message", "msg", "answer")
 
 
 class ArchiveShell:
@@ -85,7 +85,16 @@ def extract_output(response: dict) -> str:
     Osobna funkcja, a nie metoda, żeby dało się ją przetestować bez sieci i bez
     budowania `HubClient` (który przy konstrukcji sięga po klucz API).
     """
-    for key in _OUTPUT_FIELDS:
+    # Pusty `output` jest PRAWIDŁOWYM wynikiem, nie brakiem wyniku: `grep` bez trafień
+    # zwraca dokładnie to. Gdyby pusty string spadał do fallbacku, polecenie bez trafień
+    # raportowałoby `"Command executed."` jako swój stdout — czyli „nic nie znalazłem"
+    # wyglądałoby jak „coś znalazłem". Stąd `output` sprawdzany osobno i po TYPIE,
+    # nie po prawdziwości.
+    stdout = response.get(_STDOUT_FIELD)
+    if isinstance(stdout, str):
+        return stdout
+
+    for key in _FALLBACK_FIELDS:
         value = response.get(key)
         if isinstance(value, str) and value:
             return value

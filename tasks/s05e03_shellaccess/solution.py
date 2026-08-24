@@ -36,6 +36,7 @@ from datetime import date, timedelta
 
 import logfire
 from rich.console import Console
+from rich.markup import escape
 
 from core.runtime import check_command
 from core.tasks import BaseTask, task
@@ -98,9 +99,11 @@ class ShellAccessTask(BaseTask):
         # siedzi zakodowana base64 w treści zadania.
         meeting_date = found_date - timedelta(days=1)
 
+        # `escape()` na nazwie miasta — wartość pochodzi ze zdalnego archiwum, a Rich
+        # po cichu usuwa z wyjścia wszystko, co wygląda na znacznik stylu.
         _console.print(
             f"[bold]Zdarzenie:[/] {found_date} → [bold]spotkanie:[/] {meeting_date} · "
-            f"[cyan]{city}[/] ({latitude}, {longitude})"
+            f"[cyan]{escape(city)}[/] ({latitude}, {longitude})"
         )
         return {"cmd": build_echo_command(meeting_date, city, latitude, longitude)}
 
@@ -138,7 +141,9 @@ class ShellAccessTask(BaseTask):
         latitude = _LATITUDE_RE.search(output)
         longitude = _LONGITUDE_RE.search(output)
         if not latitude or not longitude:
-            raise ArchiveLookupError(f"Brak współrzędnych dla entry_id={entry_id}: {output[:200]!r}")
+            raise ArchiveLookupError(
+                f"Brak współrzędnych dla entry_id={entry_id}: {output[:200]!r}"
+            )
 
         return latitude["value"], longitude["value"]
 

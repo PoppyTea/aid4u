@@ -13,12 +13,8 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 > to świadomy, tymczasowy kompromis, nie zmiana celu.
 
 > 🏁 **KOŃCÓWKA — 16 flag głównych, 4 do certyfikatu** (deadline 01.09.2026).
-> **s05e03 zaliczone (2026-08-24)** — `{FLG:HUGEFILE}`, za pierwszym podejściem, zero LLM,
-> koszt $0.00. Otwiera Sezon 5 i przy okazji zdejmuje ryzyko, które mogło wywrócić cały
-> plan końcówki: **hub nie gatuje S05 na wcześniejszych epizodach**. Kolejność ataku
-> (`s05e03 → s04e05 → s04e03 → s04e04 → s05e04`) i uzasadnienia:
-> `tasks/s04/requirements/season.md`.
-
+> Stan piątki, kolejność ataku i uzasadnienia: `tasks/s04/requirements/season.md`.
+>
 > ✅ **SEZON 3 ZAMKNIĘTY (5/5)** — 15 flag w `.flags.json`
 > (`s01e03_proxy`, żywy serwer/ngrok, strukturalnie nie przechodzi przez
 > `solve()→submit()`, więc jego flaga nigdy nie trafia do pliku; cecha tego typu
