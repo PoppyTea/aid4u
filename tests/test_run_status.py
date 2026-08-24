@@ -110,16 +110,23 @@ class TestLiczeniePostepow:
 class TestStalychKursu:
     """Mianownik i próg — stałe kursu, nie pochodne stanu repo."""
 
-    def test_mianownik_jest_rozmiarem_kursu_nie_liczba_implementacji(self):
+    def test_mianownik_jest_rozmiarem_kursu(self):
         """
         Dawniej `total = len(TASK_REGISTRY)`, więc mianownik rósł razem z kodem i licznik
         go przegonił, wypisując „15/14 zadań". Kurs ma 25 epizodów niezależnie od tego,
         ile z nich mamy zaimplementowanych.
-        """
-        from core.tasks import TASK_REGISTRY
 
+        Celowo NIE asertujemy `COURSE_TASK_COUNT != len(TASK_REGISTRY)` — to byłaby
+        asercja przypadku, nie kontraktu: pęknie w dniu, w którym zaimplementujemy
+        wszystkie 25 zadań, choć kod będzie wtedy zupełnie poprawny.
+        """
         assert COURSE_TASK_COUNT == 25
-        assert COURSE_TASK_COUNT != len(TASK_REGISTRY)
+
+    def test_licznik_nie_przekracza_mianownika_przy_komplecie(self):
+        """Rzeczywisty objaw dawnej usterki: `done` przebijało `total`, dając „15/14"."""
+        flags = {f"s0{i // 5 + 1}e0{i % 5 + 1}": "{FLG:X}" for i in range(25)}
+        done, _ = count_solved(flags)
+        assert done <= COURSE_TASK_COUNT
 
     def test_prog_certyfikatu(self):
         assert CERTIFICATE_THRESHOLD == 20

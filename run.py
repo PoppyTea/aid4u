@@ -275,10 +275,10 @@ def status() -> None:
         console.print(f"[magenta]Flagi sekretne:[/] {len(secrets)} (poza licznikiem)")
     console.print()
 
-    if not main_flags and not outside and not secrets:
-        console.print("[dim]Brak zdobytych flag. Zacznij od: uv run run.py solve s01e01[/]")
-        return
-
+    # Dawna gałąź „Brak zdobytych flag. Zacznij od…" została tu usunięta, a nie
+    # przepisana: `SOLVED_OUTSIDE_FLAGS_FILE` jest niepuste, więc warunek „nic nie
+    # zaliczone" nie może już być prawdziwy. Zostawiony byłby martwym kodem udającym
+    # osiągalną ścieżkę.
     table = Table(show_header=True)
     table.add_column("Zadanie", style="cyan")
     table.add_column("Flaga", style="green")
