@@ -128,6 +128,13 @@ klucze o RÓŻNYCH nazwach po obu stronach), a zdarzenie pasujące do frazy jest
 Transportem jest `/verify`, nie `/api/shell`; hub zwraca **400 przy zbyt dużym stdout**,
 więc zapytania muszą być wąskie z założenia.
 
+**Sezon 4** (w toku): `s04e05_foodwarehouse/` — **scaffolding** (2026-08-24),
+`solution.py` do utworzenia. Rekonesans na żywo zamknął punkt #2 listy empirycznej
+(**e05 NIE zależy od e04** — `help` odpowiada bez zaliczonego e04) i punkt #6
+(**odpowiedź `database` jest paginowana**: `totalTableRows: 40` przy `limit: 30`).
+Druga, nieprzewidziana pułapka: **rozjazd wielkości liter** między `food4cities.json`
+(z małej) a `destinations.name` (z wielkiej).
+
 **Końcówka kursu (S04+S05, rekonesans 2026-08-20):** `s04/` — `requirements/` z rankingiem
 **wszystkich 10 pozostałych zadań** (S04E01–E05 i S05E01–E05) i wyborem piątki dającej
 certyfikat; nie kontener implementacji, patrz `s04/AGENTS.md`. Zakres celowo obejmuje oba

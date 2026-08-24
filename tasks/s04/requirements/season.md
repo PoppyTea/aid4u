@@ -104,10 +104,9 @@ Kolejność poniżej to kolejność ryzyka.
    ciągłość narracyjna, nie techniczna. **Konsekwencja: wybrana piątka zostaje bez
    zmian**, w tym s05e04. Ryzyko, które mogło wywrócić plan w całości, zdjęte pierwszym
    wywołaniem — dokładnie po to s05e03 było pierwsze.
-2. **Czy s04e05 nie zależy od s04e04?** Fabuła e05 mówi „Mamy już informacje, które miasto
-   oferuje jaki towar" (efekt e04), ale `food4cities.json` dostajemy wprost i destinations
-   są w SQLite. **Test:** `{"tool":"help"}` na `foodwarehouse`. Jeśli zależy — zamienić
-   kolejność 2↔4.
+2. ✅ **ROZSTRZYGNIĘTE 2026-08-24 — NIE zależy.** `{"tool":"help"}` oddaje pełną
+   dokumentację API bez zaliczonego e04. Fabuła jest ciągłością narracyjną, nie
+   techniczną. Kolejność 2↔4 bez zmian.
 3. **Czy dane s04e02 są te same, co w edycji kursu?** Staff podał konkretne wartości:
    3 sztormy (04-03 18:00 → 25 m/s, 04-06 18:00 → 22 m/s, 04-07 18:00 → 28 m/s), próg
     > 14 m/s, dokładnie 4 punkty konfiguracji. **Daty są z kwietnia 2026 — prawie na pewno
@@ -121,9 +120,13 @@ Kolejność poniżej to kolejność ryzyka.
    podglądu oddał legendę mapy taniej niż API. Jeśli `goingthere_backend` zwraca pozycję
    skały w NASTĘPNEJ kolumnie, cały parser hintów staje się zbędny. **Test:** jeden `POST`
    z kluczem, przed pisaniem parsera.
-6. **Czy odpowiedź `database` w s04e05 jest paginowana?** Staff sugeruje, że naiwny
-   `select *` nie oddaje wszystkich wierszy („zwróć uwagę, co jeszcze jest zwracane z bazy").
-   **Test:** porównać `select count(*)` z liczbą zwróconych wierszy.
+6. ✅ **ROZSTRZYGNIĘTE 2026-08-24 — jest paginowana, i to nie jedyna pułapka.**
+   Każda odpowiedź niesie `totalTableRows` i `limit`; dla `destinations` to `40` przy
+   `limit: 30`, więc naiwny `select *` gubi 10 wierszy. `limit 30 offset 30` działa.
+   **Druga pułapka, nieprzewidziana przez intel:** klucze w `food4cities.json` są z małej
+   (`domatowo`), a `destinations.name` z wielkiej (`Domatowo`) — `where name = 'domatowo'`
+   zwraca zero wierszy. Społeczność zlepiała te dwa problemy w jeden („miasto zniszczone");
+   naprawa jednego bez drugiego nadal daje niekompletne zamówienie.
 7. **Czy ID/indeksowanie zaczyna się od 1 czy od 0?** W S03E05 backend indeksował od 1 przy
    mapie od 0 — kosztowało to podejście. Dotyczy s04e03 (współrzędne typu `F6`) i s05e04
    (wiersze 1-3, kolumny 1-12).
