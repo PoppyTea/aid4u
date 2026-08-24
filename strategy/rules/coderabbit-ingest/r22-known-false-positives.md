@@ -22,6 +22,10 @@ Wzorce znane jako niski priorytet / zwykle false-positive w tym repo (patrz
 - `tasks/**/doc/*.md` — nitpicki stylu/markdownlint na materiałach referencyjnych kursu
   (transkrypcje, kopie treści zadania) — nieużywane w runtime, niski priorytet z
   wyjątkiem realnych sekretów w treści.
+- `tasks/*/AGENTS.md` — sugestie usunięcia nagłówka statusu epizodu („Rozwiązane (data) —
+  flaga, koszt") jako „wpisu dziennikowego". To wymagany element kontraktu tych plików,
+  nienoszony przez jeden plik, tylko przez wszystkie rozwiązane epizody; koszt i liczba
+  podejść karmią planowanie sezonu. Dodane 2026-08-24 po PR #81.
 
 ## Jak zgłaszać
 Egzekwowane przez `review-ingest`: finding CodeRabbit pasujący do jednego z wzorców
