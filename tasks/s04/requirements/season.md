@@ -1,7 +1,8 @@
 # S04+S05 — plan końcówki: 5 flag z 10 zadań
 
-Stan na 2026-08-24: **16 flag głównych** (`.flags.json` + `s01e03_proxy` poza plikiem).
-Do certyfikatu brakuje **4** — `s05e03` zaliczone, patrz „Co faktycznie zadziałało".
+Stan na 2026-08-24: **17 flag głównych** (`.flags.json` + `s01e03_proxy` poza plikiem).
+Do certyfikatu brakuje **3** — `s05e03` i `s04e05` zaliczone, patrz „Co faktycznie
+zadziałało".
 Stan wyjściowy tego dokumentu (2026-08-20) to 15 flag i 5 do zdobycia. Zostało **10 zadań** — więc po raz pierwszy w tym projekcie
 możemy **wybierać**, a nie zaliczać wszystko po kolei. Ten plik trzyma wybór i kolejność;
 uzasadnienia źródłowe w `source/tool-inventory.md` i `source/community-intel.md`.
@@ -11,7 +12,7 @@ uzasadnienia źródłowe w `source/tool-inventory.md` i `source/community-intel.
 | Zadanie                    | Istota                                               | Zero-LLM?           | Infra | Brakujące zdolności             | Ryzyko kosztowe | Trudność wg społeczności        | Ocena       |
 | -------------------------- | ---------------------------------------------------- | ------------------- | ----- | ------------------------------- | --------------- | ------------------------------- | ----------- |
 | ~~**s05e03**~~ `shellaccess` | zdalny `grep` po archiwum, odpowiedź wypisana `echo` | ✅ całkowicie       | brak  | brak                            | **$0.00 (fakt)** | 🟢 najłatwiejsze                | **✅ 2026-08-24** |
-| **s04e05** `foodwarehouse` | SQLite RO + SHA1 + zamówienie na miasto              | ✅                  | brak  | brak                            | $0–0.05         | 🟢 „poszło od strzała"          | **2**       |
+| ~~**s04e05**~~ `foodwarehouse` | SQLite RO + SHA1 + zamówienie na miasto          | ✅                  | brak  | brak                            | **$0.00 (fakt)** | 🟢 „poszło od strzała"          | **✅ 2026-08-24** |
 | **s04e03** `domatowo`      | 11×11, 300 pkt akcji, znajdź i ewakuuj               | ✅                  | brak  | brak                            | $0–0.0003       | 🟢 „nie jest zbyt trudne"       | **3**       |
 | **s04e04** `filesystem`    | 2,6 kB notatek → 3 katalogi w wirtualnym FS          | 🟡 hybryda          | brak  | brak                            | $0.15–0.26      | 🟡 polska semantyka             | **4**       |
 | **s05e04** `goingthere`    | 3×12, hinty PL/ENG, SHA1 disarm                      | 🟡 hybryda          | brak  | parser hintów (mały)            | grosze          | 🟡 jedna pułapka pojęciowa      | **5**       |
@@ -158,3 +159,26 @@ przewidział: **omija raportowane odmowy modeli Anthropic** przy „szukaniu cia
 bo nie wykonuje żadnego wywołania providera.
 
 Operacyjne szczegóły przeniesione do `tasks/s05e03_shellaccess/AGENTS.md`.
+
+### s04e05 `foodwarehouse` — ✅ 2026-08-24, `{FLG:JUSTEATIT}`, $0.00
+
+Za pierwszym podejściem, zero LLM. Ranking przewidywał „🟢 poszło od strzała" i to się
+potwierdziło, ale intel społeczności **zlepiał dwie odrębne pułapki w jedną**:
+
+- **Stronicowanie** (przewidziane, punkt #6): `destinations` ma 40 wierszy przy `limit: 30`.
+- **Rozjazd wielkości liter** (nieprzewidziane): `food4cities.json` ma `domatowo`,
+  `destinations.name` ma `Domatowo`. To ta pułapka faktycznie generowała forumowe pytanie
+  „czy domatowo trzeba pominąć, bo miasto zniszczone" — a odpowiedź staffu naprowadzała
+  na stronicowanie, czyli na tę drugą. Naprawa jednej bez drugiej nadal daje niekompletny
+  komplet zamówień.
+
+Trzecia, drobniejsza: `signatureGenerator` zwraca podpis w polu `hash`, choć `orders.create`
+oczekuje go jako `signature`. `help` opisuje parametry wejściowe narzędzi, nie kształt ich
+odpowiedzi — to samo dotyczyło s05e03.
+
+Rzeczy, które okazały się nieistotne mimo pozorów: cztery zaszczepione zamówienia dla miast
+spoza pliku (`done` przechodzi mimo nich, `orders.delete` niepotrzebne) i wybór twórcy
+(wystarczy dowolny aktywny użytkownik roli 2 „Obsługa transportów" — wszystkie zaszczepione
+zamówienia mają twórców właśnie z tej roli, i stąd wzięliśmy tę rolę, a nie z nazwy).
+
+Operacyjne szczegóły przeniesione do `tasks/s04e05_foodwarehouse/AGENTS.md`.
