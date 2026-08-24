@@ -12,7 +12,7 @@ from core.llm.types import LLMMessage, LLMResponse, Tool
 T = TypeVar("T", bound=BaseModel)
 
 # Drabina eskalacji Gemini. Jedyny provider o DWÓCH osiach: tier rozliczeniowy
-# (standard/premium — osobne projekty Google Cloud, osobne klucze, patrz `factory.py`)
+# (free/premium — osobne projekty Google Cloud, osobne klucze, patrz `factory.py`)
 # krzyżuje się z tierem zdolności (lite → flash → pro). Stąd zagnieżdżenie, którego nie
 # mają `ANTHROPIC_MODELS`/`OPENAI_MODELS`.
 #
@@ -24,7 +24,7 @@ T = TypeVar("T", bound=BaseModel)
 # Weryfikacja: `deprecation-watch` diffuje ten roster cotygodniowo — realnym wywołaniem
 # per klucz, nie samym `models.list()` (powód niżej).
 GEMINI_MODELS = {
-    "standard": {
+    "free": {
         "fast": "gemini-3.5-flash-lite",
         "balanced": "gemini-2.5-flash",  # domyślny model projektu
         "powerful": "gemini-3.7-flash",
@@ -35,7 +35,7 @@ GEMINI_MODELS = {
         # Jedyny pro powyżej rodziny 2.5; istnieje wyłącznie jako `-preview`, więc Google
         # może go zmienić albo wycofać bez zapowiedzi — `deprecation-watch` wyłapie to
         # w tygodniu, w którym nastąpi. Na kluczu darmowym zwraca 429 (brak quoty), stąd
-        # inny `powerful` po stronie standard.
+        # inny `powerful` po stronie free.
         "powerful": "gemini-3.1-pro-preview",
     },
 }
@@ -44,7 +44,7 @@ GEMINI_MODELS = {
 # 2026-08-23 realnym wywołaniem na obu kluczach: `gemini-2.5-flash-lite` i
 # `gemini-2.5-pro` dają 404 wszędzie, a `gemini-2.5-flash` żyje wyłącznie na starym
 # projekcie darmowym — na kluczu premium zwraca 404 z komunikatem "no longer available
-# to new users". Zostaje jako `standard`/`balanced`, bo to domyślny model projektu i
+# to new users". Zostaje jako `free`/`balanced`, bo to domyślny model projektu i
 # znana linia bazowa kosztu, ale jest grandfatherowany, nie wspierany.
 #
 # Lekcja szersza niż ten wpis: `client.models.list()` wymieniał wszystkie sześć modeli,
@@ -54,7 +54,7 @@ GEMINI_MODELS = {
 
 class GeminiAdapter(LLMProvider):
     """
-    Adapter Gemini — domyślny model `GEMINI_MODELS["standard"]["balanced"]`, ten sam,
+    Adapter Gemini — domyślny model `GEMINI_MODELS["free"]["balanced"]`, ten sam,
     który `run.py` podaje jako domyślną wartość `--model`.
 
     Poprzedni default (`gemini-3.1-flash`) był nieistniejącym identyfikatorem —
@@ -63,7 +63,7 @@ class GeminiAdapter(LLMProvider):
     powodem, dla którego `create_provider()` waliduje dziś ID wobec `GEMINI_MODELS`.
     """
 
-    def __init__(self, api_key: str, model: str = GEMINI_MODELS["standard"]["balanced"]) -> None:
+    def __init__(self, api_key: str, model: str = GEMINI_MODELS["free"]["balanced"]) -> None:
         """Tworzy klienta google-genai dla podanego klucza i identyfikatora modelu."""
         from google import genai
 

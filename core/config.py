@@ -28,6 +28,12 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 _KEYRING_SERVICE = "aid4u"
 WARSAW_TZ = zoneinfo.ZoneInfo("Europe/Warsaw")
 
+GEMINI_TIERS = frozenset({"free", "premium"})
+"""Tiery rozliczeniowe Gemini — osobne projekty Google Cloud, osobne klucze API."""
+
+GEMINI_TIER_DEFAULT = "free"
+
+
 class Config:
     """Singleton. Klucze z keyring, fallback do env."""
 
@@ -78,7 +84,7 @@ class Config:
 
     @property
     def gemini_key(self) -> str:
-        """Klucz Gemini dla tier 'standard' (darmowy — projekt Google Cloud BEZ billingu)."""
+        """Klucz Gemini dla tieru 'free' (projekt Google Cloud BEZ billingu)."""
         return self.get("GEMINI_API_KEY", required=False)
 
     @property
@@ -92,8 +98,18 @@ class Config:
         """
         return self.get("GEMINI_API_KEY_PREMIUM", required=False)
 
-    def gemini_key_for_tier(self, tier: str = "standard") -> str:
-        """Zwraca właściwy klucz Gemini dla podanego tier ('standard' | 'premium')."""
+    def gemini_key_for_tier(self, tier: str = GEMINI_TIER_DEFAULT) -> str:
+        """
+        Zwraca klucz Gemini dla podanego tieru rozliczeniowego (`free` | `premium`).
+
+        Waliduje wprost, zamiast traktować wszystko poza `premium` jako darmowe — przy
+        cichym fallbacku literówka w nazwie tieru dawała klucz darmowy i objawiała się
+        dopiero jako 429 albo 404 w środku przebiegu, w miejscu niezwiązanym z przyczyną.
+        """
+        if tier not in GEMINI_TIERS:
+            raise ValueError(
+                f"Nieznany tier Gemini: {tier!r}. Dopuszczalne: {', '.join(sorted(GEMINI_TIERS))}."
+            )
         return self.gemini_key_premium if tier == "premium" else self.gemini_key
 
     @property

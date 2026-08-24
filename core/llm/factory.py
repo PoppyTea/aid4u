@@ -2,7 +2,7 @@
 Factory pattern — tworzy właściwy adapter na podstawie nazwy modelu.
 
 ⚠️  DOMYŚLNY MODEL PROJEKTU: gemini-2.5-flash
-    Eskalacja: Gemini (standard→premium) → OpenAI → Anthropic (patrz strategy/llm-selection.md).
+    Eskalacja: Gemini (free→premium) → OpenAI → Anthropic (patrz strategy/llm-selection.md).
 
     Dopuszczalne identyfikatory NIE są wypisane w tym pliku — źródłem prawdy są rostery
     w adapterach (`ANTHROPIC_MODELS`, `OPENAI_MODELS`, `GEMINI_MODELS`), a `_check_model()`
@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from core.config import Config
+from core.config import GEMINI_TIER_DEFAULT, Config
 from core.llm.base import LLMProvider
 
 
@@ -79,7 +79,7 @@ def create_provider(
     model: str,
     config: Config,
     *,
-    tier: str = "standard",
+    tier: str = GEMINI_TIER_DEFAULT,
     allow_unknown_model: bool = False,
 ) -> LLMProvider:
     """
@@ -88,7 +88,7 @@ def create_provider(
     Args:
         model: Pełna nazwa modelu, np. 'gemini-2.5-flash'
         config: Singleton konfiguracji z kluczami API
-        tier: 'standard' (domyślny, darmowy) lub 'premium' (płatny) — dotyczy
+        tier: 'free' (domyślny) lub 'premium' (płatny) — dotyczy
             wyłącznie modeli gemini-*, ignorowane przez pozostałych providerów.
         allow_unknown_model: pomija sprawdzenie modelu wobec rostera adaptera.
             Domyślnie `False` — patrz `_check_model()`.
