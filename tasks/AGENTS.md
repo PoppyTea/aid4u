@@ -12,6 +12,9 @@ pułapki) żyją w jego własnym `AGENTS.md`, nie tutaj — Child DOX Index niż
 (AID-62/46/18/47). Cały sezon zero LLM w rozwiązaniach, łączny koszt ~$0.00. Stan gotowości, dług i checklisty per-epizod: `tasks/s03/requirements/`.
 Procedura przejścia między sezonami (sezonoagnostyczna): `strategy/season-transition.md`.
 
+**Sezon 5 otwarty 2026-08-24** — `s05e03` zaliczone za pierwszym podejściem, 16 flag
+głównych, 4 do certyfikatu. Kolejność ataku z `s04/requirements/season.md` bez zmian.
+
 **EFFICIENCY MODE aktywny** (od 2026-07-29) — priorytet: szybkość i skuteczność
 zdobywania flag do 20/25, nie proces. Learning-mode wersja tego pliku:
 `.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENTS.md`
@@ -114,6 +117,16 @@ sezonu, 9 ruchów, 0 zgnieceń, koszt $0.00. Deterministyczny receding-horizon B
 zero LLM (najłatwiejszy epizod sezonu — LLM praktycznie zbędny wobec czystego
 algorytmu). Format API (`answer: {"command": ...}`, kolizja sprawdzana PO
 przesunięciu bloków) ustalony empirycznie sondą — lekcja go nie podaje.
+
+**Sezon 5** (w toku): `s05e03_shellaccess/` — **solved** (2026-08-24) — flaga
+`{FLG:HUGEFILE}`, za pierwszym podejściem, koszt $0.00, cztery zapytania do huba.
+Pierwsze zadanie końcówki i zarazem sonda: **hub NIE gatuje S05 na wcześniejszych
+epizodach** — rozstrzyga to punkt #1 z listy „Do sprawdzenia empirycznie"
+w `s04/requirements/season.md` i utrzymuje w mocy całą wybraną piątkę. Zero LLM:
+archiwum w `/data` jest relacyjne (`time_logs.csv` + `locations.json` + `gps.json`,
+klucze o RÓŻNYCH nazwach po obu stronach), a zdarzenie pasujące do frazy jest jedno.
+Transportem jest `/verify`, nie `/api/shell`; hub zwraca **400 przy zbyt dużym stdout**,
+więc zapytania muszą być wąskie z założenia.
 
 **Końcówka kursu (S04+S05, rekonesans 2026-08-20):** `s04/` — `requirements/` z rankingiem
 **wszystkich 10 pozostałych zadań** (S04E01–E05 i S05E01–E05) i wyborem piątki dającej
