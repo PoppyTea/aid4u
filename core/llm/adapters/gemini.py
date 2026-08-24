@@ -7,6 +7,7 @@ from typing import Any, TypeVar, cast
 from pydantic import BaseModel
 
 from core.llm.base import LLMProvider
+from core.llm.thinking import ThinkingLevel, gemini_thinking
 from core.llm.types import LLMMessage, LLMResponse, Tool
 
 T = TypeVar("T", bound=BaseModel)
@@ -81,8 +82,9 @@ class GeminiAdapter(LLMProvider):
         system: str | None = None,
         max_tokens: int = 1024,
         temperature: float | None = 0.0,
+        thinking: ThinkingLevel | None = None,
     ) -> LLMResponse:
-        """Uzupełnia rozmowę jednym wywołaniem; `temperature=None` zostawia domyślne providera."""
+        """Uzupełnia rozmowę jednym wywołaniem; `None` zostawia domyślne providera."""
         from google.genai import types
 
         # Zachowujemy dotychczasową logikę łączenia wiadomości w jeden prompt,
@@ -93,6 +95,9 @@ class GeminiAdapter(LLMProvider):
             system_instruction=system,
             max_output_tokens=max_tokens,
             temperature=temperature,
+            thinking_config=(
+                self._thinking_config(thinking, max_tokens) if thinking is not None else None
+            ),
         )
 
         response = self._client.models.generate_content(
@@ -118,23 +123,16 @@ class GeminiAdapter(LLMProvider):
             output_tokens=output_tokens,
         )
 
-    def _thinking_config(self):
+    def _thinking_config(self, level: ThinkingLevel, max_output_tokens: int):
         """
-        Wybiera sposób sterowania myśleniem wg rodziny modelu — te dwa kontrakty się
-        wykluczają i zmieszanie ich w jednym zapytaniu daje 400.
+        Tłumaczy poziom myślenia na kontrakt właściwy dla rodziny modelu.
 
-        Rodzina 2.5     -> `thinking_budget=0` (wyłączenie myślenia).
-        Rodzina 3.x     -> `thinking_level`,
-        Rodzina 3.x PRO -> MUSI mieć włączone myślenie. Najniższy poziom to "low".
-        Uwaga: myślenie zjada tę samą pulę co `max_output_tokens`, więc przy
-        "structured output" potrafiło uciąć JSON w połowie.
-        (wszystko zmierzone realnymi wywołaniami 2026-08-23).
+        Cała wiedza o tym, co który dostawca przyjmuje, żyje w `core/llm/thinking.py` —
+        tutaj zostaje wyłącznie wpięcie. Domyślnie `"none"`, bo myślenie zjada tę samą
+        pulę co `max_output_tokens` i przy structured output potrafiło uciąć JSON
+        w połowie.
         """
-        from google.genai import types
-
-        if self._model_name.startswith("gemini-2."):
-            return types.ThinkingConfig(thinking_budget=0)
-        return types.ThinkingConfig(thinking_level="low")
+        return gemini_thinking(level, self._model_name, max_output_tokens)
 
     def complete_structured(
         self,
@@ -142,6 +140,7 @@ class GeminiAdapter(LLMProvider):
         schema: type[T],
         *,
         system: str | None = None,
+        thinking: ThinkingLevel | None = None,
     ) -> LLMResponse:
         from google.genai import types
 
@@ -155,7 +154,7 @@ class GeminiAdapter(LLMProvider):
             max_output_tokens=8192,
             response_mime_type="application/json",
             response_schema=schema,
-            thinking_config=self._thinking_config(),
+            thinking_config=self._thinking_config(thinking or "none", 8192),
         )
 
         response = self._client.models.generate_content(
@@ -210,7 +209,9 @@ class GeminiAdapter(LLMProvider):
         tools: list[Tool],
         *,
         system: str | None = None,
+        thinking: ThinkingLevel | None = None,
     ) -> LLMResponse:
+        """Wywołanie z narzędziami; `thinking=None` zostawia domyślne providera."""
         from google.genai import types
 
         from core.llm.types import ToolCall
@@ -238,6 +239,9 @@ class GeminiAdapter(LLMProvider):
             # ponownego budowania tej unii ręcznie.
             tools=cast(Any, gemini_tools),
             max_output_tokens=4096,
+            thinking_config=(
+                self._thinking_config(thinking, 4096) if thinking is not None else None
+            ),
         )
 
         response = self._client.models.generate_content(

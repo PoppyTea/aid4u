@@ -20,6 +20,7 @@ from typing import Any, Callable, TypeVar
 from pydantic import BaseModel
 
 from core.llm.base import LLMProvider
+from core.llm.thinking import ThinkingLevel
 from core.llm.middleware import CostTrackMiddleware, ProviderCallMiddleware, RateLimitMiddleware
 from core.llm.tool_errors import format_tool_error
 from core.llm.types import LLMMessage, Tool
@@ -60,9 +61,15 @@ class LLMClient:
         system: str | None = None,
         max_tokens: int = 1024,
         prompt_name: str | None = None,
+        thinking: ThinkingLevel | None = None,
     ) -> str:
         """
         Proste wywołanie tekstowe. Zwraca string.
+
+        `thinking`: wspólna drabina poziomów myślenia (`core/llm/thinking.py`).
+        `None` zostawia domyślne dostawcy — to NIE to samo co `"none"`, które myślenie
+        jawnie wyłącza. Nie każdy poziom jest osiągalny u każdego dostawcy; nieosiągalny
+        daje `ThinkingNotSupported` przed wysłaniem zapytania, nie 400 z API.
 
         `prompt_name`: nazwa promptu zarejestrowana wcześniej przez
         `core.observability.prompts.sync_prompt()` — jeśli podana, generacja
@@ -70,7 +77,11 @@ class LLMClient:
         Opcjonalne — brak podania po prostu nie linkuje generacji do żadnego promptu.
         """
         response = self._chain.handle(
-            messages, system=system, max_tokens=max_tokens, prompt_name=prompt_name
+            messages,
+            system=system,
+            max_tokens=max_tokens,
+            prompt_name=prompt_name,
+            thinking=thinking,
         )
         return response.content
 
@@ -81,6 +92,7 @@ class LLMClient:
         *,
         system: str | None = None,
         prompt_name: str | None = None,
+        thinking: ThinkingLevel | None = None,
     ) -> T:
         """
         Wywołanie ze strukturyzowanym wyjściem. Zwraca instancję Pydantic modelu.
@@ -91,9 +103,18 @@ class LLMClient:
         `schema=` w kwargs sygnalizuje `ProviderCallMiddleware`, żeby wywołać
         `complete_structured()` zamiast `complete()` — patrz `middleware.py`.
         `prompt_name`: patrz docstring `chat()`.
+
+        `thinking`: patrz docstring `chat()`. Uwaga na asymetrię domyślnych — Gemini
+        wyłącza myślenie jawnie przy `None`, pozostali zostawiają domyślne dostawcy.
+        Powód w `core/AGENTS.md`: domyślne Gemini 2.5 to myślenie WŁĄCZONE, które zjada
+        tę samą pulę co `max_output_tokens` i ucinało JSON w połowie.
         """
         response = self._chain.handle(
-            messages, system=system, schema=schema, prompt_name=prompt_name
+            messages,
+            system=system,
+            schema=schema,
+            prompt_name=prompt_name,
+            thinking=thinking,
         )
         if not isinstance(response.parsed, schema):
             raise TypeError(
@@ -113,6 +134,7 @@ class LLMClient:
         system: str | None = None,
         max_iterations: int = 10,
         prompt_name: str | None = None,
+        thinking: ThinkingLevel | None = None,
     ) -> str:
         """
         Pętla agentowa z function calling.
@@ -130,6 +152,10 @@ class LLMClient:
             max_iterations: Zabezpieczenie przed nieskończoną pętlą
             prompt_name: patrz docstring `chat()` — linkuje każdą generację
                 iteracji do wersji promptu w rejestrze.
+            thinking: poziom myślenia stosowany w KAŻDEJ iteracji pętli
+                (`core/llm/thinking.py`). Sprawdzone żywym wywołaniem 2026-08-24, że
+                u Anthropic działa razem z narzędziami także przy spłaszczonej historii,
+                którą ta pętla buduje (patrz AID-55).
 
         Returns:
             Ostateczna odpowiedź tekstowa modelu (po zakończeniu wywołań narzędzi)
@@ -171,7 +197,11 @@ class LLMClient:
                 # teraz cost-tracking i generację Langfuse (do 2026-08-16 to wywołanie
                 # omijało łańcuch middleware).
                 response = self._chain.handle(
-                    history, system=system, tools=current_tools, prompt_name=prompt_name
+                    history,
+                    system=system,
+                    tools=current_tools,
+                    prompt_name=prompt_name,
+                    thinking=thinking,
                 )
                 last_content = response.content
 
@@ -179,9 +209,23 @@ class LLMClient:
                     logfire.info("Agent finished — no more tool calls")
                     return last_content
 
-                # Dodaj odpowiedź asystenta do historii
+                # Tura asystenta MUSI trafić do historii, nawet gdy nie ma w niej tekstu.
+                # Przy włączonym myśleniu tura z wywołaniem narzędzia zwraca bloki
+                # `['thinking', 'tool_use']` — bez bloku tekstowego, więc `last_content`
+                # jest puste. Poprzedni warunek `if last_content:` pomijał wtedy zapis, a
+                # ponieważ historia jest spłaszczona do tekstu (AID-55) i nie niesie bloków
+                # `tool_use`, model nie widział ŻADNEGO śladu, że narzędzie już wołał —
+                # i wołał je ponownie. Zmierzone 2026-08-24: przebieg zużywał wszystkie
+                # iteracje na powtarzanie tego samego wywołania i zwracał pusty string.
+                # Bez myślenia problem się nie ujawniał, bo model zwykle dokładał zdanie
+                # w rodzaju „użyję narzędzia", które przypadkiem pełniło rolę tego śladu.
                 if last_content:
                     history.append(LLMMessage.assistant(last_content))
+                else:
+                    wywolania = ", ".join(
+                        f"{tc.name}({tc.arguments})" for tc in response.tool_calls
+                    )
+                    history.append(LLMMessage.assistant(f"[Wywołuję narzędzia: {wywolania}]"))
 
                 # Wykonaj narzędzia i dodaj wyniki do historii
                 for tool_call in response.tool_calls:

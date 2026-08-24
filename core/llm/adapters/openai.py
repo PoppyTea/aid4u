@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, TypeVar, cast
 from pydantic import BaseModel
 
 from core.llm.base import LLMProvider
+from core.llm.thinking import ThinkingLevel, openai_reasoning_effort
 from core.llm.types import LLMMessage, LLMResponse, Tool, ToolCall
 
 if TYPE_CHECKING:
@@ -53,8 +54,11 @@ class OpenAIAdapter(LLMProvider):
         system: str | None = None,
         max_tokens: int = 1024,
         temperature: float | None = 0.0,
+        thinking: ThinkingLevel | None = None,
     ) -> LLMResponse:
-        """Uzupełnia rozmowę jednym wywołaniem; `temperature=None` zostawia domyślne providera."""
+        """Uzupełnia rozmowę jednym wywołaniem; `None` zostawia domyślne providera."""
+        import openai
+
         oai_messages: list[dict] = []
         if system:
             oai_messages.append({"role": "system", "content": system})
@@ -67,6 +71,11 @@ class OpenAIAdapter(LLMProvider):
             messages=cast("list[ChatCompletionMessageParam]", oai_messages),
             max_tokens=max_tokens,
             temperature=temperature,
+            # Sentinel SDK zamiast rozpakowania `**{...}` — dict o typie `Any` gubi
+            # rozpoznanie przeciążenia i cała sygnatura schodzi do `no-matching-overload`.
+            reasoning_effort=(
+                openai_reasoning_effort(thinking) if thinking is not None else openai.omit
+            ),
         )
         # `usage` jest opcjonalne w schemacie OpenAI — ten sam wzorzec obronny co
         # w adapterze Gemini; brak licznika to 0, nie AttributeError w środku przebiegu.
@@ -84,10 +93,13 @@ class OpenAIAdapter(LLMProvider):
         schema: type[T],
         *,
         system: str | None = None,
+        thinking: ThinkingLevel | None = None,
     ) -> LLMResponse:
         schema_str = json.dumps(schema.model_json_schema(), ensure_ascii=False)
         system_prompt = (system or "") + f"\nRespond ONLY with JSON: {schema_str}"
-        response = self.complete(messages, system=system_prompt, max_tokens=4096)
+        response = self.complete(
+            messages, system=system_prompt, max_tokens=4096, thinking=thinking
+        )
 
         # Usuwa fence markdown jako DELIMITER, nie jako zbiór znaków do strip() —
         # `.lstrip("```json")` (poprzednia wersja) strippuje dowolny znak z ` ```json `,
@@ -110,7 +122,11 @@ class OpenAIAdapter(LLMProvider):
         tools: list[Tool],
         *,
         system: str | None = None,
+        thinking: ThinkingLevel | None = None,
     ) -> LLMResponse:
+        """Wywołanie z narzędziami; `thinking=None` zostawia domyślne providera."""
+        import openai
+
         oai_messages: list[dict] = []
         if system:
             oai_messages.append({"role": "system", "content": system})
@@ -133,6 +149,9 @@ class OpenAIAdapter(LLMProvider):
             messages=cast("list[ChatCompletionMessageParam]", oai_messages),
             tools=cast("list[ChatCompletionToolParam]", oai_tools),
             max_tokens=4096,
+            reasoning_effort=(
+                openai_reasoning_effort(thinking) if thinking is not None else openai.omit
+            ),
         )
         msg = response.choices[0].message
         # `msg.tool_calls` to unia: wywołania funkcyjne mają `.function`, ale custom tools

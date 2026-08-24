@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, TypeVar, cast
 from pydantic import BaseModel
 
 from core.llm.base import LLMProvider
+from core.llm.thinking import ThinkingLevel, anthropic_thinking
 from core.llm.types import LLMMessage, LLMResponse, Tool, ToolCall
 
 if TYPE_CHECKING:
@@ -24,6 +25,21 @@ ANTHROPIC_MODELS = {
     "powerful": "claude-opus-5",             # Sonnet nie wystarcza
     "flagship": "claude-fable-5",            # ostateczność w rodzinie Claude
 }
+
+
+def _first_text(response: Message) -> str:
+    """
+    Wyciąga treść z pierwszego bloku **tekstowego**, nie z bloku zerowego.
+
+    Przy włączonym myśleniu `content[0]` to `ThinkingBlock`, który nie ma `.text` —
+    ślepe `content[0].text` wywalało się wtedy `AttributeError`. Złapane realnym
+    wywołaniem 2026-08-23, gdy `thinking` weszło do adaptera; testy jednostkowe tego nie
+    widziały, bo atrapa zwracała pojedynczy blok tekstowy.
+    """
+    for block in response.content:
+        if block.type == "text":
+            return cast("TextBlock", block).text
+    return ""
 
 
 class AnthropicAdapter(LLMProvider):
@@ -46,6 +62,7 @@ class AnthropicAdapter(LLMProvider):
         system: str | None = None,
         max_tokens: int = 1024,
         temperature: float | None = 0.0,
+        thinking: ThinkingLevel | None = None,
     ) -> LLMResponse:
         """
         Uzupełnia rozmowę. `temperature` jest przyjmowane dla zgodności z ABC, ale
@@ -62,15 +79,15 @@ class AnthropicAdapter(LLMProvider):
         }
         if system:
             kwargs["system"] = system
+        if thinking is not None:
+            kwargs["thinking"] = anthropic_thinking(thinking, max_tokens)
 
         # `**kwargs` typu `dict[str, Any]` gubi rozpoznanie przeciążenia, więc SDK
         # deklaruje `Message | Stream`. Nie streamujemy tu nigdzie — `stream` nie trafia
         # do `kwargs` w żadnej ścieżce — więc zawężamy jawnie zamiast rozgałęziać.
         response = cast("Message", self._client.messages.create(**kwargs))
         return LLMResponse(
-            # `content[0]` to unia bloków — tylko `TextBlock` ma `.text`, a przy zapytaniu
-            # bez `tools` Anthropic zwraca właśnie ten wariant.
-            content=cast("TextBlock", response.content[0]).text,
+            content=_first_text(response),
             model=response.model,
             input_tokens=response.usage.input_tokens,
             output_tokens=response.usage.output_tokens,
@@ -82,13 +99,16 @@ class AnthropicAdapter(LLMProvider):
         schema: type[T],
         *,
         system: str | None = None,
+        thinking: ThinkingLevel | None = None,
     ) -> LLMResponse:
         schema_str = json.dumps(schema.model_json_schema(), ensure_ascii=False, indent=2)
         system_prompt = (
             (system or "")
             + f"\n\nRespond ONLY with valid JSON matching this schema. No markdown, no explanation:\n{schema_str}"
         )
-        response = self.complete(messages, system=system_prompt, max_tokens=4096)
+        response = self.complete(
+            messages, system=system_prompt, max_tokens=4096, thinking=thinking
+        )
 
         # Strip markdown fences if model wraps JSON in ```json ... ``` — case-insensitive
         # prefix check (`` ```JSON `` is legal and otherwise leaves "JSON\n" in `content`,
@@ -112,7 +132,15 @@ class AnthropicAdapter(LLMProvider):
         tools: list[Tool],
         *,
         system: str | None = None,
+        thinking: ThinkingLevel | None = None,
     ) -> LLMResponse:
+        """
+        Wywołanie z narzędziami. Myślenie **działa tu razem z narzędziami** — sprawdzone
+        żywym wywołaniem 2026-08-24, także przy spłaszczonej historii, którą buduje
+        `run_agent_loop()` (zwykłe wiadomości tekstowe zamiast bloków `tool_result`,
+        patrz AID-55). Przy włączonym myśleniu tura z wywołaniem narzędzia zwraca bloki
+        `['thinking', 'tool_use']` — bez bloku tekstowego, stąd puste `content`.
+        """
         anthropic_tools = [
             {
                 "name": t.name,
@@ -129,6 +157,8 @@ class AnthropicAdapter(LLMProvider):
         }
         if system:
             kwargs["system"] = system
+        if thinking is not None:
+            kwargs["thinking"] = anthropic_thinking(thinking, 4096)
 
         # `**kwargs` typu `dict[str, Any]` gubi rozpoznanie przeciążenia, więc SDK
         # deklaruje `Message | Stream`. Nie streamujemy tu nigdzie — `stream` nie trafia
