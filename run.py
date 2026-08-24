@@ -50,6 +50,22 @@ _FLAGS_FILE = Path(".flags.json")
 # Sufiks klucza flagi sekretnej w `.flags.json` (patrz AGENTS.md, zasada 7).
 SECRET_SUFFIX = "_secret"
 
+# Rozmiar kursu i próg certyfikatu. Mianownik postępów NIE może być liczbą
+# zarejestrowanych zadań (`len(TASK_REGISTRY)`) — ta rośnie razem z implementacjami,
+# więc licznik dogonił ją i przegonił, wypisując „15/14 zadań". Kurs ma stałe 25
+# epizodów niezależnie od tego, ile z nich mamy w kodzie.
+COURSE_TASK_COUNT = 25
+CERTIFICATE_THRESHOLD = 20
+
+# Zadania zaliczone POZA ścieżką `solve()→submit()`, więc ich flaga nigdy nie trafia
+# do `.flags.json`. `s01e03_proxy` rozwiązuje się przez żywą rozmowę bota Centrali
+# z naszym publicznym endpointem — nie ma momentu, w którym `run.py` widziałby flagę.
+# To cecha tego typu zadania, nie usterka do naprawienia (patrz
+# `tasks/s01e03_proxy/AGENTS.md`), ale bez jawnego uwzględnienia licznik „ile jeszcze
+# do 20" zawyżał pozostałą pracę o jedno zadanie — dokładnie ta sama klasa błędu,
+# przed którą chroni `partition_flags()`, tylko w drugą stronę.
+SOLVED_OUTSIDE_FLAGS_FILE = frozenset({"s01e03"})
+
 # Domyślny budżet kosztu na przebieg. Włączony domyślnie, bo każda udokumentowana
 # strata $4-10 w komentarzach kursu do S03E02 wynikała z ZAPOMNIANEJ osłony, nie
 # z jej braku w kodzie. `--max-cost 0` wyłącza.
@@ -70,6 +86,25 @@ def partition_flags(flags: dict[str, str]) -> tuple[dict[str, str], dict[str, st
     secrets = {n: f for n, f in flags.items() if n.endswith(SECRET_SUFFIX)}
     main = {n: f for n, f in flags.items() if n not in secrets}
     return main, secrets
+
+def count_solved(flags: dict[str, str]) -> tuple[int, set[str]]:
+    """
+    Liczy zadania zaliczone do certyfikatu — flagi z pliku plus te zdobyte poza nim.
+
+    Args:
+        flags: Zawartość `.flags.json` (główne i sekretne razem).
+
+    Returns:
+        Para `(liczba zadań, nazwy zaliczone poza plikiem)`. Drugi element jest
+        potrzebny warstwie wyświetlania: bez niego tabela pokazywałaby o jeden
+        wiersz mniej, niż mówi licznik nad nią.
+    """
+    main, _ = partition_flags(flags)
+    # Odjęcie kluczy pliku zabezpiecza przed podwójnym liczeniem, gdyby zadanie
+    # z tego zbioru kiedyś jednak trafiło do `.flags.json`.
+    outside = set(SOLVED_OUTSIDE_FLAGS_FILE - main.keys())
+    return len(main) + len(outside), outside
+
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -227,29 +262,36 @@ def list_tasks() -> None:
 def status() -> None:
     """Pokaż postępy — zdobyte flagi i licznik punktów."""
     flags = _load_flags()
-    total = len(TASK_REGISTRY)
 
     main_flags, secrets = partition_flags(flags)
-    done = len(main_flags)
+    done, outside = count_solved(flags)
 
-    console.print(f"\n[bold]Postępy:[/] {done}/{total} zadań")
-    console.print(f"[bold]Do certyfikatu (20 pkt):[/] {max(0, 20 - done)} zadań pozostało")
+    console.print(f"\n[bold]Postępy:[/] {done}/{COURSE_TASK_COUNT} zadań")
+    console.print(
+        f"[bold]Do certyfikatu ({CERTIFICATE_THRESHOLD} pkt):[/] "
+        f"{max(0, CERTIFICATE_THRESHOLD - done)} zadań pozostało"
+    )
     if secrets:
         console.print(f"[magenta]Flagi sekretne:[/] {len(secrets)} (poza licznikiem)")
     console.print()
 
-    if flags:
-        table = Table(show_header=True)
-        table.add_column("Zadanie", style="cyan")
-        table.add_column("Flaga", style="green")
-        table.add_column("Typ", style="dim")
-        for name, flag in sorted(main_flags.items()):
-            table.add_row(name, flag, "główna")
-        for name, flag in sorted(secrets.items()):
-            table.add_row(name.removesuffix(SECRET_SUFFIX), flag, "[magenta]sekretna[/]")
-        console.print(table)
-    else:
+    if not main_flags and not outside and not secrets:
         console.print("[dim]Brak zdobytych flag. Zacznij od: uv run run.py solve s01e01[/]")
+        return
+
+    table = Table(show_header=True)
+    table.add_column("Zadanie", style="cyan")
+    table.add_column("Flaga", style="green")
+    table.add_column("Typ", style="dim")
+
+    # Flagi spoza pliku wchodzą do tej samej listy PRZED sortowaniem, żeby epizody
+    # szły po kolei — inaczej s01e03 lądowałby na końcu tabeli, wyglądając na dopisek.
+    main_rows = [*main_flags.items(), *((name, "[dim]zdobyta poza plikiem[/]") for name in outside)]
+    for name, flag in sorted(main_rows):
+        table.add_row(name, flag, "główna")
+    for name, flag in sorted(secrets.items()):
+        table.add_row(name.removesuffix(SECRET_SUFFIX), flag, "[magenta]sekretna[/]")
+    console.print(table)
 
 
 if __name__ == "__main__":

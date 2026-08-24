@@ -122,9 +122,14 @@ task focus                       # jedno zadanie — zawsze zaczynaj tutaj
    główne, ale zdobywane ukrytą drogą; odblokowują dodatkowe materiały edukacyjne.
    Zapisujemy je w `.flags.json` pod kluczem `sXXeYY_secret`, a `run.py status`
    **egzekwuje** ten podział (`partition_flags()`) — inaczej zaniżałyby „ile jeszcze
-   do 20", czyli liczbę, według której planujemy sezon. Nie zatrzymuj się na polowanie,
-   jeśli flaga główna jest w zasięgu; jeśli sekret wpada po drodze za darmo — bierzemy,
-   ale nie projektujemy pod niego rozwiązania. **Jak ich szukać: `strategy/secret-flags.md`.**
+   do 20", czyli liczbę, według której planujemy sezon. Ta sama liczba ma drugą,
+   przeciwną korektę (`count_solved()` + `SOLVED_OUTSIDE_FLAGS_FILE` w `run.py`):
+   zadania zaliczone poza ścieżką `solve()→submit()` — dziś tylko `s01e03_proxy`,
+   żywy serwer — nie mają jak zapisać flagi do pliku, więc trzeba je doliczyć jawnie.
+   Sekret zaniżał, brak wpisu zawyżał; obie strony pokrywa `tests/test_run_status.py`.
+   Mianownik postępów to stałe `COURSE_TASK_COUNT = 25`, nie liczba zaimplementowanych
+   zadań. Nie zatrzymuj się na polowanie, jeśli flaga główna jest w zasięgu; jeśli sekret
+   wpada po drodze za darmo — bierzemy, ale nie projektujemy pod niego rozwiązania. **Jak ich szukać: `strategy/secret-flags.md`.**
 
 ## Core Contract
 

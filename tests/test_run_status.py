@@ -5,11 +5,23 @@ Powód istnienia: licznik „ile jeszcze do 20" jest liczbą, według której pl
 sezon, więc wliczenie do niego flagi sekretnej nie jest kosmetyką — zaniża pozostałą
 pracę. Konwencja `sXXeYY_secret` była opisana w `AGENTS.md` (zasada 7) wcześniej niż
 egzekwowana w kodzie; te testy domykają tę lukę.
+
+Druga klasa błędu w tej samej liczbie, dopisana 2026-08-24: zadania zaliczone POZA
+`.flags.json` (żywy serwer w `s01e03_proxy`) były po prostu niewidoczne dla licznika,
+więc „ile jeszcze do 20" zawyżało pracę o jedno zadanie. Flaga sekretna zaniżała,
+to zawyżało — obie strony pilnują teraz testy.
 """
 
 from __future__ import annotations
 
-from run import SECRET_SUFFIX, partition_flags
+from run import (
+    CERTIFICATE_THRESHOLD,
+    COURSE_TASK_COUNT,
+    SECRET_SUFFIX,
+    SOLVED_OUTSIDE_FLAGS_FILE,
+    count_solved,
+    partition_flags,
+)
 
 
 class TestPartycjonowanieFlag:
@@ -56,3 +68,58 @@ class TestPartycjonowanieFlag:
     def test_sufiks_jest_wspoldzielony_ze_zrodlem_prawdy(self):
         """Test nie może zaszywać własnej kopii konwencji."""
         assert SECRET_SUFFIX == "_secret"
+
+
+class TestLiczeniePostepow:
+    """`count_solved()` — liczba, według której planujemy sezon."""
+
+    def test_wlicza_zadanie_zaliczone_poza_plikiem(self):
+        """
+        `s01e03_proxy` rozwiązuje się przez żywą rozmowę z naszym endpointem, więc jego
+        flaga nigdy nie trafia do `.flags.json`. Pominięcie jej zawyża „ile do certyfikatu".
+        """
+        done, outside = count_solved({"s01e01": "{FLG:A}"})
+        assert done == 2
+        assert outside == {"s01e03"}
+
+    def test_nie_liczy_podwojnie_gdy_flaga_jednak_trafi_do_pliku(self):
+        """Gdyby epizod z tego zbioru kiedyś zapisał flagę normalnie, licznik ma zostać stabilny."""
+        done, outside = count_solved({"s01e01": "{FLG:A}", "s01e03": "{FLG:B}"})
+        assert done == 2
+        assert outside == set()
+
+    def test_flaga_sekretna_nadal_nie_liczy_sie_do_postepu(self):
+        """Obie korekty muszą działać naraz: sekret out, zaliczone-poza-plikiem in."""
+        done, _ = count_solved({"s01e01": "{FLG:A}", "s03e05_secret": "{FLG:B}"})
+        assert done == 2  # s01e01 + s01e03, bez sekretu
+
+    def test_pusty_plik_i_tak_widzi_zaliczone_poza_nim(self):
+        """Świeży klon repo bez `.flags.json` nie może udawać, że s01e03 nie było."""
+        done, outside = count_solved({})
+        assert done == len(SOLVED_OUTSIDE_FLAGS_FILE)
+        assert outside == set(SOLVED_OUTSIDE_FLAGS_FILE)
+
+    def test_liczba_do_certyfikatu_nie_schodzi_ponizej_zera(self):
+        """Po przekroczeniu progu licznik ma pokazywać 0, nie liczbę ujemną."""
+        flags = {f"s0{i // 5 + 1}e0{i % 5 + 1}": "{FLG:X}" for i in range(25)}
+        done, _ = count_solved(flags)
+        assert done > CERTIFICATE_THRESHOLD
+        assert max(0, CERTIFICATE_THRESHOLD - done) == 0
+
+
+class TestStalychKursu:
+    """Mianownik i próg — stałe kursu, nie pochodne stanu repo."""
+
+    def test_mianownik_jest_rozmiarem_kursu_nie_liczba_implementacji(self):
+        """
+        Dawniej `total = len(TASK_REGISTRY)`, więc mianownik rósł razem z kodem i licznik
+        go przegonił, wypisując „15/14 zadań". Kurs ma 25 epizodów niezależnie od tego,
+        ile z nich mamy zaimplementowanych.
+        """
+        from core.tasks import TASK_REGISTRY
+
+        assert COURSE_TASK_COUNT == 25
+        assert COURSE_TASK_COUNT != len(TASK_REGISTRY)
+
+    def test_prog_certyfikatu(self):
+        assert CERTIFICATE_THRESHOLD == 20
