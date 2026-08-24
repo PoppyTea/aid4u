@@ -47,6 +47,18 @@ reviews:
         (klucze API, tokeny) zawsze zgłaszaj jako Major/security — to jedyna kategoria
         wartego uwagi ryzyka w tych plikach.
 
+    - path: "tasks/*/AGENTS.md"
+      instructions: >
+        Nagłówek statusu epizodu ("Rozwiązane (data) — flaga {FLG:...}, koszt $X,
+        za którym podejściem") jest WYMAGANYM elementem kontraktu tych plików, nie
+        wpisem dziennikowym — nosi go każdy z kilkunastu rozwiązanych epizodów
+        (np. tasks/s03e02_firmware/AGENTS.md). Odpowiada na jedyne pytanie, które
+        następny agent zadaje otwierając folder: czy to jest zrobione i ile kosztowało.
+        Koszt i liczba podejść karmią planowanie sezonu w tasks/s04/requirements/.
+        Nie sugeruj usuwania go pod regułą "Document stable contracts, not diary
+        entries" — usunięcie w JEDNYM pliku rozjeżdża go z resztą drzewa. Sekcja
+        "Pułapki (zweryfikowane na żywo)" podlega tej samej zasadzie.
+
     - path: "tasks/**/solution.py"
       instructions: >
         Rozwiązania zadań kursowych (AI_Devs 4) — priorytet to zdobycie flagi z huba,

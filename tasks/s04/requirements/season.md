@@ -1,7 +1,8 @@
 # S04+S05 — plan końcówki: 5 flag z 10 zadań
 
-Stan na 2026-08-20: **15 flag głównych** (`.flags.json` + `s01e03_proxy` poza plikiem).
-Do certyfikatu brakuje **5**. Zostało **10 zadań** — więc po raz pierwszy w tym projekcie
+Stan na 2026-08-24: **16 flag głównych** (`.flags.json` + `s01e03_proxy` poza plikiem).
+Do certyfikatu brakuje **4** — `s05e03` zaliczone, patrz „Co faktycznie zadziałało".
+Stan wyjściowy tego dokumentu (2026-08-20) to 15 flag i 5 do zdobycia. Zostało **10 zadań** — więc po raz pierwszy w tym projekcie
 możemy **wybierać**, a nie zaliczać wszystko po kolei. Ten plik trzyma wybór i kolejność;
 uzasadnienia źródłowe w `source/tool-inventory.md` i `source/community-intel.md`.
 
@@ -9,7 +10,7 @@ uzasadnienia źródłowe w `source/tool-inventory.md` i `source/community-intel.
 
 | Zadanie                    | Istota                                               | Zero-LLM?           | Infra | Brakujące zdolności             | Ryzyko kosztowe | Trudność wg społeczności        | Ocena       |
 | -------------------------- | ---------------------------------------------------- | ------------------- | ----- | ------------------------------- | --------------- | ------------------------------- | ----------- |
-| **s05e03** `shellaccess`   | zdalny `grep` po archiwum, odpowiedź wypisana `echo` | ✅ całkowicie       | brak  | brak                            | ~$0             | 🟢 najłatwiejsze                | **1**       |
+| ~~**s05e03**~~ `shellaccess` | zdalny `grep` po archiwum, odpowiedź wypisana `echo` | ✅ całkowicie       | brak  | brak                            | **$0.00 (fakt)** | 🟢 najłatwiejsze                | **✅ 2026-08-24** |
 | **s04e05** `foodwarehouse` | SQLite RO + SHA1 + zamówienie na miasto              | ✅                  | brak  | brak                            | $0–0.05         | 🟢 „poszło od strzała"          | **2**       |
 | **s04e03** `domatowo`      | 11×11, 300 pkt akcji, znajdź i ewakuuj               | ✅                  | brak  | brak                            | $0–0.0003       | 🟢 „nie jest zbyt trudne"       | **3**       |
 | **s04e04** `filesystem`    | 2,6 kB notatek → 3 katalogi w wirtualnym FS          | 🟡 hybryda          | brak  | brak                            | $0.15–0.26      | 🟡 polska semantyka             | **4**       |
@@ -78,9 +79,11 @@ i nie zostawia niedokończonego stanu, którego potrzebowałby następny.
 
 ### Przed konkretnym zadaniem
 
-- **s05e03:** ustalić, czy nasza bramka poleceń (`core/runtime/`) nie odrzuci komend
-  wysyłanych na ZDALNY shell — ona chroni lokalny proces, a tu komenda jest treścią
-  requestu. Jeśli koliduje, jawnie ją tu ominąć albo poszerzyć allowlistę o `grep`/`jq`/`echo`.
+- ✅ **s05e03 — sprawdzone, kolizji nie ma.** Domyślna `GuardPolicy` przepuszcza cały
+  potrzebny zestaw (`grep`, `echo`, `ls`, `cat`, `find`, `head`, `tail`, `wc`), łącznie
+  z `echo '{"date":…}'` — znaki JSON nie są metaznakami powłoki. Poszerzanie allowlisty
+  okazało się niepotrzebne; `jq` zostało poza nią świadomie (bez potoku niewiele wnosi,
+  a potoki bramka odrzuca z zasady).
 - **s04e05:** żaden.
 - **s04e03:** żaden (wzorzec planowania z S03 jest gotowy).
 - **s04e04:** wybrać model do normalizacji polskiej odmiany. Intel wskazuje
@@ -95,12 +98,12 @@ i nie zostawia niedokończonego stanu, którego potrzebowałby następny.
 W S03 dwukrotnie okazało się, że intel społeczności był nieaktualny wobec żywych danych.
 Kolejność poniżej to kolejność ryzyka.
 
-1. **Czy hub gatuje zadania S05 na wcześniejszych epizodach?** Fabuła sugeruje łańcuch
-   (s05e03 „to po to była nam informacja, na którym serwerze…" — pochodzi z s05e02, którego
-   NIE robimy). Mechanicznie w S01–S03 gatingu nie było, ale to założenie, nie fakt.
-   **Test:** jeden `{"task":"shellaccess","answer":{"cmd":"ls -la"}}`. Jeśli odrzuci —
-   cała piątka wymaga przetasowania, bo to samo dotyczy s05e04.
-   _To jest jedyna rzecz, która może wywrócić plan w całości._
+1. ✅ **ROZSTRZYGNIĘTE 2026-08-24 — gatingu NIE MA.** `{"task":"shellaccess",
+   "answer":{"cmd":"ls -la"}}` wróciło `{"code":100,"message":"Command executed."}` bez
+   zaliczonych s05e01/s05e02. Fabuła nawiązuje do wcześniejszych epizodów, ale to
+   ciągłość narracyjna, nie techniczna. **Konsekwencja: wybrana piątka zostaje bez
+   zmian**, w tym s05e04. Ryzyko, które mogło wywrócić plan w całości, zdjęte pierwszym
+   wywołaniem — dokładnie po to s05e03 było pierwsze.
 2. **Czy s04e05 nie zależy od s04e04?** Fabuła e05 mówi „Mamy już informacje, które miasto
    oferuje jaki towar" (efekt e04), ale `food4cities.json` dostajemy wprost i destinations
    są w SQLite. **Test:** `{"tool":"help"}` na `foodwarehouse`. Jeśli zależy — zamienić
@@ -124,3 +127,31 @@ Kolejność poniżej to kolejność ryzyka.
 7. **Czy ID/indeksowanie zaczyna się od 1 czy od 0?** W S03E05 backend indeksował od 1 przy
    mapie od 0 — kosztowało to podejście. Dotyczy s04e03 (współrzędne typu `F6`) i s05e04
    (wiersze 1-3, kolumny 1-12).
+
+## Co faktycznie zadziałało
+
+### s05e03 `shellaccess` — ✅ 2026-08-24, `{FLG:HUGEFILE}`, $0.00
+
+Za pierwszym podejściem, cztery zapytania do huba (trzy `grep`-y + zgłoszenie), zero LLM.
+Plan zakładał „najtańszą flagę w całym kursie" i to się potwierdziło — ale trzy rzeczy
+wyszły inaczej, niż zapowiadał rekonesans:
+
+- **Archiwum nie jest jednym plikiem tekstowym.** Fabuła mówiła „nie jest to typowa baza
+  danych, a prosty plik tekstowy"; realnie `/data` trzyma trzy pliki połączone kluczami
+  (`time_logs.csv` + `locations.json` + `gps.json`), przy czym **klucze mają inne nazwy
+  po obu stronach** (`location`→`location_id`, `place`→`entry_id`). To jest cała trudność
+  tego zadania i nie było jej w żadnym źródle — wyszła z sondy.
+- **Hub odpowiada HTTP 400 na zbyt duży stdout.** `grep -n Rafał` (37 trafień) wywraca
+  zapytanie, `grep -c` na tym samym wzorcu przechodzi. Nieudokumentowane; wygląda jak
+  awaria, bo `raise_for_status()` zamienia to w wyjątek. Zapytania muszą być wąskie
+  z założenia — ma to znaczenie dla każdego kolejnego zadania z eksploracją przez hub.
+- **Zdalny shell zjada cudzysłowy przed podziałem na tokeny**, więc wzorzec ze spacją
+  (`"location_id": 219`) rozpada się na dwa argumenty. Wzorce muszą być jednym tokenem.
+
+Potwierdziło się natomiast wszystko z `community-intel.md`: pułapka „dzień przed"
+(w archiwum faktycznie nie ma o tym śladu), ostrzeżenie przed `printf`, i ocena
+trudności. Deterministyczna ścieżka dała dodatkowy zysk, którego rekonesans nie
+przewidział: **omija raportowane odmowy modeli Anthropic** przy „szukaniu ciała",
+bo nie wykonuje żadnego wywołania providera.
+
+Operacyjne szczegóły przeniesione do `tasks/s05e03_shellaccess/AGENTS.md`.
