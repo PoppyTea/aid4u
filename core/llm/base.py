@@ -52,6 +52,7 @@ class LLMProvider(ABC):
         schema: type[T],
         *,
         system: str | None = None,
+        thinking: ThinkingLevel | None = None,
     ) -> LLMResponse:
         """
         Wywołanie ze strukturyzowanym wyjściem (Pydantic model).
@@ -71,6 +72,7 @@ class LLMProvider(ABC):
         tools: list[Tool],
         *,
         system: str | None = None,
+        thinking: ThinkingLevel | None = None,
     ) -> LLMResponse:
         """Pojedyncze wywołanie z dostępem do narzędzi.
         Zwraca tool_calls jeśli model chce użyć narzędzi.

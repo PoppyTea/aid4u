@@ -265,3 +265,63 @@ class TestDynamicznychNarzedzi:
         second = [t.name for t in mock_provider.complete_with_tools.call_args_list[1].args[1]]
         assert first == ["search"]
         assert second == ["search", "maps"]
+
+
+class TestThinkingPassthrough:
+    """
+    `thinking` musi dotrzeć do providera każdą ścieżką, nie tylko przez `chat()`.
+    Pętla agentowa jest tu najważniejsza — to jedyne miejsce, gdzie myślenie realnie
+    się opłaca, a wpięcie w #80 objęło wyłącznie `chat()`.
+    """
+
+    def test_structured_forwards_thinking(self, llm, mock_provider):
+        class Wynik(BaseModel):
+            x: int
+
+        mock_provider.complete_structured.return_value = LLMResponse(
+            content='{"x": 1}', model="m", input_tokens=1, output_tokens=1, parsed=Wynik(x=1)
+        )
+        llm.structured([LLMMessage.user("hi")], Wynik, thinking="high")
+
+        assert mock_provider.complete_structured.call_args.kwargs["thinking"] == "high"
+
+    def test_agent_loop_forwards_thinking_every_iteration(self, llm, mock_provider):
+        """Poziom obowiązuje w KAŻDEJ iteracji, nie tylko w pierwszej."""
+        tool = Tool(name="t", description="d", parameters={"type": "object", "properties": {}})
+        mock_provider.complete_with_tools.side_effect = [
+            make_response("", [ToolCall(id="1", name="t", arguments={})]),
+            make_response("gotowe"),
+        ]
+        llm.run_agent_loop([LLMMessage.user("hi")], [tool], lambda n, a: "ok", thinking="medium")
+
+        assert mock_provider.complete_with_tools.call_count == 2
+        for call in mock_provider.complete_with_tools.call_args_list:
+            assert call.kwargs["thinking"] == "medium"
+
+    def test_none_is_not_forwarded_as_a_level(self, llm, mock_provider):
+        """`None` ma zostawić domyślne dostawcy, a nie zostać zinterpretowane jako 'none'."""
+        mock_provider.complete.return_value = make_response("ok")
+        llm.chat([LLMMessage.user("hi")])
+
+        assert mock_provider.complete.call_args.kwargs["thinking"] is None
+
+
+def test_tool_call_turn_is_recorded_even_without_text(llm, mock_provider):
+    """
+    Regresja zmierzona 2026-08-24: przy włączonym myśleniu tura z wywołaniem narzędzia
+    zwraca `['thinking', 'tool_use']` — bez bloku tekstowego. Poprzedni warunek
+    `if last_content:` pomijał wtedy zapis tury asystenta, a że historia jest spłaszczona
+    do tekstu (AID-55) i nie niesie bloków `tool_use`, model nie widział śladu własnego
+    wywołania i powtarzał je. Przebieg potrafił zużyć wszystkie iteracje i zwrócić "".
+    """
+    tool = Tool(name="dodaj", description="d", parameters={"type": "object", "properties": {}})
+    mock_provider.complete_with_tools.side_effect = [
+        make_response("", [ToolCall(id="1", name="dodaj", arguments={"a": 1})]),
+        make_response("wynik to 2"),
+    ]
+    llm.run_agent_loop([LLMMessage.user("policz")], [tool], lambda n, a: "2", thinking="low")
+
+    historia = mock_provider.complete_with_tools.call_args_list[1].args[0]
+    role_asystenta = [m for m in historia if m.role == "assistant"]
+    assert role_asystenta, "tura asystenta zniknęła z historii — model nie zobaczy, że wołał narzędzie"
+    assert "dodaj" in role_asystenta[0].content

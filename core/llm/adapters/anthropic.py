@@ -99,13 +99,16 @@ class AnthropicAdapter(LLMProvider):
         schema: type[T],
         *,
         system: str | None = None,
+        thinking: ThinkingLevel | None = None,
     ) -> LLMResponse:
         schema_str = json.dumps(schema.model_json_schema(), ensure_ascii=False, indent=2)
         system_prompt = (
             (system or "")
             + f"\n\nRespond ONLY with valid JSON matching this schema. No markdown, no explanation:\n{schema_str}"
         )
-        response = self.complete(messages, system=system_prompt, max_tokens=4096)
+        response = self.complete(
+            messages, system=system_prompt, max_tokens=4096, thinking=thinking
+        )
 
         # Strip markdown fences if model wraps JSON in ```json ... ``` — case-insensitive
         # prefix check (`` ```JSON `` is legal and otherwise leaves "JSON\n" in `content`,
@@ -129,7 +132,15 @@ class AnthropicAdapter(LLMProvider):
         tools: list[Tool],
         *,
         system: str | None = None,
+        thinking: ThinkingLevel | None = None,
     ) -> LLMResponse:
+        """
+        Wywołanie z narzędziami. Myślenie **działa tu razem z narzędziami** — sprawdzone
+        żywym wywołaniem 2026-08-24, także przy spłaszczonej historii, którą buduje
+        `run_agent_loop()` (zwykłe wiadomości tekstowe zamiast bloków `tool_result`,
+        patrz AID-55). Przy włączonym myśleniu tura z wywołaniem narzędzia zwraca bloki
+        `['thinking', 'tool_use']` — bez bloku tekstowego, stąd puste `content`.
+        """
         anthropic_tools = [
             {
                 "name": t.name,
@@ -146,6 +157,8 @@ class AnthropicAdapter(LLMProvider):
         }
         if system:
             kwargs["system"] = system
+        if thinking is not None:
+            kwargs["thinking"] = anthropic_thinking(thinking, 4096)
 
         # `**kwargs` typu `dict[str, Any]` gubi rozpoznanie przeciążenia, więc SDK
         # deklaruje `Message | Stream`. Nie streamujemy tu nigdzie — `stream` nie trafia

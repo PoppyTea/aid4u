@@ -62,6 +62,20 @@ Contains the architectural heart of the system: LLM clients, task management bas
     `content[0].text` blindly raises `AttributeError`; `_first_text()` scans for the first
     text block instead. Unit tests could not catch this — the fakes returned a single text
     block, and it surfaced only on a live call.
+  - **A tool-call turn is always recorded in `run_agent_loop()` history, even with no text.**
+    With thinking on, that turn is `['thinking', 'tool_use']` — no text block — so the old
+    `if last_content:` guard skipped the append. Since the history is flattened to plain text
+    (AID-55) and carries no `tool_use` blocks, the model then saw *no trace* that it had
+    already called the tool and called it again; measured 2026-08-24, a run could burn every
+    iteration repeating one call and return `""`. Without thinking the bug stayed hidden,
+    because the model usually added a sentence like "I'll use the tool" that accidentally
+    served as that trace. The loop now synthesises `[Wywołuję narzędzia: …]` when the turn
+    has no text of its own.
+  - **`complete_structured()` defaults differ per provider on purpose.** Gemini forces
+    `"none"` when `thinking is None`; Anthropic and OpenAI leave the provider default. Not
+    an inconsistency to iron out: Gemini 2.5 defaults to thinking *on* with a dynamic budget
+    drawn from the same pool as `max_output_tokens`, which truncated JSON mid-object. On the
+    other two, thinking is opt-in, so `None` is already safe.
 - All external **LLM provider** API interactions MUST go through `core/llm/client.py`
   (Anthropic/Gemini/OpenAI/OpenRouter — the providers `core/llm/adapters/` abstracts
   over). This does NOT cover observability/telemetry calls (Langfuse, Logfire) —

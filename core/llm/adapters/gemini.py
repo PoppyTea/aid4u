@@ -209,7 +209,9 @@ class GeminiAdapter(LLMProvider):
         tools: list[Tool],
         *,
         system: str | None = None,
+        thinking: ThinkingLevel | None = None,
     ) -> LLMResponse:
+        """Wywołanie z narzędziami; `thinking=None` zostawia domyślne providera."""
         from google.genai import types
 
         from core.llm.types import ToolCall
@@ -237,6 +239,9 @@ class GeminiAdapter(LLMProvider):
             # ponownego budowania tej unii ręcznie.
             tools=cast(Any, gemini_tools),
             max_output_tokens=4096,
+            thinking_config=(
+                self._thinking_config(thinking, 4096) if thinking is not None else None
+            ),
         )
 
         response = self._client.models.generate_content(

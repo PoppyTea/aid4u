@@ -93,10 +93,13 @@ class OpenAIAdapter(LLMProvider):
         schema: type[T],
         *,
         system: str | None = None,
+        thinking: ThinkingLevel | None = None,
     ) -> LLMResponse:
         schema_str = json.dumps(schema.model_json_schema(), ensure_ascii=False)
         system_prompt = (system or "") + f"\nRespond ONLY with JSON: {schema_str}"
-        response = self.complete(messages, system=system_prompt, max_tokens=4096)
+        response = self.complete(
+            messages, system=system_prompt, max_tokens=4096, thinking=thinking
+        )
 
         # Usuwa fence markdown jako DELIMITER, nie jako zbiór znaków do strip() —
         # `.lstrip("```json")` (poprzednia wersja) strippuje dowolny znak z ` ```json `,
@@ -119,7 +122,11 @@ class OpenAIAdapter(LLMProvider):
         tools: list[Tool],
         *,
         system: str | None = None,
+        thinking: ThinkingLevel | None = None,
     ) -> LLMResponse:
+        """Wywołanie z narzędziami; `thinking=None` zostawia domyślne providera."""
+        import openai
+
         oai_messages: list[dict] = []
         if system:
             oai_messages.append({"role": "system", "content": system})
@@ -142,6 +149,9 @@ class OpenAIAdapter(LLMProvider):
             messages=cast("list[ChatCompletionMessageParam]", oai_messages),
             tools=cast("list[ChatCompletionToolParam]", oai_tools),
             max_tokens=4096,
+            reasoning_effort=(
+                openai_reasoning_effort(thinking) if thinking is not None else openai.omit
+            ),
         )
         msg = response.choices[0].message
         # `msg.tool_calls` to unia: wywołania funkcyjne mają `.function`, ale custom tools
