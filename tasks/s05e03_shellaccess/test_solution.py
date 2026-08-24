@@ -44,7 +44,7 @@ class TestParsowanieWpisuLogu:
         assert match["place"] == "954634"
 
     def test_znosi_prefiks_nazwy_pliku(self) -> None:
-        """`grep` dokłada `plik:` gdy dostanie więcej niż jeden argument — to nie może psuć parsera."""
+        """`grep` dokłada `plik:` przy wielu argumentach — to nie może psuć parsera."""
         match = _LOG_LINE_RE.search(f"/data/time_logs.csv:{REAL_LOG_LINE}")
         assert match is not None
         assert match["date"] == "2024-11-13"
@@ -57,7 +57,9 @@ class TestParsowanieWpisuLogu:
         Opisy zdarzeń bywają zdaniami złożonymi; średnik w treści przesunąłby
         location_id i entry_id o jedno pole, dając poprawnie wyglądającą złą odpowiedź.
         """
-        match = _LOG_LINE_RE.search("1:2024-11-13;Znaleziono ciało; trwa śledztwo;219;954634")
+        match = _LOG_LINE_RE.search(
+            "1:2024-11-13;Znaleziono ciało; trwa śledztwo;219;954634"
+        )
         assert match is not None
         assert match["location"] == "219"
         assert match["place"] == "954634"
@@ -67,7 +69,7 @@ class TestParsowaniePlikowJSON:
     """Nazwa miasta i współrzędne z wyniku `grep` nad plikami JSON."""
 
     def test_dekoduje_escape_diakrytykow(self) -> None:
-        """`locations.json` trzyma `ą` jako `\\u0105` — bez dekodowania miasto poszłoby zniekształcone."""
+        """`locations.json` trzyma `ą` jako escape — bez dekodowania miasto idzie zniekształcone."""
         import json
 
         match = _NAME_RE.search('        "name": "Grudzi\\u0105dz"')
@@ -77,12 +79,18 @@ class TestParsowaniePlikowJSON:
     def test_wspolrzedne_zostaja_tekstem(self) -> None:
         """Wartości mają zachować dokładnie cyfry z archiwum, bez konwersji na float."""
         block = '    "latitude": 53.432303,\n    "longitude": 18.968774,\n'
-        assert _LATITUDE_RE.search(block)["value"] == "53.432303"
-        assert _LONGITUDE_RE.search(block)["value"] == "18.968774"
+        latitude = _LATITUDE_RE.search(block)
+        longitude = _LONGITUDE_RE.search(block)
+        assert latitude is not None
+        assert longitude is not None
+        assert latitude["value"] == "53.432303"
+        assert longitude["value"] == "18.968774"
 
     def test_ujemna_dlugosc_geograficzna(self) -> None:
         """W `gps.json` są wpisy z półkuli zachodniej — minus nie może uciąć wartości."""
-        assert _LONGITUDE_RE.search('"longitude": -52.76667')["value"] == "-52.76667"
+        match = _LONGITUDE_RE.search('"longitude": -52.76667')
+        assert match is not None
+        assert match["value"] == "-52.76667"
 
 
 class TestBudowaniePoleceniaEcho:
@@ -114,7 +122,7 @@ class TestBudowaniePoleceniaEcho:
         assert isinstance(payload["latitude"], float)
 
     def test_apostrof_w_miescie_przerywa_zamiast_wysylac(self) -> None:
-        """Apostrof zamknąłby cytowanie `echo '…'` i wypisał śmieci — lepiej wyjątek niż zła odpowiedź."""
+        """Apostrof zamknąłby cytowanie `echo '…'` — lepiej wyjątek niż zła odpowiedź."""
         with pytest.raises(ValueError, match="Apostrof"):
             build_echo_command(date(2024, 11, 12), "L'Aquila", "42.35", "13.39")
 
@@ -143,7 +151,18 @@ class TestWyciaganieStdout:
 
     def test_preferuje_pole_output(self) -> None:
         """`output` niesie stdout; `message` to stały komunikat statusu."""
-        assert extract_output({"code": 100, "message": "Command executed.", "output": "abc"}) == "abc"
+        response = {"code": 100, "message": "Command executed.", "output": "abc"}
+        assert extract_output(response) == "abc"
+
+    def test_pusty_output_nie_spada_na_komunikat_statusu(self) -> None:
+        """
+        `grep` bez trafień zwraca pusty stdout — i to jest wynik, nie awaria.
+
+        Gdyby pusty string spadał do fallbacku, polecenie bez trafień raportowałoby
+        `"Command executed."` jako swoją treść, czyli „nic nie znalazłem" wyglądałoby
+        jak „coś znalazłem". Zgłoszone przez CodeRabbita na PR #81.
+        """
+        assert extract_output({"code": 100, "message": "Command executed.", "output": ""}) == ""
 
     def test_fallback_na_message(self) -> None:
         """Gdy huba nie stać na `output`, komunikat jest lepszy niż nic — bywa nośnikiem błędu."""
