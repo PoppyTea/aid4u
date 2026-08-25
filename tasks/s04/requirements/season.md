@@ -1,7 +1,7 @@
 # S04+S05 — plan końcówki: 5 flag z 10 zadań
 
-Stan na 2026-08-25: **18 flag głównych** (`.flags.json` + `s01e03_proxy` poza plikiem).
-Do certyfikatu brakuje **2** — `s05e03`, `s04e05` i `s04e03` zaliczone, patrz
+Stan na 2026-08-25: **19 flag głównych** (`.flags.json` + `s01e03_proxy` poza plikiem).
+Do certyfikatu brakuje **1** — `s05e03`, `s04e05`, `s04e03` i `s04e04` zaliczone, patrz
 „Co faktycznie zadziałało".
 Stan wyjściowy tego dokumentu (2026-08-20) to 15 flag i 5 do zdobycia. Zostało **10 zadań** — więc po raz pierwszy w tym projekcie
 możemy **wybierać**, a nie zaliczać wszystko po kolei. Ten plik trzyma wybór i kolejność;
@@ -208,3 +208,28 @@ Model kosztu też trzeba było zmierzyć, nie przepisać: `move` raportuje `path
 wliczając pole startowe, a nalicza za `path_steps - 1`.
 
 Operacyjne szczegóły przeniesione do `tasks/s04e03_domatowo/AGENTS.md`.
+
+### s04e04 `filesystem` — ✅ 2026-08-25, `{FLG:DEALWITHIT}`, $0.00
+
+**Jedyne zadanie z piątki, w którym ranking się pomylił co do metody.** Plan zakładał
+„hybrydę" i $0.15–0.26 na LLM do normalizacji polskiej odmiany, bo tak robiła cała
+społeczność. Poszło **zero LLM za $0.00**, i to nie dzięki sprytniejszemu promptowi,
+tylko dzięki obserwacji o danych: `transakcje.txt` podaje **wszystkie miasta i wszystkie
+towary w mianowniku**, w sztywnym formacie `Miasto -> towar -> Miasto`. To zamienia
+„rozpoznaj polską odmianę" w „dopasuj formę do skończonego słownika", czyli w dopasowanie
+rdzenia.
+
+Wniosek na przyszłość: zanim uzna się zadanie za lingwistyczne, warto sprawdzić, czy
+w danych nie leży gotowy słownik form podstawowych.
+
+Druga rzecz warta zapamiętania to **niezależna weryfikacja**: `ogloszenia.txt` opisuje
+to samo zapotrzebowanie ośmiu miast, co `food4cities.json` pobrane w `s04e05`. Testy
+porównują wynik parsera z plikiem z innego zadania i to porównanie wyłapało trzy osobne,
+ciche usterki — każda dawała poprawnie wyglądającą, niepełną strukturę.
+
+Trzy niepisane reguły API (nie ma ich ani w treści, ani w `help`): nazwy plików wyłącznie
+małymi literami (`code -940`), bez kropek (`code -935`), a `listFiles` zwraca `entries`,
+nie `files` — przez co przez chwilę wyglądało, że batch nic nie utworzył, mimo że utworzył
+wszystko.
+
+Operacyjne szczegóły przeniesione do `tasks/s04e04_filesystem/AGENTS.md`.
