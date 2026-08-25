@@ -1,8 +1,8 @@
 # S04+S05 — plan końcówki: 5 flag z 10 zadań
 
-Stan na 2026-08-24: **17 flag głównych** (`.flags.json` + `s01e03_proxy` poza plikiem).
-Do certyfikatu brakuje **3** — `s05e03` i `s04e05` zaliczone, patrz „Co faktycznie
-zadziałało".
+Stan na 2026-08-25: **18 flag głównych** (`.flags.json` + `s01e03_proxy` poza plikiem).
+Do certyfikatu brakuje **2** — `s05e03`, `s04e05` i `s04e03` zaliczone, patrz
+„Co faktycznie zadziałało".
 Stan wyjściowy tego dokumentu (2026-08-20) to 15 flag i 5 do zdobycia. Zostało **10 zadań** — więc po raz pierwszy w tym projekcie
 możemy **wybierać**, a nie zaliczać wszystko po kolei. Ten plik trzyma wybór i kolejność;
 uzasadnienia źródłowe w `source/tool-inventory.md` i `source/community-intel.md`.
@@ -13,7 +13,7 @@ uzasadnienia źródłowe w `source/tool-inventory.md` i `source/community-intel.
 | -------------------------- | ---------------------------------------------------- | ------------------- | ----- | ------------------------------- | --------------- | ------------------------------- | ----------- |
 | ~~**s05e03**~~ `shellaccess` | zdalny `grep` po archiwum, odpowiedź wypisana `echo` | ✅ całkowicie       | brak  | brak                            | **$0.00 (fakt)** | 🟢 najłatwiejsze                | **✅ 2026-08-24** |
 | ~~**s04e05**~~ `foodwarehouse` | SQLite RO + SHA1 + zamówienie na miasto          | ✅                  | brak  | brak                            | **$0.00 (fakt)** | 🟢 „poszło od strzała"          | **✅ 2026-08-24** |
-| **s04e03** `domatowo`      | 11×11, 300 pkt akcji, znajdź i ewakuuj               | ✅                  | brak  | brak                            | $0–0.0003       | 🟢 „nie jest zbyt trudne"       | **3**       |
+| ~~**s04e03**~~ `domatowo`  | 11×11, 300 pkt akcji, znajdź i ewakuuj               | ✅                  | brak  | brak                            | **$0.00 (fakt)** | 🟢 „nie jest zbyt trudne"       | **✅ 2026-08-25** |
 | **s04e04** `filesystem`    | 2,6 kB notatek → 3 katalogi w wirtualnym FS          | 🟡 hybryda          | brak  | brak                            | $0.15–0.26      | 🟡 polska semantyka             | **4**       |
 | **s05e04** `goingthere`    | 3×12, hinty PL/ENG, SHA1 disarm                      | 🟡 hybryda          | brak  | parser hintów (mały)            | grosze          | 🟡 jedna pułapka pojęciowa      | **5**       |
 | s04e01 `okoeditor`         | 3 edycje wpisów + `done`                             | ✅                  | brak  | sesja HTTP + strip HTML         | $0–0.14         | 🟡 milcząca weryfikacja         | 6 (rezerwa) |
@@ -182,3 +182,29 @@ spoza pliku (`done` przechodzi mimo nich, `orders.delete` niepotrzebne) i wybór
 zamówienia mają twórców właśnie z tej roli, i stąd wzięliśmy tę rolę, a nie z nazwy).
 
 Operacyjne szczegóły przeniesione do `tasks/s04e05_foodwarehouse/AGENTS.md`.
+
+### s04e03 `domatowo` — ✅ 2026-08-25, `{FLG:WEVEGOTHIM}`, $0.00
+
+160 z 300 punktów akcji, zero LLM. Ranking i intel trafiły: „deterministycznie wychodzi
+najlepiej", a jedyny sposób przegrania to przepalenie punktów. Wskazówka z sygnału
+(„najwyższe bloki") zawęża 121 pól planszy do 14 jeszcze przed pierwszym ruchem.
+
+Trzy rzeczy, których nie było w żadnym źródle i które kosztowały po jednym nieudanym
+przebiegu każda:
+
+- **`callHelicopter` kusi jako detektor trafienia** — kosztuje 0 punktów i zwraca 400,
+  dopóki nikt nie potwierdził człowieka, więc wygląda na darmowy i autorytatywny test.
+  Ale wywołanie testujące JEST ewakuacją: `--dry-run` przeszedł tak przez całą planszę
+  i naprawdę zakończył misję. Detekcja idzie przez `getLogs` (też 0 punktów).
+- **Limit 8 zwiadowców jest globalny na operację, nie na desant.** Dwa pełne
+  czterosobowe desanty wyczerpują go w całości, a trzeci `create` odbija się od API
+  z HTTP 400 — po wydaniu punktów na dwa poprzednie budynki.
+- **Słownik komunikatów `inspect` jest otwarty.** Przebieg zdobywający flagę przyniósł
+  trzy sformułowania spoza listy zebranej dzień wcześniej. Klasyfikator zwraca `None`
+  dla nieznanego zdania zamiast `False` i zlicza takie przypadki — zabezpieczeniem jest
+  ta gałąź, nie kompletność listy.
+
+Model kosztu też trzeba było zmierzyć, nie przepisać: `move` raportuje `path_steps`
+wliczając pole startowe, a nalicza za `path_steps - 1`.
+
+Operacyjne szczegóły przeniesione do `tasks/s04e03_domatowo/AGENTS.md`.
