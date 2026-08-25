@@ -104,7 +104,8 @@ class AnthropicAdapter(LLMProvider):
         schema_str = json.dumps(schema.model_json_schema(), ensure_ascii=False, indent=2)
         system_prompt = (
             (system or "")
-            + f"\n\nRespond ONLY with valid JSON matching this schema. No markdown, no explanation:\n{schema_str}"
+            + "\n\nRespond ONLY with valid JSON matching this schema. "
+            + f"No markdown, no explanation:\n{schema_str}"
         )
         response = self.complete(
             messages, system=system_prompt, max_tokens=4096, thinking=thinking

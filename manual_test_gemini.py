@@ -42,7 +42,11 @@ def run_manual_test():
     response = adapter.complete_structured(messages, UserSchema)
     print(f"Parsed: {response.parsed}")
 
-    if isinstance(response.parsed, UserSchema) and response.parsed.name == "John" and response.parsed.age == 30:
+    if (
+        isinstance(response.parsed, UserSchema)
+        and response.parsed.name == "John"
+        and response.parsed.age == 30
+    ):
         print("SUCCESS: complete_structured")
     else:
         print("FAILED: complete_structured")

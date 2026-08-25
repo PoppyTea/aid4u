@@ -15,7 +15,8 @@ Kod w zadaniu:
 
 from __future__ import annotations
 
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
+from collections.abc import Callable
 
 from pydantic import BaseModel
 
@@ -187,7 +188,9 @@ class LLMClient:
                 if new_names:
                     seen_tool_names |= new_names
                     logfire.info(
-                        "Agent tools available", tools=sorted(seen_tool_names), added=sorted(new_names)
+                        "Agent tools available",
+                        tools=sorted(seen_tool_names),
+                        added=sorted(new_names),
                     )
 
                 logfire.info(f"Agent iteration {iteration + 1}/{max_iterations}")

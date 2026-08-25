@@ -26,7 +26,8 @@ JEGO żądania niezależnie od tego, co faktycznie wysłano do API.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from core.hub import HubClient
 from core.llm.classify import classify

@@ -16,7 +16,9 @@ class _DummyTask(BaseTask):
 
 @pytest.fixture
 def dummy_task(tmp_path, monkeypatch):
-    """BaseTask z podmienionym .cache/, data/run-history/ i .run/ na tmp_path — bez śmiecenia w repo.
+    """BaseTask z podmienionym .cache/, data/run-history/ i .run/ na tmp_path.
+
+    Bez śmiecenia w repo.
 
     Izoluje też killswitch (patrz tests/core/runtime/test_killswitch.py::_isolated_run_dir) —
     run() woła teraz start_run()/end_run() naprawdę, więc bez tego testy dotykałyby
@@ -113,7 +115,9 @@ class TestKillSwitchIntegration:
     """
 
     def test_check_abort_runs_before_fetch_data(self, dummy_task, monkeypatch):
-        """Budżet wall-clock=0 musi zablokować fetch_data() — check_abort() woła się PRZED nim, nie tylko przed submit.
+        """Budżet wall-clock=0 musi zablokować fetch_data().
+
+        check_abort() woła się PRZED nim, nie tylko przed submit.
 
         Celowo używa budżetu czasu, nie .run/STOP: start_run() poprawnie czyści
         STOP na starcie każdego przebiegu (patrz jego docstring), więc STOP
@@ -128,17 +132,22 @@ class TestKillSwitchIntegration:
         def spy_fetch_data():
             nonlocal fetch_data_called
             fetch_data_called = True
-            return None
+            return
 
         monkeypatch.setattr(task, "fetch_data", spy_fetch_data)
 
         result = task.run()
 
         assert result is None
-        assert not fetch_data_called, "fetch_data() nie powinno wystartować — check_abort() miał to złapać wcześniej"
+        assert not fetch_data_called, (
+            "fetch_data() nie powinno wystartować — check_abort() miał to złapać wcześniej"
+        )
 
     def test_abort_run_from_solve_returns_none_cleanly(self, dummy_task, monkeypatch):
-        """AbortRun rzucone z solve() (np. przez check_abort() w pętli agenta) daje czyste run() -> None, nie wyjątek."""
+        """
+        AbortRun rzucone z solve() (np. przez check_abort() w pętli agenta) daje czyste run() ->
+        None, nie wyjątek.
+        """
         task, _ = dummy_task
 
         def aborting_solve(data):
@@ -152,7 +161,9 @@ class TestKillSwitchIntegration:
         assert result is None
 
     def test_start_run_and_end_run_are_called(self, dummy_task, monkeypatch):
-        """run() musi wołać start_run() na starcie i end_run() na końcu (sukces) — cykl życia .run/ zależy od obu.
+        """run() musi wołać start_run() na starcie i end_run() na końcu (sukces).
+
+        Cykl życia .run/ zależy od obu.
 
         Patchuje `core.tasks.base.start_run`/`end_run`, NIE `killswitch.start_run`
         — `base.py` importuje te nazwy przez `from core.runtime import ...`, więc
@@ -161,7 +172,9 @@ class TestKillSwitchIntegration:
         """
         task, _ = dummy_task
         calls = []
-        monkeypatch.setattr("core.tasks.base.start_run", lambda **kw: calls.append(("start_run", kw)))
+        monkeypatch.setattr(
+            "core.tasks.base.start_run", lambda **kw: calls.append(("start_run", kw))
+        )
         monkeypatch.setattr("core.tasks.base.end_run", lambda: calls.append(("end_run",)))
         monkeypatch.setattr(task, "fetch_data", lambda: None)
         monkeypatch.setattr(task, "solve", lambda data: {"result": "ok"})
@@ -170,10 +183,15 @@ class TestKillSwitchIntegration:
         task.run()
 
         names = [c[0] for c in calls]
-        assert names == ["start_run", "end_run"], f"oczekiwano start_run przed end_run, dostano: {names}"
+        assert names == ["start_run", "end_run"], (
+            f"oczekiwano start_run przed end_run, dostano: {names}"
+        )
 
     def test_end_run_called_even_when_solve_raises(self, dummy_task, monkeypatch):
-        """end_run() (sprzątanie .run/) musi się wykonać nawet gdy solve() rzuca zwykły wyjątek, nie tylko na happy path."""
+        """
+        end_run() (sprzątanie .run/) musi się wykonać nawet gdy solve() rzuca zwykły wyjątek, nie
+        tylko na happy path.
+        """
         task, _ = dummy_task
         end_run_called = False
 

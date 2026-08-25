@@ -21,7 +21,10 @@ class TestExpectBinary:
         assert expect_binary(content, "zip") == content
 
     def test_empty_zip_archive_passes(self):
-        """Pusty ZIP (sama sygnatura 'end of central directory') też jest poprawnym ZIP-em, nie ma zostać odrzucony."""
+        """
+        Pusty ZIP (sama sygnatura 'end of central directory') też jest poprawnym ZIP-em, nie ma
+        zostać odrzucony.
+        """
         content = b"PK\x05\x06" + b"\x00" * 18  # standardowy pusty EOCD record
         assert expect_binary(content, "zip") == content
 
@@ -31,7 +34,10 @@ class TestExpectBinary:
             expect_binary(b"not a png at all", "png")
 
     def test_soft_404_html_gets_specific_hint(self):
-        """Strona HTML zamiast oczekiwanego binarnego pliku dostaje podpowiedź 'soft-404' w komunikacie błędu."""
+        """
+        Strona HTML zamiast oczekiwanego binarnego pliku dostaje podpowiedź 'soft-404' w
+        komunikacie błędu.
+        """
         # Dokładnie ten przypadek, który spowodował dodanie tego modułu: hub zwraca
         # 200 + HTML zamiast oczekiwanego pliku binarnego.
         html_error_page = b"<html><body>404 not found</body></html>"

@@ -108,7 +108,7 @@ class GuardPolicy:
     ignored_globs: frozenset[str] = field(default_factory=frozenset)
     allow_relative_paths: bool = True
 
-    def with_commands(self, *commands: str) -> "GuardPolicy":
+    def with_commands(self, *commands: str) -> GuardPolicy:
         """
         Zwraca kopię polityki poszerzoną o podane polecenia.
 
@@ -122,7 +122,7 @@ class GuardPolicy:
             allow_relative_paths=self.allow_relative_paths,
         )
 
-    def with_ignored(self, globs: frozenset[str] | set[str]) -> "GuardPolicy":
+    def with_ignored(self, globs: frozenset[str] | set[str]) -> GuardPolicy:
         """Zwraca kopię polityki z podanymi wzorcami `.gitignore`."""
         return GuardPolicy(
             allowed_commands=self.allowed_commands,
@@ -202,7 +202,11 @@ def looks_like_path(token: str) -> bool:
     return bool(_PATHLIKE_RE.search(token))
 
 
-def check_command(command: str, policy: GuardPolicy | None = None) -> list[str]:
+# Wyciszenie C901 niżej jest świadome: to liniowa lista kontroli bezpieczeństwa, a nie
+# splątana logika. Rozbicie jej na funkcje pomocnicze dla metryki złożoności
+# rozproszyłoby po pliku dokładnie to, co przy audycie chce się przeczytać naraz —
+# pełen zestaw warunków, które muszą przejść, zanim polecenie opuści proces.
+def check_command(command: str, policy: GuardPolicy | None = None) -> list[str]:  # noqa: C901
     """
     Sprawdza polecenie i zwraca jego tokeny albo rzuca `CommandRejected`.
 

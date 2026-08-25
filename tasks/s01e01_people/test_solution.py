@@ -45,7 +45,7 @@ Maria,Wójcik,F,1992,Grudziądz,nauczycielka
 Tomasz,Zieliński,M,2000,Grudziądz,programista
 Krzysztof,Dąbrowski,M,1980,Grudziądz,spedytor
 Marek,Lewandowski,M,1988,Gdańsk,kierowca autobusu
-""".encode("utf-8")
+""".encode()
 
 
 @pytest.fixture

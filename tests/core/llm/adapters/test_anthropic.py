@@ -63,7 +63,8 @@ def test_complete_structured_markdown_json(adapter):
 
 def test_complete_structured_markdown_uppercase_json_language_tag(adapter):
     """Regresja: `.lstrip("```json")` (usunięte) stripował po zbiorze znaków, nie substringu
-    — dla `` ```JSON `` zostawiał literalne "JSON\\n" przed danymi. Case-insensitive check naprawia to."""
+    — dla `` ```JSON `` zostawiał literalne "JSON\\n" przed danymi.
+    Case-insensitive check naprawia to."""
     expected_json = '```JSON\n{"name": "Zoe", "age": 22}\n```'
 
     with patch.object(adapter, "complete") as mock_complete:
@@ -139,7 +140,7 @@ def test_thinking_block_before_text_does_not_break_extraction():
     bo atrapy zwracały pojedynczy blok tekstowy — złapane dopiero żywym wywołaniem.
     """
     from types import SimpleNamespace
-    from unittest.mock import MagicMock, patch
+    from unittest.mock import patch
 
     from core.llm.adapters.anthropic import AnthropicAdapter
     from core.llm.types import LLMMessage

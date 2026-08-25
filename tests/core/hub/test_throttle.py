@@ -94,7 +94,9 @@ class TestCooldownu:
         ostatnie wywołanie, żeby KOLEJNE żądanie znów zachowało pełny odstęp. Gdyby
         tego nie robiło, ponowienie i następny request poszłyby jedno po drugim.
         """
-        t = OutgoingThrottle(min_interval_s=2.5, cooldown_s=65.0, clock=clock.time, sleep=clock.sleep)
+        t = OutgoingThrottle(
+            min_interval_s=2.5, cooldown_s=65.0, clock=clock.time, sleep=clock.sleep
+        )
         t.cooldown()
         assert t.wait_turn() == pytest.approx(2.5)
 

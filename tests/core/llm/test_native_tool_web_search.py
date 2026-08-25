@@ -87,7 +87,7 @@ def test_joins_multiple_text_blocks_with_space(mock_anthropic_client):
 
 
 def test_allowed_and_blocked_domains_are_mutually_exclusive(mock_anthropic_client):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="domains"):
         complete_with_web_search(
             "test-key",
             [LLMMessage.user("Pytanie")],

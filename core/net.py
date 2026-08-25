@@ -52,7 +52,9 @@ def expect_binary(content: bytes, kind: str, *, source: str = "") -> bytes:
 
     if not any(content.startswith(sig) for sig in signatures):
         looks_like_html = content.lstrip()[:15].lower().startswith(_HTML_MARKERS)
-        hint = " (treść wygląda na stronę HTML — prawdopodobnie soft-404)" if looks_like_html else ""
+        hint = (
+            " (treść wygląda na stronę HTML — prawdopodobnie soft-404)" if looks_like_html else ""
+        )
         where = f" z {source}" if source else ""
         raise UnexpectedContentError(
             f"Oczekiwano formatu '{kind}'{where}, ale magic bytes nie pasują{hint}. "

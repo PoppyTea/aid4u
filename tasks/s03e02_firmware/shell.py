@@ -68,7 +68,7 @@ _LOCK_POLICY = GuardPolicy(
 )
 
 
-def remove_lock(shell: "ShellTool") -> str:
+def remove_lock(shell: ShellTool) -> str:
     """
     Kasuje plik blokady — jedyna operacja niszcząca dopuszczona w tym zadaniu.
 

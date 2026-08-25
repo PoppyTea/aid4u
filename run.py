@@ -110,7 +110,9 @@ def count_solved(flags: dict[str, str]) -> tuple[int, set[str]]:
 
 
 def _load_flags() -> dict[str, str]:
-    """Wczytuje `.flags.json` (mapa zadanie→flaga); pusty słownik jeśli plik jeszcze nie istnieje."""
+    """
+    Wczytuje `.flags.json` (mapa zadanie→flaga); pusty słownik jeśli plik jeszcze nie istnieje.
+    """
     if _FLAGS_FILE.exists():
         return json.loads(_FLAGS_FILE.read_text())
     return {}
@@ -229,7 +231,10 @@ def panic(
     """
     if graceful:
         request_stop()
-        console.print("[yellow]Zapisano .run/STOP — przebieg zatrzyma się na najbliższym bezpiecznym punkcie.[/]")
+        console.print(
+            "[yellow]Zapisano .run/STOP — przebieg zatrzyma się "
+            "na najbliższym bezpiecznym punkcie.[/]"
+        )
         return
 
     script = Path(__file__).parent / "scripts" / "panic.sh"

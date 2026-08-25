@@ -22,7 +22,7 @@ class LLMMiddleware(ABC):
     def __init__(self) -> None:
         self._next: LLMMiddleware | None = None
 
-    def set_next(self, handler: "LLMMiddleware") -> "LLMMiddleware":
+    def set_next(self, handler: LLMMiddleware) -> LLMMiddleware:
         """Ustawia następny handler i zwraca go (umożliwia chaining)."""
         self._next = handler
         return handler

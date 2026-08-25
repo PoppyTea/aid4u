@@ -58,7 +58,8 @@ class TestPartycjonowanieFlag:
                 "s03e05_secret": "{FLG:D}",
             }
         )
-        assert len(main) == 2 and len(secrets) == 2
+        assert len(main) == 2
+        assert len(secrets) == 2
 
     def test_klucze_pozostaja_nietkniete(self):
         """Partycjonowanie nie może obcinać sufiksu — to robi dopiero warstwa wyświetlania."""

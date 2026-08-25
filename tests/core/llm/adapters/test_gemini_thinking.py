@@ -97,7 +97,7 @@ class TestOpenAI:
 
         from openai.types.shared.reasoning_effort import ReasoningEffort
 
-        sdk_levels = {a for a in get_args(get_args(ReasoningEffort)[0])}
+        sdk_levels = set(get_args(get_args(ReasoningEffort)[0]))
         assert sdk_levels == set(THINKING_LEVELS)
 
 

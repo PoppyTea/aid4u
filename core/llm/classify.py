@@ -54,7 +54,9 @@ def classify(
         if result.matches:
             ...
     """
-    prompt = f"Oceń, czy poniższa treść pasuje do kategorii: {category_description}\n\nTreść:\n{text}"
+    prompt = (
+        f"Oceń, czy poniższa treść pasuje do kategorii: {category_description}\n\nTreść:\n{text}"
+    )
 
     return llm.structured(
         [LLMMessage.user(prompt)],

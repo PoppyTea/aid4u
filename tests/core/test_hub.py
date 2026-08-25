@@ -252,7 +252,9 @@ class TestHubClientGetData:
 
     @respx.mock
     def test_tolerate_503_success_after_503_retries(self, mocker):
-        """tolerate_503=True: dwa 503 z rzędu, potem sukces — agresywniejsza polityka to przetrzymuje."""
+        """
+        tolerate_503=True: dwa 503 z rzędu, potem sukces — agresywniejsza polityka to przetrzymuje.
+        """
         mocker.patch("time.sleep")
 
         route = respx.get(self.url)

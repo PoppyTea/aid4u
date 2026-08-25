@@ -23,7 +23,9 @@ from core.net import expect_not_html
 
 DOCS_DIR = Path(__file__).parent / "system-przesylek-konduktorskich"
 FILE_LIST = DOCS_DIR / "SPK_files_list.csv"
-INCLUDE_PATTERN = re.compile(r'(?<=include file\=")(?P<file_name>.*?\..{1,4})(?=")', flags=re.MULTILINE)
+INCLUDE_PATTERN = re.compile(
+    r'(?<=include file\=")(?P<file_name>.*?\..{1,4})(?=")', flags=re.MULTILINE
+)
 
 
 def _safe_rel_path(raw: Path) -> Path:
@@ -38,7 +40,10 @@ def _safe_rel_path(raw: Path) -> Path:
 
 
 def _read_file_list() -> set[Path]:
-    """Wczytuje znane ścieżki z manifestu (jedna na linię); pusty zbiór, gdy manifest jeszcze nie istnieje."""
+    """
+    Wczytuje znane ścieżki z manifestu (jedna na linię); pusty zbiór, gdy manifest jeszcze nie
+    istnieje.
+    """
     if not FILE_LIST.exists():
         return set()
     lines = FILE_LIST.read_text(encoding="utf-8").splitlines()

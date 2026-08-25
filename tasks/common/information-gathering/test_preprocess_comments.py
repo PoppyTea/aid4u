@@ -61,7 +61,7 @@ def test_process_comments_path_traversal_rejection(tmp_path):
     outside_file = tmp_path / "unsafe.md"
     outside_file.write_text("Some text", encoding="utf-8")
 
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(ValueError, match="outside workspace root") as exc_info:
         process_comments(outside_file)
 
     assert "is outside workspace root" in str(exc_info.value)

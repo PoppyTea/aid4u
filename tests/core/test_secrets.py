@@ -71,7 +71,7 @@ def test_list(secrets_manager):
     def mock_get_password(service, key):
         if key == "EXISTING_KEY":
             return "value"
-        elif key == "ERROR_KEY":
+        if key == "ERROR_KEY":
             raise Exception("error")
         return None
 

@@ -1,4 +1,6 @@
-"""Testy core/runtime/killswitch.py — Warstwy 1/2 jednostkowo (izolowane od repo), Warstwa 0 realnie."""
+"""
+Testy core/runtime/killswitch.py — Warstwy 1/2 jednostkowo (izolowane od repo), Warstwa 0 realnie.
+"""
 
 from __future__ import annotations
 
@@ -72,7 +74,10 @@ class TestRunBudget:
         budget.check_time()  # nie powinno rzucić — dopiero się zaczęło
 
     def test_zero_seconds_is_a_valid_immediate_budget(self):
-        """max_seconds=0 to poprawny (choć ekstremalny) budżet 'przerwij natychmiast', nie 'brak budżetu'."""
+        """
+        max_seconds=0 to poprawny (choć ekstremalny) budżet 'przerwij natychmiast', nie 'brak
+        budżetu'.
+        """
         budget = killswitch.RunBudget(max_seconds=0)
         time.sleep(0.01)
 
@@ -81,7 +86,10 @@ class TestRunBudget:
 
 
 class TestStartRunActivatesBudget:
-    """start_run(max_seconds=...) musi być widoczny przez check_abort(), nie tylko RunBudget bezpośrednio."""
+    """
+    start_run(max_seconds=...) musi być widoczny przez check_abort(), nie tylko RunBudget
+    bezpośrednio.
+    """
 
     def test_check_abort_raises_once_budget_exceeded(self):
         """Budżet ustawiony przez start_run() jest sprawdzany automatycznie w check_abort()."""
@@ -97,7 +105,10 @@ class TestStartRunActivatesBudget:
         killswitch.check_abort()  # nie powinno rzucić
 
     def test_zero_seconds_activates_budget_not_disables_it(self):
-        """start_run(max_seconds=0) NIE jest tym samym co max_seconds=None — 0 jest falsy w Pythonie, ale to poprawny budżet."""
+        """
+        start_run(max_seconds=0) NIE jest tym samym co max_seconds=None — 0 jest falsy w Pythonie,
+        ale to poprawny budżet.
+        """
         killswitch.start_run(max_seconds=0)
         time.sleep(0.01)
 
@@ -105,7 +116,9 @@ class TestStartRunActivatesBudget:
             killswitch.check_abort()
 
     def test_negative_max_seconds_is_rejected(self):
-        """Ujemny budżet czasu nie ma sensu — start_run() odrzuca go jawnie zamiast cicho ignorować."""
+        """
+        Ujemny budżet czasu nie ma sensu — start_run() odrzuca go jawnie zamiast cicho ignorować.
+        """
         with pytest.raises(ValueError, match="max_seconds"):
             killswitch.start_run(max_seconds=-1)
 
@@ -118,7 +131,9 @@ class TestTruncateToolResult:
         assert killswitch.truncate_tool_result("ok", max_bytes=100) == "ok"
 
     def test_long_result_truncated_and_marked(self):
-        """Wynik powyżej limitu jest ucięty i opatrzony czytelnym znacznikiem z oryginalnym rozmiarem."""
+        """
+        Wynik powyżej limitu jest ucięty i opatrzony czytelnym znacznikiem z oryginalnym rozmiarem.
+        """
         long_result = "x" * 1000
         truncated = killswitch.truncate_tool_result(long_result, max_bytes=100)
 
@@ -127,7 +142,9 @@ class TestTruncateToolResult:
         assert "1000" in truncated  # oryginalny rozmiar w komunikacie
 
     def test_result_including_marker_never_exceeds_max_bytes(self):
-        """Zwrócony string (treść + znacznik) mieści się CAŁKOWICIE w max_bytes, nie tylko sama treść."""
+        """
+        Zwrócony string (treść + znacznik) mieści się CAŁKOWICIE w max_bytes, nie tylko sama treść.
+        """
         long_result = "x" * 1000
         max_bytes = 100
 

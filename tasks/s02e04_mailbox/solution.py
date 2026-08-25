@@ -22,12 +22,13 @@ from __future__ import annotations
 import json
 import re
 import time
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 import httpx
 
 from core.hub import HubClient
-from core.llm import LLMClient, LLMMessage
+from core.llm import LLMMessage
 from core.llm.types import Tool
 from core.tasks import BaseTask, task
 from tasks.s02e04_mailbox.prompts import SYSTEM_AGENT_MAILBOX, USER_AGENT_MAILBOX_KICKOFF

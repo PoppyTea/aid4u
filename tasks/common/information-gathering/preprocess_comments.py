@@ -18,7 +18,9 @@ def _find_workspace_root(start: Path) -> Path:
     raise RuntimeError(f"Nie znaleziono roota repo (pyproject.toml) powyżej {start}")
 
 
-def process_comments(filepath):
+# Wyciszenie C901 niżej jest świadome: jednorazowy skrypt preprocessingu materiałów kursu,
+# poza ścieżką runtime zadań. Refaktor pod metrykę nie kupuje tu niczego.
+def process_comments(filepath):  # noqa: C901
     """
     Reads and preprocesses a comments file by decoding Base64 segments and grouping threads.
     """
@@ -28,7 +30,7 @@ def process_comments(filepath):
     if not path.is_relative_to(workspace_root):
         raise ValueError(f"Access denied: Path '{path}' is outside workspace root.")
 
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         content = f.read()
 
     # 1. Base64 decoding
@@ -90,7 +92,8 @@ if __name__ == "__main__":
         input_path = Path(input_file).resolve()
         if not input_path.is_relative_to(workspace_root):
             raise ValueError(
-                f"Access denied: Input file '{input_path}' must be inside workspace root '{workspace_root}'."
+                f"Access denied: Input file '{input_path}' must be inside "
+                f"workspace root '{workspace_root}'."
             )
 
         if not input_path.is_file():
@@ -104,7 +107,8 @@ if __name__ == "__main__":
 
         if not output_path.is_relative_to(workspace_root):
             raise ValueError(
-                f"Access denied: Output file '{output_path}' must be inside workspace root '{workspace_root}'."
+                f"Access denied: Output file '{output_path}' must be inside "
+                f"workspace root '{workspace_root}'."
             )
         if output_path == input_path:
             # input_file bez ".md" w nazwie: .replace() nie ma czego zamienić,

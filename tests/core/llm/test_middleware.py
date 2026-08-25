@@ -209,7 +209,9 @@ def test_provider_call_dispatches_to_complete_with_tools_when_tools_present():
 
     mw.handle([LLMMessage.user("x")], system="sys", tools=tools)
 
-    provider.complete_with_tools.assert_called_once_with([LLMMessage.user("x")], tools, system="sys")
+    provider.complete_with_tools.assert_called_once_with(
+        [LLMMessage.user("x")], tools, system="sys"
+    )
     provider.complete.assert_not_called()
 
 

@@ -14,15 +14,15 @@ class LLMMessage:
     content: str
 
     @staticmethod
-    def user(content: str) -> "LLMMessage":
+    def user(content: str) -> LLMMessage:
         return LLMMessage(role="user", content=content)
 
     @staticmethod
-    def assistant(content: str) -> "LLMMessage":
+    def assistant(content: str) -> LLMMessage:
         return LLMMessage(role="assistant", content=content)
 
     @staticmethod
-    def system(content: str) -> "LLMMessage":
+    def system(content: str) -> LLMMessage:
         return LLMMessage(role="system", content=content)
 
 

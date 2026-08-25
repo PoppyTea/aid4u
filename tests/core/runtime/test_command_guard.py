@@ -275,7 +275,7 @@ class TestFunkcjiPomocniczych:
     """Elementy składowe — sprawdzane osobno, bo od nich zależy poprawność całości."""
 
     @pytest.mark.parametrize(
-        "raw,expected",
+        ("raw", "expected"),
         [
             ("/opt/../etc", "/etc"),
             ("//etc//passwd", "/etc/passwd"),

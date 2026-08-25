@@ -66,7 +66,10 @@ class RunBudget:
     _started_at: float = field(default_factory=time.monotonic, init=False, repr=False)
 
     def check_time(self) -> None:
-        """Rzuca `AbortRun`, jeśli przebieg trwa dłużej niż `max_seconds`. No-op gdy limit nieustawiony."""
+        """
+        Rzuca `AbortRun`, jeśli przebieg trwa dłużej niż `max_seconds`. No-op gdy limit
+        nieustawiony.
+        """
         if self.max_seconds is None:
             return
         elapsed = time.monotonic() - self._started_at
@@ -217,7 +220,7 @@ def truncate_tool_result(result: str, *, max_bytes: int = DEFAULT_MAX_TOOL_RESUL
     if len(encoded) <= max_bytes:
         return result
 
-    marker = f"\n\n[OBCIĘTO: wynik miał {len(encoded)} B, limit {max_bytes} B]".encode("utf-8")
+    marker = f"\n\n[OBCIĘTO: wynik miał {len(encoded)} B, limit {max_bytes} B]".encode()
     budget_for_content = max(0, max_bytes - len(marker))
     truncated = encoded[:budget_for_content].decode("utf-8", errors="ignore")
     return truncated + marker.decode("utf-8")

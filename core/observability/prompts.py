@@ -35,7 +35,7 @@ _STATE_FILE = Path(".langfuse-prompt-state.json")
 
 # Referencje dostępne w bieżącym procesie — wypełniane przez sync_prompt(),
 # czytane przez get_prompt_ref() (np. z CostTrackMiddleware, patrz middleware.py).
-_prompt_refs: dict[str, "PromptRef"] = {}
+_prompt_refs: dict[str, PromptRef] = {}
 
 
 @dataclass(frozen=True)

@@ -39,7 +39,9 @@ def _clear_client_cache():
 def test_create_and_view_roundtrip(tmp_path):
     executor = TextEditorToolExecutor(root=str(tmp_path))
 
-    create_result = executor({"command": "create", "path": "notes.txt", "file_text": "linia 1\nlinia 2"})
+    create_result = executor(
+        {"command": "create", "path": "notes.txt", "file_text": "linia 1\nlinia 2"}
+    )
     assert "notes.txt" in create_result
 
     view_result = executor({"command": "view", "path": "notes.txt"})

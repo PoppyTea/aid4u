@@ -18,7 +18,6 @@ import os
 import concurrent.futures
 import threading
 import time
-from typing import Optional
 from functools import lru_cache
 
 # Headless/VPS bez uruchomionego keyring daemon (D-Bus secret service) potrafi
@@ -103,7 +102,7 @@ class SecretsManager:
     def __init__(self, service_name: str = "aid4u"):
         self.service = service_name
 
-    def get(self, key: str, *, required: bool = False) -> Optional[str]:
+    def get(self, key: str, *, required: bool = False) -> str | None:
         """Pobierz sekret z keyring, fallback do .env"""
         # 1. Spróbuj keyring (z timeoutem — patrz komentarz przy _KEYRING_TIMEOUT_SECONDS)
         try:

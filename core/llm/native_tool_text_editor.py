@@ -33,7 +33,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from core.llm.adapters.anthropic import ANTHROPIC_MODELS
 from core.llm.types import LLMResponse
@@ -181,7 +182,8 @@ def run_text_editor_tool_loop(
         tool_use_blocks = [
             block
             for block in response.content
-            if getattr(block, "type", None) == "tool_use" and getattr(block, "name", None) == _TOOL_NAME
+            if getattr(block, "type", None) == "tool_use"
+            and getattr(block, "name", None) == _TOOL_NAME
         ]
         if not tool_use_blocks:
             return _final_response(response)

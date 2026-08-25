@@ -36,7 +36,8 @@ def _configured_config(*, public_key: str = "pub", secret_key: str = "sec") -> M
 
 
 def test_no_langfuse_keys_returns_fallback_without_touching_network():
-    with patch("core.config.get_config", return_value=_configured_config(public_key="", secret_key="")):
+    empty_keys = _configured_config(public_key="", secret_key="")
+    with patch("core.config.get_config", return_value=empty_keys):
         ref = sync_prompt("my-prompt", "treść promptu")
 
     assert ref == PromptRef(name="my-prompt", version=None, client=None, is_fallback=True)
@@ -56,7 +57,11 @@ def test_first_sync_pushes_prompt_and_caches_ref():
         ref = sync_prompt("my-prompt", "treść v1", tags=["agent-template"])
 
     langfuse_client.create_prompt.assert_called_once_with(
-        name="my-prompt", prompt="treść v1", labels=["production"], tags=["agent-template"], type="text"
+        name="my-prompt",
+        prompt="treść v1",
+        labels=["production"],
+        tags=["agent-template"],
+        type="text",
     )
     assert ref.name == "my-prompt"
     assert ref.version == 1

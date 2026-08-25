@@ -103,7 +103,9 @@ def _guidance(exc: Exception, http: tuple[int, str] | None) -> str:
                 "ponowienie bez zmian da ten sam wynik."
             )
     if isinstance(exc, TimeoutError):
-        return "Przekroczono czas oczekiwania. Ponow wywolanie, ewentualnie zaw z mniejszym zakresem."
+        return (
+            "Przekroczono czas oczekiwania. Ponow wywolanie, ewentualnie zaw z mniejszym zakresem."
+        )
     if isinstance(exc, (KeyError, ValueError, TypeError)):
         return (
             "Argumenty wywolania sa niepoprawne. Sprawdz nazwy i typy pol wzgledem "

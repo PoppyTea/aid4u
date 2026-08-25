@@ -27,7 +27,8 @@ from __future__ import annotations
 import asyncio
 import functools
 from contextlib import contextmanager
-from typing import Any, Callable, Generator, TypeVar
+from typing import Any, TypeVar
+from collections.abc import Callable, Generator
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -195,21 +196,21 @@ def logfire_span(name: str | None = None) -> Callable[[F], F]:
                     return await fn(*args, **kwargs)
 
             return async_wrapper  # type: ignore
-        else:
 
-            @functools.wraps(fn)
-            def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
-                import logfire
+        @functools.wraps(fn)
+        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+            import logfire
 
-                with logfire.span(span_name):
-                    return fn(*args, **kwargs)
+            with logfire.span(span_name):
+                return fn(*args, **kwargs)
 
-            return sync_wrapper  # type: ignore
+        return sync_wrapper  # type: ignore
 
     return decorator
 
 
 # ─── Backwards compat alias (stara nazwa z projektu) ─────────────────────────
 # Stara nazwa @observe działała tylko z Logfire.
-# Nowa preferowana ścieżka: @langfuse_observe() dla trace LLM, @logfire_span() dla spanów infrastruktury.
+# Nowa preferowana ścieżka: @langfuse_observe() dla trace LLM,
+# @logfire_span() dla spanów infrastruktury.
 observe = logfire_span

@@ -323,5 +323,7 @@ def test_tool_call_turn_is_recorded_even_without_text(llm, mock_provider):
 
     historia = mock_provider.complete_with_tools.call_args_list[1].args[0]
     role_asystenta = [m for m in historia if m.role == "assistant"]
-    assert role_asystenta, "tura asystenta zniknęła z historii — model nie zobaczy, że wołał narzędzie"
+    assert role_asystenta, (
+        "tura asystenta zniknęła z historii — model nie zobaczy, że wołał narzędzie"
+    )
     assert "dodaj" in role_asystenta[0].content

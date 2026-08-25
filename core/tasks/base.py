@@ -85,7 +85,10 @@ class BaseTask(ABC):
         max_seconds: float | None = None,
         max_cost: float | None = None,
     ) -> None:
-        """Wstrzykuje zależności (hub/llm), tryb dry-run i opcjonalny budżet wall-clock (Warstwa 2 kill switcha)."""
+        """
+        Wstrzykuje zależności (hub/llm), tryb dry-run i opcjonalny budżet wall-clock (Warstwa 2
+        kill switcha).
+        """
         self.hub = hub
         self.llm = llm
         self.cache = LocalCache(self._task_name or self.__class__.__name__)

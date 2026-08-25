@@ -34,7 +34,8 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from core.llm.adapters.anthropic import ANTHROPIC_MODELS
 from core.llm.types import LLMResponse

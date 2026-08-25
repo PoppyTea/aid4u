@@ -175,7 +175,7 @@ class CatalogIndex:
         self._cities_by_item = cities_by_item
 
     @classmethod
-    def load(cls, data_dir: Path | None = None) -> "CatalogIndex":
+    def load(cls, data_dir: Path | None = None) -> CatalogIndex:
         """Wczytuje trzy pliki CSV i buduje indeks. Rzuca `ValueError` gdy dane łamią założenia."""
         base = data_dir or DATA_DIR
         items_raw = _read_csv(base / "items.csv")

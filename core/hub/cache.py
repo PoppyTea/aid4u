@@ -31,7 +31,10 @@ class LocalCache:
         self._dir = _CACHE_ROOT / subdir
         self._dir.mkdir(parents=True, exist_ok=True)
         self.last_key: str | None = None
-        """Klucz ostatniego get_or_fetch — używany przez BaseTask do nazwania pliku w data/run-history/."""
+        """
+        Klucz ostatniego get_or_fetch — używany przez BaseTask do nazwania pliku w data/run-
+        history/.
+        """
 
     def get(self, key: str) -> bytes | None:
         """Zwraca cached dane lub None jeśli brak."""

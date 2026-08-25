@@ -342,7 +342,7 @@ class Suspect(BaseModel):
             # Pusty plik traktujemy jako brak historii
             if os.path.getsize(resolved_path) == 0:
                 raise ValueError("Plik wskazany jako historia lokacji nie istnieje lub jest pusty.")
-            with open(resolved_path, mode="r", encoding="utf-8") as f:
+            with open(resolved_path, encoding="utf-8") as f:
                 raw_json = json.load(f)
                 return [GeoPoint(**data_point) for data_point in raw_json]
         if isinstance(v, list):
@@ -350,8 +350,7 @@ class Suspect(BaseModel):
             for element in v:
                 if isinstance(element, GeoPoint):
                     continue
-                else:
-                    bad_data_type_elements.append(element)
+                bad_data_type_elements.append(element)
             if len(bad_data_type_elements) == 0:
                 return v
             raise ValueError(f"Lista wewnątrz pliku wskazanego jako historia lokacji zawiera błędne typy danych.\nIlość błędów: {len(bad_data_type_elements)},\nBłędne wartości: {bad_data_type_elements}\noczekiwany typ danych wewnątrz listy: GeoPoint")

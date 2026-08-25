@@ -59,7 +59,7 @@ _MAX_MESSAGES_PER_SESSION = 50
 
 app = ServerFactory.create("s01e03-proxy")
 
-_sessions: "OrderedDict[str, list[LLMMessage]]" = OrderedDict()
+_sessions: OrderedDict[str, list[LLMMessage]] = OrderedDict()
 _hub = HubClient()
 _llm: LLMClient | None = None
 

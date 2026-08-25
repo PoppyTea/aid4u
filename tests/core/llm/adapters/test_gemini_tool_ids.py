@@ -96,7 +96,9 @@ class TestUnikalnosciId:
         Część tekstowa między wywołaniami przesuwa indeks — i dobrze, bo indeks ma
         być unikalny w obrębie odpowiedzi, a nie kolejnym numerem wywołania.
         """
-        calls = call_tools(adapter, response_with(part("search"), part(text="myślę"), part("search")))
+        calls = call_tools(
+            adapter, response_with(part("search"), part(text="myślę"), part("search"))
+        )
         assert len(calls) == 2
         assert calls[0].id != calls[1].id
 

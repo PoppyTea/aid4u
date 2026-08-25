@@ -33,7 +33,9 @@ _VERIFY_MAX_ATTEMPTS = 20
 
 
 def _is_retryable_http_error(exc: BaseException) -> bool:
-    """4xx to trwały błąd (zły path) — nie ma sensu go powtarzać, w przeciwieństwie do 5xx/timeoutów."""
+    """
+    4xx to trwały błąd (zły path) — nie ma sensu go powtarzać, w przeciwieństwie do 5xx/timeoutów.
+    """
     if isinstance(exc, httpx.TransportError):
         return True
     return isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code >= 500
@@ -107,7 +109,9 @@ class HubClient:
             response = self._http.post(f"{self._base_url}/verify", json=payload)
 
             if response.status_code == 503:
-                logfire.info(f"Hub 503 (symulowane przeciążenie) dla {task}, retry", attempt=attempt)
+                logfire.info(
+                    f"Hub 503 (symulowane przeciążenie) dla {task}, retry", attempt=attempt
+                )
                 time.sleep(_VERIFY_OUTAGE_WAIT_S)
                 continue
 
@@ -118,7 +122,11 @@ class HubClient:
                 continue
 
             if response.status_code >= 400:
-                logfire.error("Hub rejected submission", status=response.status_code, body=response.text)
+                logfire.error(
+                    "Hub rejected submission",
+                    status=response.status_code,
+                    body=response.text,
+                )
             response.raise_for_status()
             return response.json()
 
@@ -126,7 +134,9 @@ class HubClient:
 
     @staticmethod
     def _parse_retry_after(response: httpx.Response) -> float:
-        """Odczytuje `retry_after` z ciała 429 — odpornie na nie-JSON/brakujące/nienumeryczne body."""
+        """
+        Odczytuje `retry_after` z ciała 429 — odpornie na nie-JSON/brakujące/nienumeryczne body.
+        """
         try:
             body = response.json()
         except ValueError:
@@ -164,7 +174,9 @@ class HubClient:
         wait=wait_exponential(min=1, max=10),
     )
     def _get_data_plain(self, path: str) -> bytes:
-        """GET /data/{apikey}/{path}; lekki retry, tylko na 5xx/transport errors, nie na trwałe 4xx."""
+        """
+        GET /data/{apikey}/{path}; lekki retry, tylko na 5xx/transport errors, nie na trwałe 4xx.
+        """
         url = f"{self._base_url}/data/{self._apikey}/{path}"
         response = self._http.get(url)
         response.raise_for_status()
@@ -177,7 +189,10 @@ class HubClient:
         wait=wait_exponential(min=3, max=60),
     )
     def _get_data_503_tolerant(self, path: str) -> bytes:
-        """Jak `_get_data_plain`, ale 503 jest jawnie zamieniane na wyjątek, żeby retry go złapał, a agresywniejszy backoff (8 prób) toleruje dłuższe symulowane przeciążenia."""
+        """
+        Jak `_get_data_plain`, ale 503 jest jawnie zamieniane na wyjątek, żeby retry go złapał, a
+        agresywniejszy backoff (8 prób) toleruje dłuższe symulowane przeciążenia.
+        """
         url = f"{self._base_url}/data/{self._apikey}/{path}"
         response = self._http.get(url)
         if response.status_code == 503:
