@@ -12,7 +12,7 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 > przywraca go nieddestrukcyjnie. Kurs ma nadal służyć edukacyjnie po zdobyciu 20 flag —
 > to świadomy, tymczasowy kompromis, nie zmiana celu.
 
-> 🏁 **KOŃCÓWKA — 16 flag głównych, 4 do certyfikatu** (deadline 01.09.2026).
+> 🏁 **KOŃCÓWKA — 17 flag głównych, 3 do certyfikatu** (deadline 01.09.2026).
 > Stan piątki, kolejność ataku i uzasadnienia: `tasks/s04/requirements/season.md`.
 >
 > ✅ **SEZON 3 ZAMKNIĘTY (5/5)** — 15 flag w `.flags.json`

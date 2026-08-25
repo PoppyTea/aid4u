@@ -12,8 +12,9 @@ pułapki) żyją w jego własnym `AGENTS.md`, nie tutaj — Child DOX Index niż
 (AID-62/46/18/47). Cały sezon zero LLM w rozwiązaniach, łączny koszt ~$0.00. Stan gotowości, dług i checklisty per-epizod: `tasks/s03/requirements/`.
 Procedura przejścia między sezonami (sezonoagnostyczna): `strategy/season-transition.md`.
 
-**Sezon 5 otwarty 2026-08-24** — `s05e03` zaliczone za pierwszym podejściem, 16 flag
-głównych, 4 do certyfikatu. Kolejność ataku z `s04/requirements/season.md` bez zmian.
+**Końcówka w toku (2026-08-24)** — `s05e03` i `s04e05` zaliczone za pierwszym
+podejściem, oba zero LLM i $0.00. **17 flag głównych, 3 do certyfikatu.** Kolejność
+ataku z `s04/requirements/season.md` bez zmian: dalej `s04e03 → s04e04 → s05e04`.
 
 **EFFICIENCY MODE aktywny** (od 2026-07-29) — priorytet: szybkość i skuteczność
 zdobywania flag do 20/25, nie proces. Learning-mode wersja tego pliku:
@@ -128,12 +129,15 @@ klucze o RÓŻNYCH nazwach po obu stronach), a zdarzenie pasujące do frazy jest
 Transportem jest `/verify`, nie `/api/shell`; hub zwraca **400 przy zbyt dużym stdout**,
 więc zapytania muszą być wąskie z założenia.
 
-**Sezon 4** (w toku): `s04e05_foodwarehouse/` — **scaffolding** (2026-08-24),
-`solution.py` do utworzenia. Rekonesans na żywo zamknął punkt #2 listy empirycznej
-(**e05 NIE zależy od e04** — `help` odpowiada bez zaliczonego e04) i punkt #6
-(**odpowiedź `database` jest paginowana**: `totalTableRows: 40` przy `limit: 30`).
-Druga, nieprzewidziana pułapka: **rozjazd wielkości liter** między `food4cities.json`
-(z małej) a `destinations.name` (z wielkiej).
+**Sezon 4** (w toku): `s04e05_foodwarehouse/` — **solved** (2026-08-24) — flaga
+`{FLG:JUSTEATIT}`, za pierwszym podejściem, koszt $0.00, zero LLM. Osiem zamówień
+(po jednym na miasto), każde z podpisem SHA1 na danych użytkownika roli „Obsługa
+transportów". Dwie pułapki, obie cichej klasy — dają zamówienie mniej, nie wyjątek:
+**odpowiedź `database` jest stronicowana** (`totalTableRows: 40` przy `limit: 30`,
+naiwny `select *` gubi 10 miast) i **rozjazd wielkości liter** między
+`food4cities.json` (z małej) a `destinations.name` (z wielkiej). Trzecia, drobniejsza:
+`signatureGenerator` zwraca podpis w polu `hash`, choć `orders.create` chce go jako
+`signature`. Rekonesans zamknął przy okazji punkty #2 i #6 listy empirycznej.
 
 **Końcówka kursu (S04+S05, rekonesans 2026-08-20):** `s04/` — `requirements/` z rankingiem
 **wszystkich 10 pozostałych zadań** (S04E01–E05 i S05E01–E05) i wyborem piątki dającej

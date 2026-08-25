@@ -1,18 +1,20 @@
 # s04e05_foodwarehouse Module
 
 ## Purpose
-Zbudowanie jednego zamówienia magazynowego pokrywającego zapotrzebowanie wszystkich miast
-z `food4cities.json`, z podpisem SHA1 wygenerowanym na danych użytkownika z bazy SQLite.
-Drugie zadanie końcówki, po `s05e03`.
+Utworzenie **po jednym zamówieniu magazynowym na każde miasto** z `food4cities.json`
+(8 miast), każde z poprawnym `creatorID`, kodem `destination` i podpisem SHA1
+wygenerowanym na danych użytkownika z bazy SQLite. **Zero LLM.**
 
-**Status: scaffolding (2026-08-24).** `solution.py` **do utworzenia** — folder zawiera
-rekonesans i materiał referencyjny. Taki stan jest jawnie dopuszczony przez
-`tasks/AGENTS.md` (Local Contracts, wyjątek „season kickoff").
+**Rozwiązane (2026-08-24)** — flaga `{FLG:JUSTEATIT}`, za pierwszym podejściem,
+koszt $0.00. Drugie zadanie końcówki, po `s05e03`.
 
 ## Ownership
+- `warehouse.py`: klient narzędzi (`call`/`query`) + `select_all()` ze stronicowaniem.
+- `solution.py`: `@task("s04e05", hub_name="foodwarehouse")` — `reset` → mapy →
+  twórca → 8× (podpis, `create`, `append` batch) → zwraca `{"tool": "done"}`.
+- `test_solution.py`: 10 testów offline — stronicowanie, złączenie po nazwie, wybór twórcy.
 - `probe.py`: sonda — wywołania narzędzi API w formie JSON, surowe odpowiedzi huba.
 - `doc/`: treść zadania i fabuła, materiał referencyjny.
-- `solution.py`: **do utworzenia** — deterministyczny przepływ, bez LLM (uzasadnienie niżej).
 - Dane wejściowe: `data/input/s04e05_foodwarehouse/food4cities.json` (677 B, pobrane
   2026-08-24). Statyczne, więc trzymane w repo, nie w `.cache/`.
 
@@ -39,6 +41,14 @@ rekonesans i materiał referencyjny. Taki stan jest jawnie dopuszczony przez
   drugiej nadal daje niekompletne zamówienie.
 - 🟡 Zamówienie ma pokryć zapotrzebowanie **dokładnie** — bez niedoborów i bez nadwyżek.
 
+- 🟡 **Cztery zaszczepione zamówienia zostają i nie przeszkadzają.** `reset` przywraca
+  stan z zamówieniami dla Susza, Rewala, Biskupca i Hela — miast spoza `food4cities.json`.
+  Sprawdzone: `done` zwraca flagę mimo ich obecności, więc `orders.delete` nie jest
+  potrzebne. „Bez nadmiarów" z treści zadania dotyczy pozycji WEWNĄTRZ naszych zamówień.
+- Twórcą może być dowolny aktywny użytkownik roli **2 („Obsługa transportów")** — nie
+  jeden konkretny. Wszystkie cztery zaszczepione zamówienia mają twórców z tej roli
+  (`creatorID` 2, 5, 7, 8); wybór roli wyszedł z tej obserwacji, nie z nazwy.
+
 ## Rozstrzygnięcia rekonesansu
 - ✅ **`s04e05` NIE zależy od `s04e04`.** `{"tool":"help"}` odpowiada pełną dokumentacją
   bez zaliczonego e04 — fabuła („mamy już informacje, które miasto oferuje jaki towar")
@@ -48,13 +58,15 @@ rekonesans i materiał referencyjny. Taki stan jest jawnie dopuszczony przez
 ## Work Guidance
 - **Bez LLM.** Zadanie to pobranie danych, przeliczenie i wysłanie — ocena powtórzona
   w komentarzach kursu: *„użycie agentów tutaj będzie sztuką dla sztuki"*. Wzorzec
-  z `s05e03_shellaccess` (deterministyczny łańcuch zapytań + parser) stosuje się wprost.
+  z `s05e03_shellaccess` (deterministyczny łańcuch zapytań + parser) zastosowany wprost.
 - Eksploracja: `uv run python -m tasks.s04e05_foodwarehouse.probe '{"tool":"help"}'`.
-- Przed pisaniem `solution.py`: przegląd sekcji `s04e05` w
-  `../s04/requirements/source/community-intel.md`.
+- Rozmiar strony bierz z odpowiedzi (`limit`), nigdy z założenia — `select_all()` już to robi.
 
 ## Verification
-(brak — `solution.py` jeszcze nie istnieje; docelowo `--dry-run` + flaga z huba)
+- `uv run pytest tasks/s04e05_foodwarehouse/` — 10 testów, zero sieci.
+- `uv run run.py solve s04e05 --dry-run` — tworzy komplet zamówień na żywo i pokazuje
+  finalne wywołanie zamiast je wysyłać (stan da się obejrzeć przez `orders get`).
+- Flaga z huba to ostateczna weryfikacja.
 
 ## Child DOX Index
 - None.
