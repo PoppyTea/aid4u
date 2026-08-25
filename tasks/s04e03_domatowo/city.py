@@ -157,6 +157,50 @@ def plan_landing(targets: list[str], roads: set[str], spawn: str) -> Landing:
     return Landing(dropoff=best, targets=list(targets), drive_cost=reachable[best])
 
 
+def allocate_scouts(
+    building_sizes: list[int], max_scouts: int, max_per_transporter: int
+) -> list[int]:
+    """
+    Dzieli limit zwiadowców między budynki, zanim ruszy pierwszy transporter.
+
+    Limit 8 zwiadowców jest globalny na całą operację, a nie na desant — dwa pełne
+    czterosobowe desanty wyczerpują go w całości i trzeci `create` odbija się od API
+    (potwierdzone na żywo: HTTP 400 przy trzecim budynku). Dlatego przydział musi
+    powstać z góry, dla wszystkich budynków naraz.
+
+    Każdy budynek dostaje minimum jednego zwiadowcę; reszta idzie do największych,
+    bo przy równomiernym losowaniu pozycji partyzanta to tam najczęściej się kończy.
+
+    Raises:
+        ValueError: Gdy budynków jest więcej niż zwiadowców — wtedy któryś zostałby
+            nieprzeszukany, a to cicha porażka: misja skończyłaby się „nie znaleziono".
+    """
+    if len(building_sizes) > max_scouts:
+        raise ValueError(
+            f"{len(building_sizes)} budynków przy limicie {max_scouts} zwiadowców — "
+            "któryś zostałby nieprzeszukany."
+        )
+
+    allocation = [1] * len(building_sizes)
+    spare = max_scouts - len(building_sizes)
+
+    # Kolejność malejąco po rozmiarze budynku; przy remisie decyduje kolejność wejściowa,
+    # żeby przydział był powtarzalny między przebiegami.
+    order = sorted(range(len(building_sizes)), key=lambda i: (-building_sizes[i], i))
+    while spare > 0:
+        progressed = False
+        for i in order:
+            headroom = min(max_per_transporter, building_sizes[i]) - allocation[i]
+            if spare > 0 and headroom > 0:
+                allocation[i] += 1
+                spare -= 1
+                progressed = True
+        if not progressed:
+            break
+
+    return allocation
+
+
 def sweep_order(targets: list[str], scouts: dict[str, str]) -> list[tuple[str, str]]:
     """
     Układa kolejność sprawdzania celów: kto idzie na które pole i w jakiej kolejności.
@@ -194,3 +238,72 @@ def sweep_order(targets: list[str], scouts: dict[str, str]) -> list[tuple[str, s
         pending.remove(target)
 
     return plan
+
+
+# Komunikaty `inspect` są zdaniami generowanymi o zmiennym słownictwie, więc rozpoznanie
+# sukcesu musi opierać się na SENSIE, nie na dopasowaniu konkretnego zdania. Zebrane
+# z pełnego przemiatania 14 pól (2026-08-25); wszystkie negatywy mówią o braku:
+#
+#   „Nie ma żadnej osoby…", „Pomieszczenie bez celu…", „Pokój pusty…",
+#   „Nic wartościowego…", „Brak obecności…", „Nie stwierdzono obecności…",
+#   „Tu tylko śmieci. Żadnych żywych kontaktów.", „Przeszukanie nic nie wykazało…",
+#   „Miejsce opuszczone…", „Nie ma nikogo…"
+#
+# a jedyny pozytyw mówi o człowieku:
+#
+#   „Cel jest z nami. Mężczyzna około 30 lat, ranny w ramię, ale przytomny."
+#
+# ⚠️ Ten słownik jest OTWARTY i wiadomo o tym z pomiaru, nie z przypuszczenia: przebieg
+# zdobywający flagę (2026-08-25) przyniósł trzy sformułowania spoza listy zebranej dzień
+# wcześniej — „Cel nieobecny…", „Pomieszczenie czyste…". Dopisane niżej, ale sama lista
+# nigdy nie będzie kompletna. Dlatego `reads_as_found()` zwraca dla nieznanego zdania
+# `None`, a nie `False`: to ta gałąź, nie ta lista, jest zabezpieczeniem.
+ABSENCE_MARKERS = (
+    "nie ma",
+    "brak",
+    "nikogo",
+    "pust",
+    "nic ",
+    "nie stwierdzono",
+    "nie wykazało",
+    "opuszczone",
+    "bez ludzi",
+    "bez celu",
+    "żadnych",
+    "nieobecn",
+    "czyste",
+)
+
+PRESENCE_MARKERS = (
+    "cel jest z nami",
+    "mężczyzn",
+    "kobiet",
+    "człowiek",
+    "ranny",
+    "przytomn",
+    "partyzant",
+)
+
+
+def reads_as_found(message: str) -> bool | None:
+    """
+    Ocenia wpis logu `inspect`: znaleziony, pusty, czy nierozpoznany.
+
+    Wymagamy OBU sygnałów naraz — obecności człowieka i braku słów o pustce — bo każdy
+    z osobna jest zawodny: „Nie ma żadnej osoby" zawiera rzeczownik osobowy, a „Znalazłem
+    latarkę, ale nikogo przy niej nie było" mówi o znalezisku. Zdanie, które nie pasuje
+    do żadnej z grup, zwraca `None` zamiast `False`: to sygnał, że słownictwo się
+    rozjechało i wynik przemiatania trzeba przeczytać oczami, a nie cicha porażka.
+
+    Returns:
+        `True` gdy człowiek potwierdzony, `False` gdy pole puste, `None` gdy nie wiadomo.
+    """
+    text = message.casefold()
+    absent = any(marker in text for marker in ABSENCE_MARKERS)
+    present = any(marker in text for marker in PRESENCE_MARKERS)
+
+    if present and not absent:
+        return True
+    if absent:
+        return False
+    return None

@@ -15,7 +15,9 @@ from __future__ import annotations
 import pytest
 
 from tasks.s04e03_domatowo.city import (
+    allocate_scouts,
     cluster,
+    reads_as_found,
     from_coord,
     manhattan,
     neighbours,
@@ -140,4 +142,104 @@ class TestKolejnoscPrzeszukania:
         na piechotę" — plan ma rozdzielać cele między dostępnych ludzi.
         """
         plan = sweep_order(["A1", "K11"], {"blisko-A1": "A2", "blisko-K11": "K10"})
-        assert dict((t, s) for s, t in plan) == {"A1": "blisko-A1", "K11": "blisko-K11"}
+        assert {t: s for s, t in plan} == {"A1": "blisko-A1", "K11": "blisko-K11"}
+
+
+class TestOdczytLogu:
+    """
+    `reads_as_found()` — klasyfikacja zdań `inspect`.
+
+    Wszystkie poniższe komunikaty są DOSŁOWNE, zebrane z pełnego przemiatania 14 pól
+    2026-08-25. To jedyne miejsce, gdzie rozwiązanie opiera się o treść generowaną
+    przez backend, więc jest pokryte najgęściej.
+    """
+
+    NEGATYWY = [
+        "Nie ma żadnej osoby. Trafiłem tylko na szczura i pęknięte lustro.",
+        "Pomieszczenie bez celu. Jest rozbita lornetka.",
+        "Pokój pusty. Dźwięk był mylący, to tylko kapanie wody.",
+        "Nic wartościowego. Puste ściany, rozrzucone papiery i stary garnek.",
+        "Pomieszczenie bez ludzi. Znalazłem zardzewiały śrubokręt.",
+        "Brak obecności. Są resztki jedzenia, ale miejsce opuszczone.",
+        "Nie stwierdzono obecności. Tylko kilka mokrych gazet.",
+        "Rozglądnąłem się dwa razy. Poza workiem pełnym śmieci nie ma tu nic.",
+        "Tu tylko śmieci. Żadnych żywych kontaktów.",
+        "Przeszukanie nic nie wykazało. Znalazłem jedną rękawicę.",
+        "Nie ma nikogo. Jest kilka butelek, ale wszystkie puste.",
+        "Miejsce opuszczone. Znalazłem latarkę, ale nikogo przy niej nie było.",
+        # Trzy poniższe pojawiły się dopiero w przebiegu zdobywającym flagę (2026-08-25),
+        # dzień po zebraniu reszty — dowód, że słownik backendu jest otwarty.
+        "Cel nieobecny. Za drzwiami była torba, ale w środku same gazety.",
+        "Cel nieobecny. Ślady prowadzą dalej korytarzem.",
+        "Pomieszczenie czyste. Jest wiadro, szczur i kilka gwoździ.",
+    ]
+
+    @pytest.mark.parametrize("msg", NEGATYWY)
+    def test_puste_pole(self, msg: str) -> None:
+        assert reads_as_found(msg) is False
+
+    def test_trafienie(self) -> None:
+        """Jedyny zaobserwowany pozytyw — dosłownie tak brzmi znalezienie partyzanta."""
+        found = "Cel jest z nami. Mężczyzna około 30 lat, ranny w ramię, ale przytomny."
+        assert reads_as_found(found) is True
+
+    def test_rzeczownik_osobowy_sam_w_sobie_nie_wystarcza(self) -> None:
+        """
+        „Nie ma żadnej osoby" mówi o człowieku i o jego BRAKU naraz.
+
+        Dlatego wymagane są oba sygnały, a nie sam pozytywny — inaczej pierwsze puste
+        pole zakończyłoby misję wezwaniem śmigłowca w złe miejsce.
+        """
+        assert reads_as_found("Nie ma żadnego mężczyzny.") is False
+
+    def test_znalezisko_to_nie_czlowiek(self) -> None:
+        """„Znalazłem latarkę, ale nikogo przy niej nie było" — czasownik zgadza się, sens nie."""
+        assert reads_as_found("Miejsce opuszczone. Znalazłem latarkę.") is False
+
+    def test_nieznane_slownictwo_daje_none_nie_false(self) -> None:
+        """
+        Cicha porażka jest tu droższa niż głośna: gdyby backend zmienił styl komunikatów,
+        `False` dla wszystkiego wyglądałoby jak „plansza pusta", a `None` każe przeczytać
+        logi oczami. Rozwiązanie zlicza takie przypadki i mówi o nich w błędzie końcowym.
+        """
+        assert reads_as_found("Zupełnie inne sformułowanie backendu.") is None
+
+
+class TestPrzydzialZwiadowcow:
+    """
+    Limit 8 zwiadowców jest globalny na operację, nie na desant.
+
+    Regresja z żywego przebiegu: dwa pełne czterosobowe desanty wyczerpały limit
+    i trzeci `create` odbił się od API z HTTP 400 — przy trzecim z trzech budynków,
+    czyli po wydaniu punktów na dwa poprzednie.
+    """
+
+    def test_realna_mapa_miesci_sie_w_limicie(self) -> None:
+        """Domatowo ma budynki 6/4/4 pól — przydział nie może przekroczyć ośmiu ludzi."""
+        allocation = allocate_scouts([6, 4, 4], max_scouts=8, max_per_transporter=4)
+        assert sum(allocation) <= 8
+        assert all(a >= 1 for a in allocation)
+
+    def test_kazdy_budynek_dostaje_kogos(self) -> None:
+        """Budynek bez zwiadowcy zostałby nieprzeszukany — to cicha porażka misji."""
+        allocation = allocate_scouts([5, 1, 1, 1], max_scouts=4, max_per_transporter=4)
+        assert allocation == [1, 1, 1, 1]
+
+    def test_nadwyzka_idzie_do_najwiekszego(self) -> None:
+        """Większy budynek to większa szansa trafienia, a przerywamy przy pierwszym."""
+        allocation = allocate_scouts([6, 2], max_scouts=8, max_per_transporter=4)
+        assert allocation[0] > allocation[1]
+
+    def test_nie_przydziela_wiecej_niz_pol_w_budynku(self) -> None:
+        """Piąty zwiadowca w budynku o czterech polach nie ma czego sprawdzać."""
+        allocation = allocate_scouts([2, 2], max_scouts=8, max_per_transporter=4)
+        assert allocation == [2, 2]
+
+    def test_szanuje_pojemnosc_transportera(self) -> None:
+        """Jeden transporter bierze najwyżej czterech pasażerów."""
+        allocation = allocate_scouts([10], max_scouts=8, max_per_transporter=4)
+        assert allocation == [4]
+
+    def test_wiecej_budynkow_niz_ludzi_przerywa(self) -> None:
+        with pytest.raises(ValueError, match="nieprzeszukany"):
+            allocate_scouts([1, 1, 1], max_scouts=2, max_per_transporter=4)
