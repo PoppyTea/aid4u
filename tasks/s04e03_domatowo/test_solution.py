@@ -136,6 +136,20 @@ class TestKolejnoscPrzeszukania:
         plan = sweep_order(["B10", "C11"], {"s1": "B10"})
         assert plan[0] == ("s1", "B10")
 
+    def test_plan_nie_zalezy_od_kolejnosci_wpisow(self) -> None:
+        """
+        Ten sam stan planszy ma dać ten sam plan, niezależnie od kolejności `getObjects`.
+
+        Przy remisie odległości (obaj zwiadowcy tak samo blisko celu) rozstrzygnięcie
+        wyłącznie po nazwie celu zostawiało wybór kolejności iteracji po słowniku, czyli
+        kolejności odpowiedzi API. Plan przestawał być powtarzalny, a od planu zależy
+        koszt — jedyna rzecz, którą w tym zadaniu można przegrać.
+        """
+        targets = ["B10", "C10"]
+        forward = sweep_order(targets, {"aaa": "B9", "bbb": "C9"})
+        reversed_order = sweep_order(targets, {"bbb": "C9", "aaa": "B9"})
+        assert forward == reversed_order
+
     def test_wykorzystuje_obu_zwiadowcow_zamiast_prowadzic_jednego(self) -> None:
         """
         Jedyny udokumentowany sposób przegrania to „agent zasuwa jednym zwiadowcą

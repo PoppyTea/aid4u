@@ -229,9 +229,19 @@ def sweep_order(targets: list[str], scouts: dict[str, str]) -> list[tuple[str, s
     plan: list[tuple[str, str]] = []
 
     while pending:
+        # Remis rozstrzygamy do końca: odległość, cel, POZYCJA zwiadowcy i na końcu jego
+        # identyfikator. Bez dwóch ostatnich składników o wyborze decydowałaby kolejność
+        # wpisów z `getObjects`, więc ten sam stan planszy dawałby różne plany między
+        # przebiegami — a od planu zależy koszt, czyli jedyna rzecz, którą można tu
+        # przegrać. Zgłoszone przez CodeRabbita na PR #86.
         scout, target = min(
             ((s, t) for s in positions for t in pending),
-            key=lambda pair: (manhattan(positions[pair[0]], pair[1]), pair[1]),
+            key=lambda pair: (
+                manhattan(positions[pair[0]], pair[1]),
+                pair[1],
+                positions[pair[0]],
+                pair[0],
+            ),
         )
         plan.append((scout, target))
         positions[scout] = target
