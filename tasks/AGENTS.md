@@ -12,9 +12,8 @@ pułapki) żyją w jego własnym `AGENTS.md`, nie tutaj — Child DOX Index niż
 (AID-62/46/18/47). Cały sezon zero LLM w rozwiązaniach, łączny koszt ~$0.00. Stan gotowości, dług i checklisty per-epizod: `tasks/s03/requirements/`.
 Procedura przejścia między sezonami (sezonoagnostyczna): `strategy/season-transition.md`.
 
-**Końcówka w toku (2026-08-24)** — `s05e03` i `s04e05` zaliczone za pierwszym
-podejściem, oba zero LLM i $0.00. **17 flag głównych, 3 do certyfikatu.** Kolejność
-ataku z `s04/requirements/season.md` bez zmian: dalej `s04e03 → s04e04 → s05e04`.
+**Końcówka w toku (2026-08-25)** — `s05e03`, `s04e05` i `s04e03` zaliczone, wszystkie
+zero LLM i $0.00. **18 flag głównych, 2 do certyfikatu.** Zostają `s04e04` i `s05e04`.
 
 **EFFICIENCY MODE aktywny** (od 2026-07-29) — priorytet: szybkość i skuteczność
 zdobywania flag do 20/25, nie proces. Learning-mode wersja tego pliku:
@@ -138,6 +137,15 @@ naiwny `select *` gubi 10 miast) i **rozjazd wielkości liter** między
 `food4cities.json` (z małej) a `destinations.name` (z wielkiej). Trzecia, drobniejsza:
 `signatureGenerator` zwraca podpis w polu `hash`, choć `orders.create` chce go jako
 `signature`. Rekonesans zamknął przy okazji punkty #2 i #6 listy empirycznej.
+
+`s04e03_domatowo/` — **solved** (2026-08-25) — flaga `{FLG:WEVEGOTHIM}`, koszt $0.00,
+160 z 300 punktów akcji przy trafieniu dopiero na 12. z 14 możliwych inspekcji. Cel to
+`block3` (14 pól) — zawężenie ze 121 pól bierze się z przechwyconego sygnału. Trzy
+pułapki, wszystkie zmierzone: **`callHelicopter` nie nadaje się na detektor**, bo
+wywołanie testujące JEST ewakuacją (pierwsza wersja przeszła tak `--dry-run` i naprawdę
+zakończyła misję); **limit 8 zwiadowców jest globalny na operację**, nie na desant, więc
+przydział musi powstać z góry; **słownik komunikatów `inspect` jest otwarty** — dlatego
+klasyfikator zwraca `None` dla nieznanego zdania zamiast `False`.
 
 **Końcówka kursu (S04+S05, rekonesans 2026-08-20):** `s04/` — `requirements/` z rankingiem
 **wszystkich 10 pozostałych zadań** (S04E01–E05 i S05E01–E05) i wyborem piątki dającej
