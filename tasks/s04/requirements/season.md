@@ -1,7 +1,7 @@
 # S04+S05 — plan końcówki: 5 flag z 10 zadań
 
-Stan na 2026-08-25: **18 flag głównych** (`.flags.json` + `s01e03_proxy` poza plikiem).
-Do certyfikatu brakuje **2** — `s05e03`, `s04e05` i `s04e03` zaliczone, patrz
+Stan na 2026-08-25: **19 flag głównych** (`.flags.json` + `s01e03_proxy` poza plikiem).
+Do certyfikatu brakuje **1** — `s05e03`, `s04e05`, `s04e03` i `s04e04` zaliczone, patrz
 „Co faktycznie zadziałało".
 Stan wyjściowy tego dokumentu (2026-08-20) to 15 flag i 5 do zdobycia. Zostało **10 zadań** — więc po raz pierwszy w tym projekcie
 możemy **wybierać**, a nie zaliczać wszystko po kolei. Ten plik trzyma wybór i kolejność;
@@ -14,7 +14,7 @@ uzasadnienia źródłowe w `source/tool-inventory.md` i `source/community-intel.
 | ~~**s05e03**~~ `shellaccess` | zdalny `grep` po archiwum, odpowiedź wypisana `echo` | ✅ całkowicie       | brak  | brak                            | **$0.00 (fakt)** | 🟢 najłatwiejsze                | **✅ 2026-08-24** |
 | ~~**s04e05**~~ `foodwarehouse` | SQLite RO + SHA1 + zamówienie na miasto          | ✅                  | brak  | brak                            | **$0.00 (fakt)** | 🟢 „poszło od strzała"          | **✅ 2026-08-24** |
 | ~~**s04e03**~~ `domatowo`  | 11×11, 300 pkt akcji, znajdź i ewakuuj               | ✅                  | brak  | brak                            | **$0.00 (fakt)** | 🟢 „nie jest zbyt trudne"       | **✅ 2026-08-25** |
-| **s04e04** `filesystem`    | 2,6 kB notatek → 3 katalogi w wirtualnym FS          | 🟡 hybryda          | brak  | brak                            | $0.15–0.26      | 🟡 polska semantyka             | **4**       |
+| ~~**s04e04**~~ `filesystem` | 2,6 kB notatek → 3 katalogi w wirtualnym FS         | **✅ zero LLM**     | brak  | brak                            | **$0.00 (fakt)** | 🟡 polska semantyka             | **✅ 2026-08-25** |
 | **s05e04** `goingthere`    | 3×12, hinty PL/ENG, SHA1 disarm                      | 🟡 hybryda          | brak  | parser hintów (mały)            | grosze          | 🟡 jedna pułapka pojęciowa      | **5**       |
 | s04e01 `okoeditor`         | 3 edycje wpisów + `done`                             | ✅                  | brak  | sesja HTTP + strip HTML         | $0–0.14         | 🟡 milcząca weryfikacja         | 6 (rezerwa) |
 | s05e05 `timetravel`        | maszyna czasu, 3 skoki                               | ✅ (z obejściem BE) | brak  | brak (jeśli backend działa)     | $0–5            | 🔴 bez obejścia najtrudniejsze  | 7 (rezerwa) |
@@ -29,18 +29,16 @@ uzasadnienia źródłowe w `source/tool-inventory.md` i `source/community-intel.
 Kolejność jest rosnąca po ryzyku, nie po numerze epizodu. Każdy krok domyka jedną flagę
 i nie zostawia niedokończonego stanu, którego potrzebowałby następny.
 
-1. **s05e03 `shellaccess`** — najtańsza flaga w całym kursie i zarazem najtańszy test, czy
-   hub w ogóle wpuszcza nas do S05 bez zaliczonych e01/e02 (patrz „Do sprawdzenia
-   empirycznie" #1). Robimy ją pierwszą właśnie dlatego, że jest jednocześnie zadaniem
-   i sondą.
-2. **s04e05 `foodwarehouse`** — 677 B danych, `reset` gratis, jedna znana pułapka
-   (niepełny odczyt tabeli `destinations`). Zero nowego kodu w `core/`.
-3. **s04e03 `domatowo`** — powtórka `s03e03_reactor` + `s03e05_savethem`: planowanie pod
-   budżetem zasobów. Mamy sprawdzony wzorzec, wskazówka „najwyższe bloki" zawęża
-   przeszukiwanie przed pierwszym ruchem.
-4. **s04e04 `filesystem`** — jedyne z piątki, gdzie LLM realnie coś wnosi (normalizacja
-   polskiej odmiany), ale nad 2,6 kB tekstu to jedno tanie wywołanie, nie pipeline.
-   `batch_mode` + `reset` czynią próby darmowymi.
+1. ~~**s05e03 `shellaccess`**~~ — ✅ 2026-08-24. Zamysł się potwierdził: była
+   jednocześnie zadaniem i sondą, i to ona zdjęła ryzyko gatingu S05.
+2. ~~**s04e05 `foodwarehouse`**~~ — ✅ 2026-08-24. Zapowiadana pułapka (niepełny odczyt
+   `destinations`) okazała się dwiema, nie jedną — patrz „Co faktycznie zadziałało".
+3. ~~**s04e03 `domatowo`**~~ — ✅ 2026-08-25. Wzorzec planowania z S03 zadziałał;
+   160 z 300 punktów akcji przy trafieniu dopiero na 12. z 14 inspekcji.
+4. ~~**s04e04 `filesystem`**~~ — ✅ 2026-08-25. Plan zakładał tu jedyne w piątce
+   uzasadnione użycie LLM (normalizacja polskiej odmiany); poszło **zero LLM za $0.00**,
+   bo `transakcje.txt` okazał się gotowym słownikiem form podstawowych. Patrz
+   „Co faktycznie zadziałało".
 5. **s05e04 `goingthere`** — ostatnie, bo wymaga najwięcej kodu (parser hintów, SHA1,
    retry na losowe błędy API). Za to mamy największą przewagę informacyjną w całej
    dziesiątce: znamy błąd, na którym wykłada się większość uczestników.
@@ -85,11 +83,11 @@ i nie zostawia niedokończonego stanu, którego potrzebowałby następny.
   z `echo '{"date":…}'` — znaki JSON nie są metaznakami powłoki. Poszerzanie allowlisty
   okazało się niepotrzebne; `jq` zostało poza nią świadomie (bez potoku niewiele wnosi,
   a potoki bramka odrzuca z zasady).
-- **s04e05:** żaden.
-- **s04e03:** żaden (wzorzec planowania z S03 jest gotowy).
-- **s04e04:** wybrać model do normalizacji polskiej odmiany. Intel wskazuje
-  `gemini-3-flash` jako pewniaka; nasz domyślny `claude-haiku-4-5` jest niesprawdzony na
-  tym konkretnym zadaniu.
+- ✅ **s04e05 —** żadnego blokera nie było, potwierdzone.
+- ✅ **s04e03 —** żadnego blokera nie było, potwierdzone.
+- ✅ **s04e04 — bezprzedmiotowe.** Bloker brzmiał „wybrać model do normalizacji polskiej
+  odmiany"; żaden model nie był potrzebny. `transakcje.txt` podaje wszystkie miasta
+  i towary w mianowniku, więc odmianę załatwia dopasowanie rdzenia.
 - **s05e04:** dopisać walidację treści odpowiedzi skanera (`core.net.expect_not_html()`) —
   `/api/frequencyScanner` potrafi zwrócić `502` z pełnym HTML przy statusie sugerującym
   sukces.
@@ -208,3 +206,28 @@ Model kosztu też trzeba było zmierzyć, nie przepisać: `move` raportuje `path
 wliczając pole startowe, a nalicza za `path_steps - 1`.
 
 Operacyjne szczegóły przeniesione do `tasks/s04e03_domatowo/AGENTS.md`.
+
+### s04e04 `filesystem` — ✅ 2026-08-25, `{FLG:DEALWITHIT}`, $0.00
+
+**Jedyne zadanie z piątki, w którym ranking się pomylił co do metody.** Plan zakładał
+„hybrydę" i $0.15–0.26 na LLM do normalizacji polskiej odmiany, bo tak robiła cała
+społeczność. Poszło **zero LLM za $0.00**, i to nie dzięki sprytniejszemu promptowi,
+tylko dzięki obserwacji o danych: `transakcje.txt` podaje **wszystkie miasta i wszystkie
+towary w mianowniku**, w sztywnym formacie `Miasto -> towar -> Miasto`. To zamienia
+„rozpoznaj polską odmianę" w „dopasuj formę do skończonego słownika", czyli w dopasowanie
+rdzenia.
+
+Wniosek na przyszłość: zanim uzna się zadanie za lingwistyczne, warto sprawdzić, czy
+w danych nie leży gotowy słownik form podstawowych.
+
+Druga rzecz warta zapamiętania to **niezależna weryfikacja**: `ogloszenia.txt` opisuje
+to samo zapotrzebowanie ośmiu miast, co `food4cities.json` pobrane w `s04e05`. Testy
+porównują wynik parsera z plikiem z innego zadania i to porównanie wyłapało trzy osobne,
+ciche usterki — każda dawała poprawnie wyglądającą, niepełną strukturę.
+
+Trzy niepisane reguły API (nie ma ich ani w treści, ani w `help`): nazwy plików wyłącznie
+małymi literami (`code -940`), bez kropek (`code -935`), a `listFiles` zwraca `entries`,
+nie `files` — przez co przez chwilę wyglądało, że batch nic nie utworzył, mimo że utworzył
+wszystko.
+
+Operacyjne szczegóły przeniesione do `tasks/s04e04_filesystem/AGENTS.md`.

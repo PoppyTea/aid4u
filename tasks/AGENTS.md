@@ -12,8 +12,8 @@ pułapki) żyją w jego własnym `AGENTS.md`, nie tutaj — Child DOX Index niż
 (AID-62/46/18/47). Cały sezon zero LLM w rozwiązaniach, łączny koszt ~$0.00. Stan gotowości, dług i checklisty per-epizod: `tasks/s03/requirements/`.
 Procedura przejścia między sezonami (sezonoagnostyczna): `strategy/season-transition.md`.
 
-**Końcówka w toku (2026-08-25)** — `s05e03`, `s04e05` i `s04e03` zaliczone, wszystkie
-zero LLM i $0.00. **18 flag głównych, 2 do certyfikatu.** Zostają `s04e04` i `s05e04`.
+**Końcówka w toku (2026-08-25)** — `s05e03`, `s04e05`, `s04e03` i `s04e04` zaliczone,
+wszystkie zero LLM i $0.00. **19 flag głównych, 1 do certyfikatu.** Zostaje `s05e04`.
 
 **EFFICIENCY MODE aktywny** (od 2026-07-29) — priorytet: szybkość i skuteczność
 zdobywania flag do 20/25, nie proces. Learning-mode wersja tego pliku:
@@ -146,6 +146,17 @@ wywołanie testujące JEST ewakuacją (pierwsza wersja przeszła tak `--dry-run`
 zakończyła misję); **limit 8 zwiadowców jest globalny na operację**, nie na desant, więc
 przydział musi powstać z góry; **słownik komunikatów `inspect` jest otwarty** — dlatego
 klasyfikator zwraca `None` dla nieznanego zdania zamiast `False`.
+
+`s04e04_filesystem/` — **solved** (2026-08-25) — flaga `{FLG:DEALWITHIT}`, koszt $0.00,
+jeden `batch_mode` z 32 operacjami. **Zero LLM wbrew intelowi**: kurs opisuje to zadanie
+jako lingwistyczne (modele lokalne odpadały, przechodziło dopiero `gemini-3-flash` za
+$0.26), ale w paczce leży plik, którego nikt nie potraktował jako SŁOWNIKA —
+`transakcje.txt` podaje wszystkie miasta i towary w mianowniku, więc „rozpoznaj polską
+odmianę" zamienia się w „dopasuj rdzeń do skończonego zbioru". Weryfikacja niezależna
+od huba: `ogloszenia.txt` opisuje to samo zapotrzebowanie, co `food4cities.json`
+z `s04e05`, i to porównanie wyłapało trzy ciche usterki parsera. Trzy niepisane reguły
+API: nazwy plików **tylko małymi literami** (`code -940`), **bez kropek** (`code -935`),
+a `listFiles` zwraca `entries`, nie `files`.
 
 **Końcówka kursu (S04+S05, rekonesans 2026-08-20):** `s04/` — `requirements/` z rankingiem
 **wszystkich 10 pozostałych zadań** (S04E01–E05 i S05E01–E05) i wyborem piątki dającej
