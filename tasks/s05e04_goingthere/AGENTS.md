@@ -12,7 +12,7 @@ podstawie wskazówek radiowych i rozbrajanie radarów systemu OKO. **Zero LLM.**
   wybór bezpiecznego ruchu, hash rozbrajający, ratowanie zniekształconej odpowiedzi skanera.
 - `solution.py`: `@task("s05e04", hub_name="goingthere")` — pętla gry, ponawianie zapytań
   do zagłuszanego API.
-- `test_solution.py`: 33 testy offline, w tym **14 dosłownych komunikatów z żywego API**
+- `test_solution.py`: 48 testów offline, w tym **14 dosłownych komunikatów z żywego API**
   sparowanych z prawdziwą pozycją skały.
 - `doc/`: treść zadania i fabuła.
 
@@ -87,7 +87,7 @@ od kolumny 1.
   i dołóż je do `REAL_HINTS` w testach razem z prawdziwym kierunkiem.
 
 ## Verification
-- `uv run pytest tasks/s05e04_goingthere/` — 33 testy, zero sieci.
+- `uv run pytest tasks/s05e04_goingthere/` — 48 testów, zero sieci.
 - `uv run run.py solve s05e04 --dry-run` — pełny przelot na żywo, ostatni ruch wypisany
   zamiast wysłania.
 - Flaga z huba to ostateczna weryfikacja.
