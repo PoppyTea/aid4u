@@ -1,5 +1,5 @@
 """
-S05E04 `goingthere` — przelot rakietą 3×12 do Grudziądza.
+S05E04 `goingthere` — przelot rakietą 3x12 do Grudziądza.
 
 **Zero LLM.** Zadanie wygląda na językowe (wskazówki radiowe w żargonie żeglarskim), ale
 komunikaty pochodzą ze skończonej puli sformułowań opisujących jeden z trzech kierunków,
@@ -225,16 +225,23 @@ class GoingThereTask(BaseTask):
         """
         Checks the frequency scanner and disarms the radar when the rocket is being tracked.
         """
-        response = self._insist(
+        scan: tuple[int, str] | None = None
+
+        def parse_scan(response: httpx.Response) -> None:
+            """Parse tracked-scanner data while still inside the bounded retry loop."""
+            nonlocal scan
+            scan = None if is_clear(response.text) else salvage_scan(response.text)
+
+        self._insist(
             lambda: self._http.get(
                 f"{self._base}/api/frequencyScanner", params={"key": self._key}
-            )
+            ),
+            validate=parse_scan,
         )
-        body = response.text
-        if is_clear(body):
+        if scan is None:
             return
 
-        frequency, code = salvage_scan(body)
+        frequency, code = scan
         _console.print(f"    [magenta]radar[/] f={frequency} — rozbrajam", highlight=False)
         self._insist(
             lambda: self._http.post(
@@ -247,10 +254,16 @@ class GoingThereTask(BaseTask):
             )
         )
 
-    def _insist(self, call: Callable[[], httpx.Response]) -> httpx.Response:
+    def _insist(
+        self,
+        call: Callable[[], httpx.Response],
+        validate: Callable[[httpx.Response], None] | None = None,
+    ) -> httpx.Response:
         """
         Wykonuje żądanie ponownie, aż otrzyma prawidłową odpowiedź z niepustą treścią inną niż HTML.
-        
+
+        Opcjonalna walidacja odpowiedzi działa wewnątrz tej samej ograniczonej pętli prób.
+
         Raises:
             MissionFailed: Gdy wszystkie próby zakończą się niepowodzeniem.
         """
@@ -261,6 +274,8 @@ class GoingThereTask(BaseTask):
                 response = call()
                 response.raise_for_status()
                 expect_not_html(response.content, source="frequencyScanner/getmessage")
+                if validate is not None:
+                    validate(response)
                 return response
             except Exception as failure:  # noqa: BLE001 — każdy błąd jest tu przejściowy
                 last = failure
