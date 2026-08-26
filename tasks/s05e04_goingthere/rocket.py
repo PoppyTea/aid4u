@@ -105,13 +105,13 @@ class HintUnreadable(RuntimeError):
 
 def _sentences(hint: str) -> list[list[str]]:
     """
-    Dzieli wskazówkę na zdania i człony rozdzielone interpunkcją lub spójnikami.
-    
-    Parametry:
-        hint (str): Tekst wskazówki.
-    
-    Zwraca:
-        list[list[str]]: Lista zdań, z których każde zawiera listę niepustych członów.
+    Dzieli wskazówkę na zdania, a każde zdanie na człony.
+
+    Dwa poziomy, bo żaden sam nie wystarcza. Za grubo (całe zdania) psuje się na
+    „Port is open, starboard is open, and the center lane is the bad choice" — jedno
+    zdanie opisuje naraz dwa wolne kierunki i jeden zajęty. Za drobno (same człony)
+    psuje się na „You have room ahead and also on the right-hand side" — drugi człon
+    nie ma własnego orzeczenia i sens musi odziedziczyć po pierwszym.
     """
     text = hint.casefold()
     for phrase in _TIME_PHRASES:
@@ -168,16 +168,28 @@ def _read_directions(clause: str) -> set[str]:
 
 def parse_hint(hint: str) -> str:
     """
-    Converts a radio hint into the direction of the rock in the next column.
-    
-    Parameters:
-        hint (str): An English nautical message describing the available or blocked directions.
-    
+    Zamienia radiową wskazówkę na komendę, której NIE wolno użyć.
+
+    Args:
+        hint: Komunikat z `/api/getmessage`, po angielsku, w żargonie żeglarskim.
+
     Returns:
-        str: `"left"`, `"go"`, or `"right"` indicating the blocked direction.
-    
+        `"left"`, `"go"` albo `"right"` — kierunek, w którym stoi skała w następnej kolumnie.
+
     Raises:
-        HintUnreadable: If the hint does not identify exactly one blocked direction.
+        HintUnreadable: Gdy z komunikatu nie wynika jednoznacznie jeden kierunek.
+
+    Dwie drogi do odpowiedzi, bo żadna sama nie wystarcza:
+
+    1. **wprost** — fragment mówi, że dany kierunek jest zajęty („All the trouble is
+       gathered beside starboard");
+    2. **przez eliminację** — fragmenty mówią, że dwa kierunki są wolne, więc skała jest
+       w trzecim. To jedyna droga dla komunikatów, które w ogóle nie nazywają kierunku
+       skały: „You have room ahead and also on the right-hand side. The obstruction is
+       lurking beside **the opposite window**."
+
+    Komunikat nierozpoznany podnosi wyjątek zamiast zgadywać — wskazówkę można pobrać
+    ponownie i przychodzi w innym sformułowaniu, więc zgadywanie nigdy się tu nie opłaca.
     """
     blocked: set[str] = set()
     free: set[str] = set()
@@ -209,15 +221,20 @@ def parse_hint(hint: str) -> str:
 
 def safe_moves(row: int, free_rows: list[int], forbidden_row: int | None) -> list[str]:
     """
-    Return safe movement commands in preference order.
-    
-    Parameters:
-        row (int): The rocket's current grid row.
-        free_rows (list[int]): Rows available in the current column.
-        forbidden_row (int | None): The rock's row in the next column, if known.
-    
+    Zwraca komendy, które nie kończą się rozbiciem, w kolejności preferencji.
+
+    Args:
+        row: Bieżący wiersz rakiety.
+        free_rows: `currentColumn.freeRows` z odpowiedzi `/verify` — wiersze wolne
+            w kolumnie, w której rakieta STOI.
+        forbidden_row: Wiersz skały w następnej kolumnie, albo `None` gdy nieznany.
+
     Returns:
-        list[str]: Safe commands among `left`, `go`, and `right`.
+        Lista komend `left`/`go`/`right`. Pusta, gdy każdy ruch jest zabójczy.
+
+    Trzy warunki naraz, każdy z innego źródła — pominięcie któregokolwiek to rozbicie:
+    docelowy wiersz musi mieścić się w siatce, być wolny w BIEŻĄCEJ kolumnie (bo rakieta
+    najpierw przesuwa się w pionie) i różnić się od skały w kolumnie następnej.
     """
     allowed = []
     for command, offset in MOVE_OFFSETS.items():
@@ -263,27 +280,18 @@ def choose_move(row: int, free_rows: list[int], blocked_direction: str, base_row
 
 
 def disarm_hash(detection_code: str) -> str:
-    """
-    Generate the hexadecimal SHA-1 hash used to disarm the system.
-    
-    Parameters:
-    	detection_code (str): Detection code to combine with the disarm suffix.
-    
-    Returns:
-    	str: Hexadecimal SHA-1 digest of the detection code followed by "disarm".
-    """
+    """SHA1 z `detectionCode` i doklejonego słowa `disarm` — format z treści zadania."""
     return hashlib.sha1(f"{detection_code}disarm".encode()).hexdigest()
 
 
 def is_clear(response: str) -> bool:
     """
-    Rozpoznaje, czy zniekształcona odpowiedź skanera oznacza, że droga jest wolna.
-    
-    Parameters:
-        response (str): Odpowiedź skanera, potencjalnie zawierająca powtórzone znaki lub brak apostrofu.
-    
-    Returns:
-        bool: `True`, jeśli odpowiedź zawiera rozpoznawalny komunikat „clear”, w przeciwnym razie `False`.
+    Rozstrzyga, czy skaner mówi „czysto", mimo zniekształcenia przez zagłuszanie.
+
+    Treść zadania obiecuje frazę „It's clear!", ale realnie przychodzi np. `"Its cleeear"`
+    — z rozciągniętą samogłoską i bez apostrofu. Dosłowne porównanie odsiałoby to jako
+    „namierzają nas" i wysłało bezsensowne rozbrajanie. Stąd dopasowanie po literach
+    rdzenia, odporne na powtórzenia znaków.
     """
     letters = re.sub(r"[^a-z]", "", response.casefold())
     squeezed = re.sub(r"(.)\1+", r"\1", letters)
@@ -292,40 +300,49 @@ def is_clear(response: str) -> bool:
 
 def _canonical(token: str) -> str:
     """
-    Ujednolica zniekształconą nazwę pola do postaci używanej przy porównywaniu.
-    
-    Parameters:
-        token (str): Nazwa pola do ujednolicenia.
-    
-    Returns:
-        str: Nazwa zapisana małymi literami, z zastąpionymi znakami wyglądającymi jak litery.
+    Sprowadza zniekształconą nazwę pola do postaci porównywalnej.
+
+    Zagłuszanie losuje wielkość liter i podmienia znaki na podobne graficznie, więc
+    `detectionCode` przychodzi jako `beTeCTi0NC0be`, a `frequency` jako `frEpUeNCy`.
+    Ujednolicamy wielkość liter i zamieniamy cyfry na litery, które udają — reszta
+    to już robota dla dopasowania rozmytego.
     """
     return token.casefold().translate(_LOOKALIKE)
 
 
 def salvage_scan(response: str) -> tuple[int, str]:
     """
-    Extracts the frequency and detection code from a distorted scanner response.
-    
+    Wyciąga `frequency` i `detectionCode` ze zniekształconej odpowiedzi skanera.
+
+    Treść zadania ostrzega, że odpowiedź „może wyglądać jak JSON, ale może nie być
+    zdatne do parsowania". Realny kształt (zmierzony 2026-08-25) jest gorszy, niż to
+    brzmi — psute są **same nazwy pól**, nie tylko składnia::
+
+        {
+            "BatA": {
+                "WEAP0nTyPe": "self-guided missile"
+                "beTeCTi0NC0be`: "0E0JmF"
+            },
+            'bEINgTRacKEb": true,
+            "frEpUeNCy": 445
+        }
+
+    Dlatego ani `json.loads()`, ani szukanie nazw pól wprost nie zadziała. Zamiast tego
+    wyłuskujemy wszystkie pary `klucz: wartość` tolerancyjnym wyrażeniem (backtick zamiast
+    cudzysłowu, brakujące przecinki), a klucze dopasowujemy **rozmyto** do wzorca. Próg
+    podobieństwa, nie konkretna tablica podmian — żeby zmiana sposobu psucia nie wywracała
+    odczytu.
+
     Returns:
-        tuple[int, str]: The scanner frequency and detection code.
-    
+        Para `(frequency, detectionCode)`.
+
     Raises:
-        ValueError: If either value cannot be extracted from the response.
+        ValueError: Gdy któregoś pola nie da się odczytać. Właściwą reakcją jest wtedy
+            ponowienie zapytania, nie zgadywanie hasha — zły hash to zestrzelenie.
     """
     pairs = _PAIR_RE.findall(response)
 
     def best(target: str, predicate: Callable[[str], bool]) -> str | None:
-        """
-        Find the value whose key most closely matches the target and satisfies the predicate.
-        
-        Parameters:
-            target (str): Key text to match.
-            predicate (Callable[[str], bool]): Condition a value must satisfy.
-        
-        Returns:
-            str | None: The matching value with the highest similarity, or None if no value meets the similarity threshold.
-        """
         scored = [
             (SequenceMatcher(None, _canonical(key), target).ratio(), value)
             for key, value in pairs

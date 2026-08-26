@@ -1,5 +1,5 @@
 """
-S05E04 `goingthere` — przelot rakietą 3x12 do Grudziądza.
+S05E04 `goingthere` — przelot rakietą 3×12 do Grudziądza.
 
 **Zero LLM.** Zadanie wygląda na językowe (wskazówki radiowe w żargonie żeglarskim), ale
 komunikaty pochodzą ze skończonej puli sformułowań opisujących jeden z trzech kierunków,
@@ -86,10 +86,14 @@ class GoingThereTask(BaseTask):
 
     def solve(self, data: None) -> dict[str, str]:
         """
-        Advance the mission to the final column and return the last movement command without executing it.
-        
+        Przeprowadza przelot i zwraca OSTATNI ruch, zamiast go wykonywać.
+
+        Args:
+            data: Nieużywane — stan gry żyje po stronie API.
+
         Returns:
-            dict[str, str]: A mapping containing the final movement command under ``"command"``.
+            `{"command": …}` — ruch wjeżdżający do kolumny 12. Wysyła go
+            `BaseTask._submit()`, więc flaga wraca z jednego, jawnego zgłoszenia.
         """
         cfg = get_config()
         self._key = cfg.apikey
@@ -111,19 +115,7 @@ class GoingThereTask(BaseTask):
             return {"command": command}
 
     def _advance(self, state: dict, base_row: int) -> dict:
-        """
-        Execute one movement command and return the updated mission state.
-        
-        Parameters:
-            state (dict): Current mission state used to plan the movement.
-            base_row (int): Row the player must reach for the final movement.
-        
-        Returns:
-            dict: Updated mission state after the movement.
-        
-        Raises:
-            MissionFailed: If the hub rejects the movement or does not return the player's position.
-        """
+        """Wykonuje jeden pełny krok: rozbrojenie radaru, wskazówka, ruch."""
         command = self._plan(state, base_row)
         try:
             moved = self.hub.submit(HUB_TASK, {"command": command})
@@ -150,19 +142,16 @@ class GoingThereTask(BaseTask):
 
     def _plan(self, state: dict, base_row: int, required_row: int | None = None) -> str:
         """
-        Plan a safe movement command from the current position.
-        
+        Przygotowuje jeden ruch: rozbraja radar, czyta wskazówkę, wybiera komendę.
+
         Args:
-            state: Latest movement state containing the player's position and free rows.
-            base_row: Target row in the destination column.
-            required_row: Required landing row for the final movement.
-        
+            state: Ostatnia odpowiedź `/verify` (`player` + `currentColumn`).
+            base_row: Wiersz bazy w kolumnie 12.
+            required_row: Wiersz, w którym ruch MUSI wylądować (tylko ostatni krok).
+
         Raises:
-            MissionFailed: If no safe movement is available or the required landing row
-                cannot be reached.
-        
-        Returns:
-            A movement command leading to a safe destination.
+            MissionFailed: Gdy nie ma bezpiecznego ruchu albo gdy wymagany wiersz
+                jest niedostępny.
         """
         check_abort()
         self._disarm_if_tracked()
@@ -198,13 +187,11 @@ class GoingThereTask(BaseTask):
 
     def _read_hint(self) -> str:
         """
-        Pobiera wskazówkę radiową i określa zablokowany kierunek.
-        
-        Ponawia próbę dla nieczytelnych wskazówek. Po wyczerpaniu limitu prób zgłasza
-        MissionFailed.
-        
-        Returns:
-        	str: Zablokowany kierunek.
+        Pobiera wskazówkę radiową i zamienia ją na zablokowany kierunek.
+
+        Przy nieczytelnym sformułowaniu pyta PONOWNIE, zamiast zgadywać: ta sama skała
+        bywa opisana inaczej przy każdym zapytaniu, więc powtórzenie jest tańsze
+        i pewniejsze niż rozbudowywanie słownika o kolejny wariant.
         """
         seen: list[str] = []
         for _ in range(_HINT_ATTEMPTS):
@@ -223,12 +210,19 @@ class GoingThereTask(BaseTask):
 
     def _disarm_if_tracked(self) -> None:
         """
-        Checks the frequency scanner and disarms the radar when the rocket is being tracked.
+        Sprawdza skaner i rozbraja radar, jeśli rakieta jest namierzana.
+
+        Ruch bez rozbrojenia kończy się zestrzeleniem, więc to sprawdzenie idzie PRZED
+        każdym ruchem, także przed ostatnim.
         """
+        # Odczyt pól dzieje się WEWNĄTRZ pętli ponowień, nie po niej. Zniekształcenie
+        # jest losowane per odpowiedź, więc pakiet zepsuty nieodwracalnie da się po
+        # prostu pobrać jeszcze raz — a przerwanie misji w tym miejscu byłoby porażką
+        # z powodu, który sam mija. Poprawka zaproponowana przez CodeRabbita na PR #88.
         scan: tuple[int, str] | None = None
 
         def parse_scan(response: httpx.Response) -> None:
-            """Parse tracked-scanner data while still inside the bounded retry loop."""
+            """Czyta stan skanera, dopóki jesteśmy jeszcze w budżecie ponowień."""
             nonlocal scan
             scan = None if is_clear(response.text) else salvage_scan(response.text)
 
@@ -260,12 +254,20 @@ class GoingThereTask(BaseTask):
         validate: Callable[[httpx.Response], None] | None = None,
     ) -> httpx.Response:
         """
-        Wykonuje żądanie ponownie, aż otrzyma prawidłową odpowiedź z niepustą treścią inną niż HTML.
+        Ponawia zapytanie do zagłuszanego API, aż zwróci sensowną treść.
 
-        Opcjonalna walidacja odpowiedzi działa wewnątrz tej samej ograniczonej pętli prób.
+        Zagłuszanie jest zamierzone i zmierzone: ~21% wywołań kończy się `502`, czasem
+        ze stroną HTML przy statusie sugerującym sukces — stąd walidacja treści obok
+        kodu odpowiedzi. `expect_not_html()` jest tu warunkiem koniecznym, nie ozdobą.
+
+        Args:
+            call: Zapytanie do wykonania.
+            validate: Opcjonalny odczyt treści, wykonywany W TEJ SAMEJ pętli prób.
+                Dzięki temu odpowiedź nieodwracalnie zepsuta liczy się jak błąd
+                transportu i po prostu ponawiamy zapytanie.
 
         Raises:
-            MissionFailed: Gdy wszystkie próby zakończą się niepowodzeniem.
+            MissionFailed: Po wyczerpaniu prób.
         """
         last: Exception | str = "brak prób"
         for attempt in range(1, _ATTEMPTS + 1):
