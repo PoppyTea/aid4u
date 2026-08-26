@@ -86,14 +86,10 @@ class GoingThereTask(BaseTask):
 
     def solve(self, data: None) -> dict[str, str]:
         """
-        Przeprowadza przelot i zwraca OSTATNI ruch, zamiast go wykonywać.
-
-        Args:
-            data: Nieużywane — stan gry żyje po stronie API.
-
+        Advance the mission to the final column and return the last movement command without executing it.
+        
         Returns:
-            `{"command": …}` — ruch wjeżdżający do kolumny 12. Wysyła go
-            `BaseTask._submit()`, więc flaga wraca z jednego, jawnego zgłoszenia.
+            dict[str, str]: A mapping containing the final movement command under ``"command"``.
         """
         cfg = get_config()
         self._key = cfg.apikey
@@ -115,7 +111,19 @@ class GoingThereTask(BaseTask):
             return {"command": command}
 
     def _advance(self, state: dict, base_row: int) -> dict:
-        """Wykonuje jeden pełny krok: rozbrojenie radaru, wskazówka, ruch."""
+        """
+        Execute one movement command and return the updated mission state.
+        
+        Parameters:
+            state (dict): Current mission state used to plan the movement.
+            base_row (int): Row the player must reach for the final movement.
+        
+        Returns:
+            dict: Updated mission state after the movement.
+        
+        Raises:
+            MissionFailed: If the hub rejects the movement or does not return the player's position.
+        """
         command = self._plan(state, base_row)
         try:
             moved = self.hub.submit(HUB_TASK, {"command": command})
@@ -142,16 +150,19 @@ class GoingThereTask(BaseTask):
 
     def _plan(self, state: dict, base_row: int, required_row: int | None = None) -> str:
         """
-        Przygotowuje jeden ruch: rozbraja radar, czyta wskazówkę, wybiera komendę.
-
+        Plan a safe movement command from the current position.
+        
         Args:
-            state: Ostatnia odpowiedź `/verify` (`player` + `currentColumn`).
-            base_row: Wiersz bazy w kolumnie 12.
-            required_row: Wiersz, w którym ruch MUSI wylądować (tylko ostatni krok).
-
+            state: Latest movement state containing the player's position and free rows.
+            base_row: Target row in the destination column.
+            required_row: Required landing row for the final movement.
+        
         Raises:
-            MissionFailed: Gdy nie ma bezpiecznego ruchu albo gdy wymagany wiersz
-                jest niedostępny.
+            MissionFailed: If no safe movement is available or the required landing row
+                cannot be reached.
+        
+        Returns:
+            A movement command leading to a safe destination.
         """
         check_abort()
         self._disarm_if_tracked()
@@ -187,11 +198,13 @@ class GoingThereTask(BaseTask):
 
     def _read_hint(self) -> str:
         """
-        Pobiera wskazówkę radiową i zamienia ją na zablokowany kierunek.
-
-        Przy nieczytelnym sformułowaniu pyta PONOWNIE, zamiast zgadywać: ta sama skała
-        bywa opisana inaczej przy każdym zapytaniu, więc powtórzenie jest tańsze
-        i pewniejsze niż rozbudowywanie słownika o kolejny wariant.
+        Pobiera wskazówkę radiową i określa zablokowany kierunek.
+        
+        Ponawia próbę dla nieczytelnych wskazówek. Po wyczerpaniu limitu prób zgłasza
+        MissionFailed.
+        
+        Returns:
+        	str: Zablokowany kierunek.
         """
         seen: list[str] = []
         for _ in range(_HINT_ATTEMPTS):
@@ -210,10 +223,7 @@ class GoingThereTask(BaseTask):
 
     def _disarm_if_tracked(self) -> None:
         """
-        Sprawdza skaner i rozbraja radar, jeśli rakieta jest namierzana.
-
-        Ruch bez rozbrojenia kończy się zestrzeleniem, więc to sprawdzenie idzie PRZED
-        każdym ruchem, także przed ostatnim.
+        Checks the frequency scanner and disarms the radar when the rocket is being tracked.
         """
         response = self._insist(
             lambda: self._http.get(
@@ -239,14 +249,10 @@ class GoingThereTask(BaseTask):
 
     def _insist(self, call: Callable[[], httpx.Response]) -> httpx.Response:
         """
-        Ponawia zapytanie do zagłuszanego API, aż zwróci sensowną treść.
-
-        Zagłuszanie jest zamierzone i zmierzone: ~21% wywołań kończy się `502`, czasem
-        ze stroną HTML przy statusie sugerującym sukces — stąd walidacja treści obok
-        kodu odpowiedzi. `expect_not_html()` jest tu warunkiem koniecznym, nie ozdobą.
-
+        Wykonuje żądanie ponownie, aż otrzyma prawidłową odpowiedź z niepustą treścią inną niż HTML.
+        
         Raises:
-            MissionFailed: Po wyczerpaniu prób.
+            MissionFailed: Gdy wszystkie próby zakończą się niepowodzeniem.
         """
         last: Exception | str = "brak prób"
         for attempt in range(1, _ATTEMPTS + 1):
