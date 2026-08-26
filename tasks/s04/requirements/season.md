@@ -1,8 +1,9 @@
 # S04+S05 — plan końcówki: 5 flag z 10 zadań
 
-Stan na 2026-08-25: **19 flag głównych** (`.flags.json` + `s01e03_proxy` poza plikiem).
-Do certyfikatu brakuje **1** — `s05e03`, `s04e05`, `s04e03` i `s04e04` zaliczone, patrz
-„Co faktycznie zadziałało".
+🏁 **Stan na 2026-08-26: 20 flag głównych — CERTYFIKAT ZDOBYTY**, sześć dni przed
+terminem. Cała rekomendowana piątka zaliczona w zaplanowanej kolejności, **każda za
+pierwszym podejściem i każda bez LLM**; łączny koszt operacyjny $0.00. Retrospektywy
+poszczególnych zadań w „Co faktycznie zadziałało" na końcu pliku.
 Stan wyjściowy tego dokumentu (2026-08-20) to 15 flag i 5 do zdobycia. Zostało **10 zadań** — więc po raz pierwszy w tym projekcie
 możemy **wybierać**, a nie zaliczać wszystko po kolei. Ten plik trzyma wybór i kolejność;
 uzasadnienia źródłowe w `source/tool-inventory.md` i `source/community-intel.md`.
@@ -15,7 +16,7 @@ uzasadnienia źródłowe w `source/tool-inventory.md` i `source/community-intel.
 | ~~**s04e05**~~ `foodwarehouse` | SQLite RO + SHA1 + zamówienie na miasto          | ✅                  | brak  | brak                            | **$0.00 (fakt)** | 🟢 „poszło od strzała"          | **✅ 2026-08-24** |
 | ~~**s04e03**~~ `domatowo`  | 11×11, 300 pkt akcji, znajdź i ewakuuj               | ✅                  | brak  | brak                            | **$0.00 (fakt)** | 🟢 „nie jest zbyt trudne"       | **✅ 2026-08-25** |
 | ~~**s04e04**~~ `filesystem` | 2,6 kB notatek → 3 katalogi w wirtualnym FS         | **✅ zero LLM**     | brak  | brak                            | **$0.00 (fakt)** | 🟡 polska semantyka             | **✅ 2026-08-25** |
-| **s05e04** `goingthere`    | 3×12, hinty PL/ENG, SHA1 disarm                      | 🟡 hybryda          | brak  | parser hintów (mały)            | grosze          | 🟡 jedna pułapka pojęciowa      | **5**       |
+| ~~**s05e04**~~ `goingthere` | 3×12, hinty PL/ENG, SHA1 disarm                     | **✅ zero LLM**     | brak  | parser hintów (mały)            | **$0.00 (fakt)** | 🟡 jedna pułapka pojęciowa      | **✅ 2026-08-26** |
 | s04e01 `okoeditor`         | 3 edycje wpisów + `done`                             | ✅                  | brak  | sesja HTTP + strip HTML         | $0–0.14         | 🟡 milcząca weryfikacja         | 6 (rezerwa) |
 | s05e05 `timetravel`        | maszyna czasu, 3 skoki                               | ✅ (z obejściem BE) | brak  | brak (jeśli backend działa)     | $0–5            | 🔴 bez obejścia najtrudniejsze  | 7 (rezerwa) |
 | s04e02 `windpower`         | harmonogram turbiny w **40 s**                       | ✅ (jedyna droga)   | brak  | async/równoległość              | $0–0.04         | 🔴 „po 8 godzinach poddaję się" | 8 (rezerwa) |
@@ -39,9 +40,9 @@ i nie zostawia niedokończonego stanu, którego potrzebowałby następny.
    uzasadnione użycie LLM (normalizacja polskiej odmiany); poszło **zero LLM za $0.00**,
    bo `transakcje.txt` okazał się gotowym słownikiem form podstawowych. Patrz
    „Co faktycznie zadziałało".
-5. **s05e04 `goingthere`** — ostatnie, bo wymaga najwięcej kodu (parser hintów, SHA1,
-   retry na losowe błędy API). Za to mamy największą przewagę informacyjną w całej
-   dziesiątce: znamy błąd, na którym wykłada się większość uczestników.
+5. ~~**s05e04 `goingthere`**~~ — ✅ 2026-08-26, domyka certyfikat. Przewaga informacyjna
+   faktycznie zadziałała: znany z góry błąd („rakieta rusza się najpierw w pionie")
+   został obsłużony od pierwszej wersji i ani razu nie kosztował rozbicia.
 
 ## Dlaczego pozostałe pięć odpada
 
@@ -88,9 +89,8 @@ i nie zostawia niedokończonego stanu, którego potrzebowałby następny.
 - ✅ **s04e04 — bezprzedmiotowe.** Bloker brzmiał „wybrać model do normalizacji polskiej
   odmiany"; żaden model nie był potrzebny. `transakcje.txt` podaje wszystkie miasta
   i towary w mianowniku, więc odmianę załatwia dopasowanie rdzenia.
-- **s05e04:** dopisać walidację treści odpowiedzi skanera (`core.net.expect_not_html()`) —
-  `/api/frequencyScanner` potrafi zwrócić `502` z pełnym HTML przy statusie sugerującym
-  sukces.
+- ✅ **s05e04 — bloker potwierdzony i zdjęty.** `expect_not_html()` faktycznie potrzebny:
+  zmierzone ~21% wywołań skanera kończy się błędem, część z pełnym HTML-em.
 
 ## Do sprawdzenia empirycznie (zanim uznamy plan za pewny)
 
@@ -114,11 +114,10 @@ Kolejność poniżej to kolejność ryzyka.
 4. **Czy `/timetravel_backend` przyjmuje nasz klucz?** Endpoint odpowiada (400 bez klucza),
    ale nie wiemy, czy `POST` z kluczem faktycznie ustawia PT-A/PT-B/PWR, czy tylko czyta.
    **Test:** `GET ?apikey=…`. Dotyczy rezerwy.
-5. **Czy backendy podglądów oddają więcej niż oficjalne API?** `POST /domatowo_backend.php`
-   i `POST /goingthere_backend` istnieją osobno od `/verify`. W S03 analogiczny plik
-   podglądu oddał legendę mapy taniej niż API. Jeśli `goingthere_backend` zwraca pozycję
-   skały w NASTĘPNEJ kolumnie, cały parser hintów staje się zbędny. **Test:** jeden `POST`
-   z kluczem, przed pisaniem parsera.
+5. ✅ **ROZSTRZYGNIĘTE 2026-08-26 — nie oddają.** `/goingthere_backend` istnieje
+   (odpowiada `401` z własnym kodem `-1000`, nie `404`), ale odrzuca **każdą** formę
+   klucza: `apikey` i `key`, w JSON, w query i w nagłówkach. Skrót omijający parser
+   wskazówek nie istnieje — parser trzeba było napisać.
 6. ✅ **ROZSTRZYGNIĘTE 2026-08-24 — jest paginowana, i to nie jedyna pułapka.**
    Każda odpowiedź niesie `totalTableRows` i `limit`; dla `destinations` to `40` przy
    `limit: 30`, więc naiwny `select *` gubi 10 wierszy. `limit 30 offset 30` działa.
@@ -231,3 +230,56 @@ nie `files` — przez co przez chwilę wyglądało, że batch nic nie utworzył,
 wszystko.
 
 Operacyjne szczegóły przeniesione do `tasks/s04e04_filesystem/AGENTS.md`.
+
+### s05e04 `goingthere` — ✅ 2026-08-26, `{FLG:FINALDESTINATION}`, $0.00
+
+**Domyka certyfikat.** 11 ruchów, 4 rozbrojone radary, zero rozbić — ale dopiero po
+czterech nieudanych przebiegach, z których każdy kosztował tylko czas.
+
+Przewaga informacyjna z intelu **faktycznie zadziałała**: znany z góry błąd („rakieta
+rusza się najpierw w pionie, więc skała we własnej kolumnie blokuje docelowy wiersz")
+został obsłużony od pierwszej wersji i ani razu nie kosztował rozbicia. To jedyne zadanie
+z piątki, gdzie intel dał realną przewagę techniczną, a nie tylko oszczędność czasu.
+
+Trzy rzeczy, których nie było w żadnym źródle:
+
+- **Zagłuszanie psuje NAZWY PÓL skanera, nie tylko składnię.** Treść zadania ostrzega, że
+  odpowiedź „może nie być zdatna do parsowania"; realnie `frequency` przychodzi jako
+  `frEpUeNCy`, a `detectionCode` jako `beTeCTi0NC0be`. Rozwiązaniem jest dopasowanie
+  **rozmyte** progiem podobieństwa, nie tablica konkretnych podmian — inaczej zmiana
+  sposobu psucia wywraca odczyt.
+- **Nawet komunikat „czysto" jest zniekształcony** — `"Its cleeear"`, nie `"It's clear!"`.
+  Dosłowne porównanie uznaje to za namierzenie.
+- **Sformułowanie wskazówki jest stałe dla pozycji.** Pięć zapytań pod rząd zwróciło to
+  samo zdanie, więc ponawianie nie jest drogą do rozpoznania trudnej wskazówki. Wariant
+  językowy zmienia się między grami — stąd zbieranie próbek przez wielokrotny `start`
+  okazało się jedyną sensowną metodą budowy słownika.
+
+Metoda, która to odblokowała: **przelot uczący**. `start` → wskazówka → ruch → odczyt
+prawdziwej pozycji skały z `currentColumn`. Rozbicie jest darmowe, więc każda iteracja
+daje pewną parę „zdanie ↔ kierunek". Czternaście takich par stało się zbiorem testowym
+i jednocześnie specyfikacją parsera.
+
+Operacyjne szczegóły przeniesione do `tasks/s05e04_goingthere/AGENTS.md`.
+
+---
+
+## Retrospektywa końcówki (2026-08-26)
+
+Piątka `s05e03 → s04e05 → s04e03 → s04e04 → s05e04` poszła w zaplanowanej kolejności,
+**każde zadanie za pierwszym udanym zgłoszeniem, wszystkie bez LLM, łączny koszt $0.00**
+wobec szacowanych $0.15–0.31. Cztery wnioski warte przeniesienia na przyszłe sezony:
+
+1. **Ranking pomylił się co do metody dokładnie raz** (`s04e04`: zakładał hybrydę z LLM).
+   Powód pomyłki jest pouczający — cała społeczność traktowała zadanie jako lingwistyczne,
+   a w danych leżał gotowy słownik form podstawowych. Zanim uzna się zadanie za językowe,
+   warto sprawdzić, czy któryś plik wejściowy nie jest de facto słownikiem.
+2. **Sonda przed kodem opłaciła się w każdym zadaniu.** Wszystkie decydujące fakty
+   (limit zwiadowców, małe litery w nazwach plików, klucz `entries`, pułapka
+   `callHelicopter`, zepsute nazwy pól skanera) wyszły z sondowania, nie z materiałów.
+3. **Niezależny wzorzec bije testy jednostkowe.** Porównanie parsera `s04e04` z plikiem
+   z `s04e05` wyłapało trzy ciche usterki, których żaden test pisany „pod siebie" by nie
+   złapał.
+4. **Nierozpoznane dane mają podnosić wyjątek, nie wybierać wartość domyślną.** Ta zasada
+   uratowała `s04e03` (nieznane komunikaty `inspect`) i `s05e04` (nieczytelne wskazówki);
+   w obu wypadkach cicha porażka wyglądałaby jak poprawny wynik.

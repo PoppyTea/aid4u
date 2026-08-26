@@ -12,8 +12,10 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 > przywraca go nieddestrukcyjnie. Kurs ma nadal służyć edukacyjnie po zdobyciu 20 flag —
 > to świadomy, tymczasowy kompromis, nie zmiana celu.
 
-> 🏁 **KOŃCÓWKA — 19 flag głównych, 1 do certyfikatu** (deadline 01.09.2026).
-> Stan piątki, kolejność ataku i uzasadnienia: `tasks/s04/requirements/season.md`.
+> 🏁 **CERTYFIKAT ZDOBYTY 2026-08-26 — 20/25 flag głównych**, sześć dni przed terminem.
+> Cała końcówka (`s05e03 → s04e05 → s04e03 → s04e04 → s05e04`) poszła w zaplanowanej
+> kolejności, każde zadanie za pierwszym podejściem, **zero LLM i $0.00 łącznie**.
+> Retrospektywa: `tasks/s04/requirements/season.md`.
 >
 > ✅ **SEZON 3 ZAMKNIĘTY (5/5)** — 15 flag w `.flags.json`
 > (`s01e03_proxy`, żywy serwer/ngrok, strukturalnie nie przechodzi przez
