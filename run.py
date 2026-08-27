@@ -3,7 +3,7 @@ CLI dla aid4u — główny punkt wejścia.
 
 Komendy:
     uv run run.py solve s01e01              # rozwiąż jedno zadanie
-    uv run run.py solve s01e01 --dry-run    # pokaż odpowiedź bez wysyłania
+    uv run run.py solve s01e01 --dry-run    # wstrzymaj punktowane zgłoszenie
     uv run run.py solve s01e01 --model gemini-2.5-flash
     uv run run.py solve s01e01 --model gemini-3.5-flash --premium  # płatny tier Gemini
     uv run run.py list                      # lista dostępnych zadań
@@ -163,7 +163,14 @@ def solve(
             "<PROVIDER>_MODELS w adapterze."
         ),
     ),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Pokaż odpowiedź bez wysyłania do hubu"),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help=(
+            "Wstrzymaj punktowane zgłoszenie. UWAGA: w zadaniach protokołowych reszta "
+            "protokołu wykonuje się na żywo — patrz dry_run_mode w core/AGENTS.md."
+        ),
+    ),
     max_seconds: float | None = typer.Option(
         None,
         "--max-seconds",

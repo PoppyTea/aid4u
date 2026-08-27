@@ -39,6 +39,36 @@ _OUTPUTS_DIR = Path("data/run-history")
 # Registry: nazwa zadania → klasa
 TASK_REGISTRY: dict[str, type[BaseTask]] = {}
 
+# Co `--dry-run` naprawdę robi w danym zadaniu. Kontrakt istniał wcześniej, ale wyłącznie
+# jako komentarz w `tasks/s02e05_drone/solution.py` — i przez to rozjechał się dwanaście
+# razy: sześć zadań pilnowało `self.dry_run`, siedem nie, a pomoc `run.py` obiecywała
+# wszystkim „pokaż odpowiedź bez wysyłania". Deklaracja jest teraz jawna i sprawdzana
+# testem, bo różnica między tymi trzema przypadkami jest różnicą w skutkach ubocznych,
+# a nie w stylu.
+DRY_RUN_SAFE = "safe"
+"""`solve()` nie dotyka huba, dopóki nie zna odpowiedzi — `--dry-run` niczego nie zmienia."""
+
+DRY_RUN_LIVE = "live"
+"""
+`solve()` MUSI rozmawiać z hubem, żeby policzyć odpowiedź, ale skutki są odwracalne.
+
+Zadania protokołowe (`domatowo`, `filesystem`, `foodwarehouse`, `goingthere`,
+`shellaccess`): odpowiedzi nie da się wyliczyć offline, bo powstaje z odpowiedzi huba.
+`--dry-run` wykonuje więc pełny protokół i wstrzymuje wyłącznie punktowane zgłoszenie.
+Dopuszczalne, bo każde z nich albo ma darmowy `reset`/`start`, albo tylko czyta.
+"""
+
+DRY_RUN_UNSAFE = "unsafe"
+"""
+`solve()` wywołuje skutki NIEODWRACALNE — `--dry-run` jest odmawiany.
+
+Dziś dotyczy `s03e02_firmware`: `editline` i `rm` na żywej maszynie wirtualnej, gdzie
+błędny ruch kończy się banem i przywróceniem VM, a jedyny „reset" (`reboot`) kasuje
+cały postęp i jest świadomie poza allowlistą.
+"""
+
+DRY_RUN_MODES = frozenset({DRY_RUN_SAFE, DRY_RUN_LIVE, DRY_RUN_UNSAFE})
+
 
 def task(name: str, *, hub_name: str | None = None):
     """
@@ -76,6 +106,15 @@ class BaseTask(ABC):
     _task_name: str = ""
     _hub_task_name: str = ""
 
+    dry_run_mode: str = DRY_RUN_SAFE
+    """
+    Co `--dry-run` robi w tym zadaniu — patrz stałe `DRY_RUN_*`.
+
+    Domyślnie `safe`, bo taka jest większość zadań (pobierz dane → policz → zgłoś).
+    Zadanie, którego `solve()` woła hub przed poznaniem odpowiedzi, MUSI to
+    nadpisać; pilnuje tego `tests/core/tasks/test_dry_run_contract.py`.
+    """
+
     def __init__(
         self,
         hub: HubClient,
@@ -105,6 +144,12 @@ class BaseTask(ABC):
         """
         task_name = self._task_name or self.__class__.__name__
         _console.print(f"\n[bold]Running task:[/] [cyan]{task_name}[/]")
+
+        # PRZED `start_run()`: odmowa musi nastąpić zanim cokolwiek zdąży dotknąć huba,
+        # a nie po zbudowaniu grupy procesów i wystartowaniu budżetu.
+        if self.dry_run and not self._announce_dry_run(task_name):
+            return None
+
         start_run(max_seconds=self._max_seconds, max_cost=self._max_cost)
         _console.print(
             "[dim]Kill switch: `bash scripts/panic.sh` (twardy, gwarantowany) albo "
@@ -157,6 +202,46 @@ class BaseTask(ABC):
         finally:
             self._flush_langfuse()
             end_run()
+
+    def _announce_dry_run(self, task_name: str) -> bool:
+        """
+        Mówi, co `--dry-run` naprawdę zrobi w tym zadaniu, i odmawia gdy trzeba.
+
+        Args:
+            task_name: Nazwa zadania, do komunikatu.
+
+        Returns:
+            `True` gdy wolno kontynuować, `False` gdy przebieg ma się nie odbyć.
+
+        Raises:
+            ValueError: Gdy zadanie deklaruje tryb spoza `DRY_RUN_MODES` — literówka
+                w deklaracji cicho zdejmowałaby ochronę, więc kończy się błędem.
+        """
+        if self.dry_run_mode not in DRY_RUN_MODES:
+            raise ValueError(
+                f"{task_name}: nieznany dry_run_mode={self.dry_run_mode!r}; "
+                f"dozwolone: {sorted(DRY_RUN_MODES)}"
+            )
+
+        if self.dry_run_mode == DRY_RUN_SAFE:
+            return True
+
+        if self.dry_run_mode == DRY_RUN_UNSAFE:
+            _console.print(
+                f"[bold red]--dry-run odmówiony dla {task_name}.[/] Rozwiązanie wywołuje "
+                "skutki nieodwracalne po stronie huba, więc próbny przebieg byłby "
+                "przebiegiem prawdziwym. Uruchom bez [bold]--dry-run[/], świadomie."
+            )
+            return False
+
+        # DRY_RUN_LIVE — wykonujemy, ale bez udawania, że to symulacja.
+        _console.print(
+            f"[yellow]--dry-run w {task_name} NIE jest suchym przebiegiem.[/] Odpowiedź "
+            "powstaje z odpowiedzi huba, więc cały protokół wykona się na żywo; "
+            "wstrzymane zostanie wyłącznie punktowane zgłoszenie. Skutki są odwracalne "
+            "(`reset`/`start`)."
+        )
+        return True
 
     @staticmethod
     def _flush_langfuse() -> None:
