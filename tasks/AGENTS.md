@@ -19,8 +19,8 @@ Retrospektywa całej piątki: `s04/requirements/season.md`, sekcja „Co faktycz
 
 **EFFICIENCY MODE aktywny** (od 2026-07-29) — priorytet: szybkość i skuteczność
 zdobywania flag do 20/25, nie proces. Learning-mode wersja tego pliku:
-`.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENTS.md`
-(przywróć przez `aid4u/scripts/learning_mode_on_off.py on`).
+`../.help/learning-vs-efficiency/learning-mode/aid4u/tasks/AGENTS.md`
+(przywróć przez `scripts/learning_mode_on_off.py on`).
 
 ## Ownership
 - Each folder (`sXXeYY`) acts as a domain for a specific task.
@@ -50,7 +50,7 @@ zdobywania flag do 20/25, nie proces. Learning-mode wersja tego pliku:
   Child DOX Index) opisujący kontrakt endpointu, zmienne środowiskowe i workflow.
 
 ## Work Guidance
-- Zanim zaprojektujesz rozwiązanie od zera: sprawdź `4th-devs/` (fork
+- Zanim zaprojektujesz rozwiązanie od zera: sprawdź `../4th-devs/` (fork
   `github.com/PoppyTea/4th-devs-fork`) pod kątem gotowego demo dla tego tematu — przepisz
   na Python zamiast wymyślać ponownie.
 - Sposób rozwiązania nie musi być zgodny z założeniem zadania — liczy się flaga.
@@ -83,7 +83,8 @@ zdobywania flag do 20/25, nie proces. Learning-mode wersja tego pliku:
 
 ## Child DOX Index
 
-**Sezon 1** (solved): `s01e02_findhim/` (live geocoding, no static input) ·
+**Sezon 1** (solved, 5/5): `s01e01_people/` (filtr kandydatów po `data/main_story/people.csv`,
+pierwsze zadanie kursu) · `s01e02_findhim/` (live geocoding, no static input) ·
 `s01e03_proxy/` (live-server exception, see Local Contracts) ·
 `s01e04_sendit/` (deterministic, no LLM) · `s01e05_railway/` (multi-step hub protocol, no LLM).
 
@@ -93,7 +94,7 @@ zdobywania flag do 20/25, nie proces. Learning-mode wersja tego pliku:
 `s02e04_mailbox/` (agentowa `run_agent_loop()`, wymaga `claude-sonnet-5`) ·
 `s02e05_drone/` (zero LLM, deterministic map analysis).
 
-**Sezon 3** (w toku): `s03/` — readiness report + per-episode checklists
+**Sezon 3** (solved, 5/5): `s03/` — readiness report + per-episode checklists
 (`requirements/`), nie kontener implementacji, patrz Ownership. `s03e01_evaluation/`
 — **solved** (2026-08-16) — flaga `{FLG:BUGGYSYSTEM}`, za pierwszej próby, pierwsza
 flaga sezonu. Reguły anomalii zwijają się do `data_bad ∨ note_failure`; LLM
@@ -120,7 +121,7 @@ zero LLM (najłatwiejszy epizod sezonu — LLM praktycznie zbędny wobec czysteg
 algorytmu). Format API (`answer: {"command": ...}`, kolizja sprawdzana PO
 przesunięciu bloków) ustalony empirycznie sondą — lekcja go nie podaje.
 
-**Sezon 5** (w toku): `s05e03_shellaccess/` — **solved** (2026-08-24) — flaga
+**Sezon 5** (2 z 5 — tylko epizody wybrane do certyfikatu): `s05e03_shellaccess/` — **solved** (2026-08-24) — flaga
 `{FLG:HUGEFILE}`, za pierwszym podejściem, koszt $0.00, cztery zapytania do huba.
 Pierwsze zadanie końcówki i zarazem sonda: **hub NIE gatuje S05 na wcześniejszych
 epizodach** — rozstrzyga to punkt #1 z listy „Do sprawdzenia empirycznie"
@@ -130,7 +131,7 @@ klucze o RÓŻNYCH nazwach po obu stronach), a zdarzenie pasujące do frazy jest
 Transportem jest `/verify`, nie `/api/shell`; hub zwraca **400 przy zbyt dużym stdout**,
 więc zapytania muszą być wąskie z założenia.
 
-**Sezon 4** (w toku): `s04e05_foodwarehouse/` — **solved** (2026-08-24) — flaga
+**Sezon 4** (3 z 5 — tylko epizody wybrane do certyfikatu): `s04e05_foodwarehouse/` — **solved** (2026-08-24) — flaga
 `{FLG:JUSTEATIT}`, za pierwszym podejściem, koszt $0.00, zero LLM. Osiem zamówień
 (po jednym na miasto), każde z podpisem SHA1 na danych użytkownika roli „Obsługa
 transportów". Dwie pułapki, obie cichej klasy — dają zamówienie mniej, nie wyjątek:
@@ -178,3 +179,8 @@ odrzucone twardo `s05e02` (TTS+STT, niedeterministyczny walidator, $5/12 h) i `s
 (vision/OCR — wymaga AID-59, „Odłożone"). Żadne z 10 zadań nie potrzebuje publicznego
 endpointu ani embeddingów. Szczegóły i lista rzeczy do sprawdzenia empirycznie:
 `s04/requirements/season.md`.
+
+**Poza sezonami:** `common/` — kod współdzielony przez ≥2 zadania (`class.py`, `const.py`,
+`function.py`, `prompts.py`; próg wejścia opisany w docstringu każdego z nich) plus
+`information-gathering/` (preprocessing komentarzy kursu przed wrzuceniem do NotebookLM).
+Jednorazowy helper zostaje w folderze swojego zadania.

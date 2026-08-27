@@ -5,19 +5,23 @@
 # NOT IN THIS FILE:
 #   - Task pipeline → strategy/tasks/workflow.md
 #   - LLM model selection → strategy/llm-selection.md
-#   - ADHD rescue patterns → strategy/tasks/adhd-workflow.md
-#   - Task decomposition format → strategy/tasks/task-decomposition.md
+#   - Task decomposition format → skill `004-cat-decompose-task` (nie ma pliku w repo)
 
 ---
 
 ## Installed Skills — Complete Roster
 
+Zweryfikowane 2026-08-27 wobec 4127 zainstalowanych skilli
+(`~/.claude/plugins`, `~/.claude/skills`, `~/.agents/skills`). Skille żyją **poza repo**,
+więc ta tabela starzeje się bez ostrzeżenia — przed oparciem się na wpisie sprawdź, czy
+skill nadal istnieje.
+
 | Layer | Skill | Triggers on |
 |---|---|---|
-| ADHD | `adhd-daily-planner` | session start, daily rhythm, energy check |
-| ADHD | `project-management-guru-adhd` | blocked >15 min, overwhelmed, hyperfocus |
+| ADHD | — | *(`adhd-daily-planner` i `project-management-guru-adhd` **nie są
+  zainstalowane**; wejście do rytmu dnia idzie dziś przez `task focus`)* |
 | ADHD | `neurodivergent-visual-org` | visual map, decision tree, freeze state |
-| TaskWarrior | `001-jeremy` | **every** task add / start / done / depends |
+| TaskWarrior | `001-papaver-tw-integration` | **every** task add / start / done / depends |
 | Planning | `writing-plans` | new task, plan, decompose, "how to approach" |
 | Dev | `test-driven-development` | write test, TDD, new feature, failing test |
 | Dev | `systematic-debugging` | bug, root cause, error after 2+ attempts |
@@ -29,9 +33,9 @@
 | Context | `context-optimization` | KV-cache, masking, budget, compaction |
 | Context | `memory-systems` | RAG, vector store, NotebookLM, retrieval |
 | Context | `multi-agent-patterns` | orchestrator, subagent, swarm, parallel |
-| Retro | `agent-retro` | end of session, retrospective (**CC only**) |
-| Custom | `aid4u-learning-mode` | lesson done, make notes, Feynman **[TO BUILD]** |
-| Custom | `aid4u-neurowarrior-progress` | /progress, score, how many tasks **[TO BUILD]** |
+| Retro | — | *(`agent-retro` nie jest zainstalowany; brak następcy)* |
+| Custom | `aid4u-learning-mode` | lesson done, make notes, Feynman |
+| Custom | `aid4u-neurowarrior-progress` | /progress, score, how many tasks |
 
 ---
 
@@ -47,10 +51,10 @@
 | Agent trace available (Langfuse) | `langfuse-observability` → `promptfoo-evals` | re-running blindly |
 | Context usage >60% | `context-optimization` | clearing context manually |
 | NotebookLM retrieval needed | `memory-systems` | guessing from stale context |
-| Overwhelmed, can't start | `adhd-daily-planner` → `task focus` | opening task list |
-| Blocked >15 min same issue | `project-management-guru-adhd` | pushing through |
+| Overwhelmed, can't start | `task focus` (planner nie jest zainstalowany) | opening task list |
+| Blocked >15 min same issue | `systematic-debugging` (guru nie jest zainstalowany) | pushing through |
 | Lesson completed | `aid4u-learning-mode` | skipping notes |
-| End of CC session | `agent-retro` (CC only) | — |
+| End of CC session | — | *(brak zainstalowanego skilla retro)* |
 
 ---
 
@@ -96,10 +100,10 @@ Never diagnose both simultaneously. Pick one, fix it, re-test.
 
 | Conflict | Winner | Rule |
 |---|---|---|
-| `001-jeremy` vs `productivity:task-management` | `001-jeremy` | TW is single source of truth |
+| `001-papaver-tw-integration` vs `productivity:task-management` | `001-papaver-tw-integration` | TW is single source of truth |
 | `memory-systems` vs `productivity:memory-management` | `memory-systems` | for agent/RAG state; productivity for personal notes |
 | `systematic-debugging` vs `engineering:debug` | `systematic-debugging` | superpowers enforces root cause first |
 | `test-driven-development` vs `engineering:testing-strategy` | `test-driven-development` | superpowers deletes premature code |
-| `agent-retro` vs `adhd-daily-planner` (evening) | **both, in sequence** | retro → feeds planner's evening ritual |
+
 | `verification-before-completion` vs `test-driven-development` | **both, in sequence** | TDD = write tests; VBC = gate before done claim |
-| `context-optimization` vs baseline `context-compression` | `context-optimization` | baseline removed; muratcankoylan is superset |
+| `context-optimization` vs `context-compression` | `context-optimization` | oba zainstalowane; muratcankoylan is superset |

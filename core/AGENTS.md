@@ -12,6 +12,13 @@ Contains the architectural heart of the system: LLM clients, task management bas
 - `core/runtime/`: Kill switch (process-group panic, graceful stop, run budgets).
 - `core/net.py`: Content validation for anything fetched over the network
   (soft-404 detection) — independent of `HubClient`, not hub-specific.
+- `core/server/`: `ServerFactory` — FastAPI z Logfire, `/health` i obsługą błędów
+  z pudełka, dla zadań wymagających publicznego endpointu (`s01e03_proxy`,
+  `s03e04_negotiations`).
+- `core/config.py`: singleton konfiguracji — klucze z keyringu, fallback do `.env`,
+  walidacja tierów modeli. Kontrakt sekretów: `strategy/secrets-management.md`.
+- `core/secrets.py`: operacje na keyringu (set/get/delete/rotate) — komplementarny do
+  `config.py`, który sekrety tylko czyta.
 
 ## Local Contracts
 - **Model identifiers are validated at construction, against the adapter's roster.**

@@ -104,6 +104,9 @@ free tier 2026-08-16. Rutyna `review-ingest` reaguje wyłącznie na **ukończone
   harmonogramie, który nikt nie czyta.
 
 ## Verification
+- Spójność kaskady DOX sprawdza `scripts/check_dox.py` (ścieżki w backtikach, Child DOX
+  Index w obie strony, kolejność sekcji, duplikaty bloków ≥20 linii). Rutyna `cleanup`
+  uruchamia go i traktuje każdy ERROR jak finding; WARN opisuje stan zostawiony świadomie.
 - Katalog rutyn w tym dokumencie musi zgadzać się z wyjściem `list_scheduled_tasks` (MCP
   `scheduled-tasks`) — rozjazd (rutyna w jednym, nie w drugim) jest tym, co sprawdza
   rutyna `cleanup`.
