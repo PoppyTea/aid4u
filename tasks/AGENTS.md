@@ -42,6 +42,11 @@ zdobywania flag do 20/25, nie proces. Learning-mode wersja tego pliku:
   pomoże zweryfikować coś nietrywialnego. Weryfikacja przez realne uruchomienie
   (`--dry-run` / hub) liczy się bardziej niż testy jednostkowe.
 - Task execution via `uv run run.py solve sXXeYY`.
+- **Każde zadanie deklaruje, co robi u niego `--dry-run`** (`dry_run_mode`, patrz
+  `core/AGENTS.md`). Wolno wołać hub w `solve()` — trzeba to zadeklarować. Zadania
+  protokołowe (`s04e03`, `s04e04`, `s04e05`, `s05e03`, `s05e04`, `s01e02`) są `live`:
+  odpowiedzi nie da się policzyć offline, więc `--dry-run` wykonuje protokół na żywo
+  i wstrzymuje wyłącznie zgłoszenie. `s03e02_firmware` jest `unsafe` i odmawia.
 - **Wyjątek — zadania oparte na żywym serwerze (np. `s01e03_proxy`):** jeśli zadanie
   rozwiązuje się przez publicznie wystawiony endpoint (bot Centrali prowadzi rozmowę
   na żywo), a nie przez pojedyncze `fetch→solve→submit`, `solve()` MUSI jawnie

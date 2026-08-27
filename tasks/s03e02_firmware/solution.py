@@ -32,7 +32,7 @@ import re
 
 from rich.console import Console
 
-from core.tasks import BaseTask, task
+from core.tasks import DRY_RUN_UNSAFE, BaseTask, task
 from tasks.s03e02_firmware.shell import BINARY, SETTINGS, ShellTool, remove_lock
 
 _console = Console()
@@ -76,6 +76,16 @@ def _fix_settings(shell: ShellTool) -> None:
 @task("s03e02", hub_name="firmware")
 class FirmwareTask(BaseTask):
     """Naprawia konfigurację, odblokowuje binarkę i wyciąga kod `ECCS-…`."""
+
+    dry_run_mode = DRY_RUN_UNSAFE
+    """
+    `--dry-run` jest tu odmawiany, bo nie istnieje wersja tego przebiegu bez skutków.
+
+    `solve()` edytuje `settings.ini` przez `editline` i kasuje plik blokady na ŻYWEJ
+    maszynie wirtualnej. Dotknięcie ścieżki z `.gitignore` kończy się banem i
+    przywróceniem VM, a jedyny mechanizm przywracania (`reboot`) kasuje cały postęp
+    i jest świadomie poza allowlistą — patrz `AGENTS.md` tego folderu.
+    """
 
     def solve(self, data: None) -> dict[str, str]:
         """

@@ -41,7 +41,7 @@ import logfire
 from rich.console import Console
 
 from core.net import expect_binary
-from core.tasks import BaseTask, task
+from core.tasks import DRY_RUN_LIVE, BaseTask, task
 from tasks.s04e04_filesystem.notes import Ledger, build_operations, read_notes
 
 _console = Console()
@@ -52,6 +52,13 @@ NOTES_URL = "dane/natan_notes.zip"
 @task("s04e04", hub_name="filesystem")
 class FilesystemTask(BaseTask):
     """Buduje `/miasta`, `/osoby` i `/towary` jednym `batch_mode`, potem oddaje `done`."""
+
+    dry_run_mode = DRY_RUN_LIVE
+    """
+    Odpowiedź powstaje z odpowiedzi huba, więc `--dry-run` wykonuje pełny protokół
+    na żywo i wstrzymuje wyłącznie punktowane zgłoszenie. Odwracalne: `reset` czyści cały wirtualny
+    system plików.
+    """
 
     def fetch_data(self) -> Ledger:
         """

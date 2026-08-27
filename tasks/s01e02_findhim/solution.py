@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field, computed_field, field_validator
 from core.hub import HubClient
 from core.llm import LLMMessage
 from core.llm.types import Tool
-from core.tasks import BaseTask, task
+from core.tasks import DRY_RUN_LIVE, BaseTask, task
 from tasks.common.const import REFERENCE_YEAR
 from tasks.s01e02_findhim.prompts import SYSTEM_AGENT_FINDHIM, USER_AGENT_FINDHIM
 
@@ -480,6 +480,13 @@ def _extract_json(text: str) -> dict:
 
 @task("s01e02", hub_name="findhim")
 class FindhimTask(BaseTask):
+
+    dry_run_mode = DRY_RUN_LIVE
+    """
+    Pętla agentowa odpytuje `/api/location` i `/api/accesslevel` w trakcie `solve()`,
+    więc `--dry-run` wykonuje je na żywo. Skutków ubocznych nie ma (czysty odczyt),
+    ale przebieg realnie zużywa tokeny LLM.
+    """
     def fetch_data(self) -> bytes:
         return self.cache.get_or_fetch(
             "findhim_locations.json",
