@@ -96,12 +96,17 @@ Temat + opcjonalny kontekst → produkuje materiały do nauki.
 - Planujesz co agent ma zrobić w kodzie → `cat-decompose-task`
 - Overlap jest możliwy (np. task "napisz testy" może wewnętrznie używać cat-decompose)
 
-**Plik strategii:** `strategy/workflow.md` (do stworzenia) powinien zawierać
-pełniejszy opis przepływu z obu perspektyw.
+**Plik strategii:** opis przepływu z obu perspektyw nie został napisany.
+`strategy/workflow.md` nigdy nie powstał; najbliższy istniejący dokument to
+`strategy/tasks/workflow.md` (pipeline zadania, nie dwie perspektywy).
 
 ---
 
 ## Feed: difficult-topics.md
+
+> ⚠️ **Plik nie istnieje w tym repo.** Poniższy opis dotyczy artefaktu produkowanego przez
+> skille trybu nauki w skarbcu Obsidian, nie pliku w `aid4u/`. Zostawiony jako kontrakt
+> formatu — gdyby feed miał kiedyś zamieszkać w repo, ma wyglądać właśnie tak.
 
 **Status:** Aktywny (zapisywanie) — konsumpcja częściowo backlog (faza [e]).
 
@@ -111,9 +116,10 @@ pełniejszy opis przepływu z obu perspektyw.
 - `aid4u-learning-mode` — przy delegacji `+difficult`, dostaje kontekst z pliku
 - `neurodivergent-visual-org` — informacja o energochłonnych tematach (Spoon Theory)
 
-**Konsumuje (backlog — faza [e]):**
-- `aid4u-review-capture` — generowanie materiałów powtórkowych
-- `aid4u-quiz` — seed dla pytań o wysokim priorytecie
+**Konsumuje (backlog — faza [e]):** nic. Oba planowane odbiorniki
+(`aid4u-review-capture`, `aid4u-quiz`) **nie istnieją** — nie ma ich ani w
+`~/.agents/skills/`, ani w `~/.claude/skills/`, ani w `.claude/skills/` repo
+(sprawdzone 2026-08-27). Zostawione jako nazwy zamierzeń, nie jako integracje.
 
 **Nagłówek w pliku:**
 ```markdown
@@ -131,18 +137,15 @@ Format definiuje sam szablon: `strategy/templates/cheatsheet.md` — jego frontm
 
 ---
 
-## Backlog — nierozstrzygnięte
+## Pomysły przeniesione do Linear
 
-**TDD cycle tags (punkt 4 z sesji):**
-- TW tagi: +tdd_red / +tdd_green / +tdd_refactor (cascade przez hook)
-- Eskalacja do `~/.config/tdd-signal` dla apletów na pasku
-- Hook `on-modify.tdd-cycle` (Python, analogia do friction-tracker) — łatwe
-- Aplet desktopowy — osobny projekt
+Ta sekcja była lokalnym rejestrem długu, czego zabrania
+`strategy/rules/cleanup/r18-no-local-issue-registers.md` (severity ERROR). Treść żyje
+teraz w Linear, tu zostają kotwice:
 
-**cat-decompose-task feed dla difficult-topics:**
-- Idea: im wyższy score tematu, tym prostsze koncepcyjnie rozwiązania proponuje agent
-- Wymaga zdefiniowania `cat-decompose-task` → do dyskusji po kursie
+- tagi cyklu TDD w TaskWarrior + eskalacja sygnału `(→ AID-134)`
+- generalizacja gamifikacji poza aid4u `(→ AID-135)`
 
-**Generalizacja gamifikacji poza aid4u:**
-- `project_tag` jako parametr konfiguracyjny w `gamification.toml`
-- Multi-project player state (osobne `.game/` per projekt)
+Trzeci pomysł — feed `cat-decompose-task` sterowany trudnością tematu — **nie dostał
+ticketu świadomie**: zależy od `difficult-topics.md`, którego w repo nie ma, i od fazy [e]
+protokołu nauki. Wraca do rozważenia dopiero, gdy tryb nauki realnie ruszy.

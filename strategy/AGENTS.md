@@ -47,6 +47,10 @@ Repozytorium dokumentacji strategicznej, protokołów uczenia się, standardów 
 3. Usuń nieaktualne notatki historyczne.
 
 ## Child DOX Index
+
+- `.issues.md`: wygenerowany wskaźnik do Linear dla `area/strategy` — **nie edytować
+  ręcznie**, odtwarza go rutyna `cleanup` (patrz `issue-tracking.md`). Jedyny plik stanu
+  dopuszczony w tym folderze; wyjątek od reguły „zero stanu" wyżej.
 - `./skills` - Rejestr skilli.
 - `./tasks` - Definicje workflow zadań.
 - `./templates` - Szablony projektowe — jedyny dom szablonów w repo, plik = szablon.
@@ -66,7 +70,6 @@ Repozytorium dokumentacji strategicznej, protokołów uczenia się, standardów 
 - `./open-decisions.md` - Pytania rozstrzygalne międzysezonowo, bez miejsca w roadmapie
   konkretnego sezonu (np. self-hosted kontra cloud Langfuse).
 - `./demo-processing-workflow.md` - Workflow przetwarzania demo/przykładów kursu.
-- `./efficiency-mode` - Materiały trybu efficiency mode.
 - `./llm-selection.md` - Strategia wyboru/eskalacji/tier modeli LLM. **Nie zawiera
   identyfikatorów modeli** — te żyją w rosterach `core/llm/adapters/`; scalone z dawnym
   `llm-models.md` 2026-08-23.

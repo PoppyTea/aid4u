@@ -78,9 +78,10 @@ Gemini (free → premium)     ← OSOBNA ścieżka, nie stopień tej drabiny
 ```
 
 **OpenAI — poza podstawową drabiną od 28.07.2026.** Adapter i klucz zostają, ale to nie jest
-domyślny stopień pośredni. **OpenRouter** — adapter niezaimplementowany, jedyny `TODO`
-w kodzie `(→ AID-61)`; `factory.py` ma gotową gałąź prefiksu, więc rozszerzenie będzie
-lokalne.
+domyślny stopień pośredni. **OpenRouter** — adapter **istnieje**
+(`core/llm/adapters/openrouter.py`, dziedziczy po `OpenAIAdapter`), `factory.py` go tworzy
+na prefiksie `openrouter/`, a `core/config.py` wystawia klucz. Brakuje wyłącznie **rostera
+modeli**, więc walidacja identyfikatora tej gałęzi nie obejmuje `(→ AID-61)`.
 
 ---
 
@@ -93,8 +94,8 @@ Te wskazówki są empirią z cudzych przebiegów, opłaconą cudzymi tokenami; d
 heurystyką na wypadek, gdy takiej empirii nie ma. Dopiero gdy rekomendacja zawiedzie,
 wracasz do normalnej eskalacji.
 
-Gdzie szukać: `tasks/sXX/requirements/source/community-intel.md` i `doc/community_notes.md`
-w folderze zadania.
+Gdzie szukać: `tasks/sXX/requirements/source/community-intel.md` oraz
+`tasks/sXXeYY_nazwa/doc/community_notes.md` w folderze zadania.
 
 ## Kiedy eskalować model
 
@@ -181,7 +182,7 @@ GEMINI_API_KEY           # tier free — projekt Google Cloud BEZ billingu
 GEMINI_API_KEY_PREMIUM   # tier premium  — osobny projekt Z billingiem, wymagany przy --premium
 OPENAI_API_KEY
 ANTHROPIC_API_KEY
-# OPENROUTER_API_KEY     # kod jeszcze nie istnieje (→ AID-61)
+OPENROUTER_API_KEY       # adapter działa; bez rostera modeli (→ AID-61)
 ```
 
 ## Gdzie w kodzie żyją domyślne wartości

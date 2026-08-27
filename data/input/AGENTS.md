@@ -61,3 +61,16 @@ Owned by the course task(s) that consume each subfolder. One subfolder per
   before writing (the hub returns HTTP 200 with error text instead of a real
   404 for a bad binary-file URL — confirmed empirically on the wrong map URL
   this task's own `AGENTS.md` originally guessed).
+- `s03e01_evaluation/`: `sensors.zip` — paczka odczytów sensorów do klasyfikacji anomalii.
+- `s03e03_reactor/`: sześć migawek `probe-0N-*.json` z sondowania API — format odpowiedzi
+  ustalony empirycznie, bo lekcja go nie podaje.
+- `s03e04_negotiations/`: `cities.csv`, `connections.csv`, `items.csv` — katalog, po którym
+  odpytuje agent Centrali przez nasze dwa narzędzia HTTP.
+- `s03e05_savethem/`: `books.json`, `maps.json`, `tools.json`, `wehicles.json` (literówka
+  w nazwie jest po stronie huba — nie poprawiać, kod ją odwzorowuje).
+- `s04e04_filesystem/`: `natan_notes.zip` — **tylko archiwum jest w repo**; rozpakowane
+  `.txt` wycina globalne `*.txt` z `.gitignore`, więc testy czytają z zipa
+  (`zipfile.ZipFile(...).read(...)`, nie `open()`) — rozpakowane pliki są lokalne
+  i nie da się na nich oprzeć na świeżym klonie.
+- `s04e05_foodwarehouse/`: `food4cities.json` (677 B) — zapotrzebowanie ośmiu miast; służy
+  też jako niezależny wzorzec w testach `s04e04`.

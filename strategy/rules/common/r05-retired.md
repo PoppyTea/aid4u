@@ -16,7 +16,8 @@ bezpośrednio na `main`, nie na gałąź funkcjonalną — chyba że najbliższy
 zawiera jawne odstępstwo.
 
 Powód emerytury: reguła była konsekwentnie odrzucana przy recenzji (PR #46, PR #21) —
-własna adnotacja historyczna w `.claude/review-rules.md` żądała jawnej decyzji: "albo
+własna adnotacja historyczna w `.claude/review-rules.md` (plik już nie istnieje)
+żądała jawnej decyzji: "albo
 dopisz odstępstwo do root `AGENTS.md` i usuń tę regułę, albo zostaw ją jako Opcjonalne".
 Wybrano pierwsze. Intencja żyje dalej jako **commit-routing** w root `AGENTS.md`, sekcja
 User Preferences: kod (`.py`) przez PR, wszystko non-code prosto na `main`, z lokalnym

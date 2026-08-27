@@ -13,8 +13,8 @@ Mapowanie prefixów (router):
     claude-*                      → AnthropicAdapter
     gemini-*                      → GeminiAdapter
     gpt-* / o1-* / o3-* / o4-*   → OpenAIAdapter
-    openrouter/*                  → OpenRouterAdapter (bez rostera — adapter niezaimplementowany,
-                                    patrz AID-61; walidacja modelu go nie dotyczy)
+    openrouter/*                  → OpenRouterAdapter (działa; brak rostera modeli,
+                                    patrz AID-61, więc walidacja ID go nie obejmuje)
 
 Tier (tylko Gemini):
     Free i paid tier Gemini API są związane z osobnymi projektami Google Cloud
