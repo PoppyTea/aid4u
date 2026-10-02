@@ -45,3 +45,6 @@ task (matching its `tasks/` folder name, e.g. `s01e02_findhim/`).
   during `solve()`. Ground truth for calibrating vision/prompts later, if
   `LLMClient` ever gains image support (see `core/AGENTS.md`) — a no-LLM
   baseline to compare against, not just a one-off answer.
+- `s03e01_evaluation/`: `phrase_labels-claude-haiku-4-5-20251001.json` — etykiety fraz
+  notatek nadane przez LLM, zachowane jako materiał porównawczy dla przyszłych modeli
+  (`data/AGENTS.md` opisuje ten plik, ale indeks go dotąd nie wymieniał).

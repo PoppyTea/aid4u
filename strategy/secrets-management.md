@@ -1,11 +1,5 @@
 # Strategia Zarządzania Sekretami — aid4u
 
-> **Status:** Living Document | v1.1.0
-> **Ścieżka docelowa w repo:** `aid4u/strategy/secrets-management.md`
-> **Ostatnia aktualizacja:** 2026-08-16
-
----
-
 ## 🔐 Filozofia "Keyring First"
 
 W projekcie `aid4u` bezpieczeństwo kluczy API jest priorytetem. Stosujemy podejście, w którym sekrety nigdy nie powinny znajdować się w plikach tekstowych na dysku w formie jawnej, jeśli jest dostępna alternatywa systemowa.
@@ -50,7 +44,7 @@ Poniższa lista definiuje klucze uznawane za "standardowe" w systemie `SecretsMa
 | `APIKEY` | Główny klucz API projektu aid4u |
 | `ANTHROPIC_API_KEY` | Klucz do modeli Claude (Anthropic) |
 | `OPENAI_API_KEY` | Klucz do modeli GPT (OpenAI) |
-| `GEMINI_API_KEY` | Klucz do modeli Gemini (Google) — tier **standard** (darmowy) |
+| `GEMINI_API_KEY` | Klucz do modeli Gemini (Google) — tier **free** (darmowy) |
 | `GEMINI_API_KEY_PREMIUM` | Klucz do modeli Gemini (Google) — tier **premium** (płatny) |
 | `LANGFUSE_PUBLIC_KEY` | Klucz publiczny do obserwacji Langfuse |
 | `LANGFUSE_SECRET_KEY` | Klucz prywatny do obserwacji Langfuse |
@@ -68,7 +62,7 @@ obu tierów naraz. Dlatego dla Gemini istnieją **dwa** osobne klucze
 (`GEMINI_API_KEY` / `GEMINI_API_KEY_PREMIUM`), a nie jeden z przełącznikiem.
 
 Wybór, który klucz zostanie użyty, odbywa się **wyłącznie** w
-`core/llm/factory.py` (parametr `tier`, domyślnie `"standard"`) —
+`core/llm/factory.py` (parametr `tier`, domyślnie `"free"`) —
 `GeminiAdapter` o tierach nic nie wie i nie powinien. CLI: `run.py solve ... --premium`.
 Szczegóły strategii eskalacji: `strategy/llm-selection.md`.
 

@@ -26,7 +26,7 @@ Uruchomienie właściwe:
 from __future__ import annotations
 
 from core.hub import HubClient
-from core.tasks import BaseTask, task
+from core.tasks import DRY_RUN_SAFE, BaseTask, task
 
 _RUN_INSTRUCTIONS = (
     "s01e03 nie rozwiązuje się przez `run.py solve` — uruchom serwer "
@@ -46,5 +46,12 @@ def register_with_hub(hub: HubClient, url: str, session_id: str) -> dict:
 
 @task("s01e03", hub_name="proxy")
 class ProxyTask(BaseTask):
+
+    dry_run_mode = DRY_RUN_SAFE
+    """
+    Deklaracja jawna, choć zgodna z domyślną: `solve()` zawsze rzuca (zadanie oparte
+    na żywym serwerze), a wywołania huba w `tools.py` obsługują rozmowę bota Centrali,
+    nie ścieżkę `run.py solve`.
+    """
     def solve(self, data: None) -> str:
         raise RuntimeError(_RUN_INSTRUCTIONS)
