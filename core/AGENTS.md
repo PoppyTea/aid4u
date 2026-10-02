@@ -172,6 +172,22 @@ Contains the architectural heart of the system: LLM clients, task management bas
   - Any caller that wraps a tool executor's exceptions (as `run_agent_loop` does) MUST
     re-raise `AbortRun` specifically, not swallow it into a generic error string — it's
     a kill signal, not a tool failure.
+- **`--dry-run` has three meanings, and every task declares which one applies.**
+  `BaseTask.dry_run_mode` ∈ `{safe, live, unsafe}` (`core/tasks/base.py`), enforced in
+  `run()` **before** `start_run()` so a refusal happens before anything can touch the hub.
+  - `safe` — `solve()` does not call the hub before it knows the answer. The default.
+  - `live` — `solve()` MUST talk to the hub to compute the answer at all, and the effects
+    are reversible (`reset`/`start`, or read-only). `--dry-run` runs the full protocol and
+    withholds only the scored submission; the run prints that this is not a simulation.
+  - `unsafe` — effects are irreversible, so `--dry-run` is **refused**. Today only
+    `s03e02_firmware` (`editline`/`rm` on a live VM; a wrong move means a ban and a VM
+    restore, and the only reset — `reboot` — wipes all progress).
+  - The contract used to exist only as a comment inside `tasks/s02e05_drone/solution.py`,
+    and drifted twelve times before anyone noticed (AID-132): six tasks guarded
+    `self.dry_run`, seven did not, and `run.py` promised all of them "answer without
+    sending". `tests/core/tasks/test_dry_run_contract.py` now fails any task that calls
+    the hub on the `solve()` path while leaving `dry_run_mode` at its inherited default —
+    it does not police behaviour, only that a decision was made.
 - Both `Config._from_keyring()` and `SecretsManager.get()`/`list()` MUST read the
   system keyring only through `core.secrets._keyring_get_with_timeout()`, never
   `keyring.get_password()` directly. Headless/VPS environments without a D-Bus
