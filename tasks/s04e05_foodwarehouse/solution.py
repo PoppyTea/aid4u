@@ -33,7 +33,7 @@ import logfire
 from rich.console import Console
 
 from core.net import expect_not_html
-from core.tasks import BaseTask, task
+from core.tasks import DRY_RUN_LIVE, BaseTask, task
 from tasks.s04e05_foodwarehouse.warehouse import Warehouse, WarehouseError
 
 _console = Console()
@@ -52,6 +52,13 @@ class OrderPreparationError(RuntimeError):
 @task("s04e05", hub_name="foodwarehouse")
 class FoodWarehouseTask(BaseTask):
     """Tworzy po jednym zamówieniu na miasto i zwraca wywołanie `done` jako odpowiedź."""
+
+    dry_run_mode = DRY_RUN_LIVE
+    """
+    Odpowiedź powstaje z odpowiedzi huba, więc `--dry-run` wykonuje pełny protokół
+    na żywo i wstrzymuje wyłącznie punktowane zgłoszenie. Odwracalne: `reset` przywraca zaszczepione
+    zamówienia.
+    """
 
     def fetch_data(self) -> dict[str, dict[str, int]]:
         """

@@ -41,3 +41,8 @@ bash scripts/panic.sh
 Repo jest prowadzone w konwencji **DOX** — `AGENTS.md` w każdym istotnym katalogu jest
 wiążącym kontraktem dla swojego poddrzewa. Zacznij od `AGENTS.md` w korzeniu i schodź
 w dół do katalogu, który zamierzasz zmienić.
+
+
+#### === Supported by ===
+
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/PoppyTea/aid4u?utm_source=oss&utm_medium=github&utm_campaign=PoppyTea%2Faid4u&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
