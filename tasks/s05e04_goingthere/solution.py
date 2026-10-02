@@ -45,7 +45,7 @@ from rich.markup import escape
 from core.config import get_config
 from core.net import expect_not_html
 from core.runtime import check_abort
-from core.tasks import BaseTask, task
+from core.tasks import DRY_RUN_LIVE, BaseTask, task
 from tasks.s05e04_goingthere.rocket import (
     COLUMNS,
     MOVE_OFFSETS,
@@ -83,6 +83,13 @@ class MissionFailed(RuntimeError):
 @task("s05e04", hub_name="goingthere")
 class GoingThereTask(BaseTask):
     """Prowadzi rakietę przez 11 ruchów i oddaje ostatni jako odpowiedź zadania."""
+
+    dry_run_mode = DRY_RUN_LIVE
+    """
+    Odpowiedź powstaje z odpowiedzi huba, więc `--dry-run` wykonuje pełny protokół
+    na żywo i wstrzymuje wyłącznie punktowane zgłoszenie. Odwracalne: `start` losuje nową mapę i
+    zeruje stan gry.
+    """
 
     def solve(self, data: None) -> dict[str, str]:
         """

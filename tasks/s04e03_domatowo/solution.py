@@ -37,7 +37,7 @@ from rich.console import Console
 from rich.markup import escape
 
 from core.runtime import check_abort
-from core.tasks import BaseTask, task
+from core.tasks import DRY_RUN_LIVE, BaseTask, task
 from tasks.s04e03_domatowo.city import (
     ROAD_TILE,
     TARGET_TILE,
@@ -71,6 +71,13 @@ class MissionFailed(RuntimeError):
 @task("s04e03", hub_name="domatowo")
 class DomatowoTask(BaseTask):
     """Deterministyczne przeszukanie najwyższych bloków i wezwanie śmigłowca."""
+
+    dry_run_mode = DRY_RUN_LIVE
+    """
+    Odpowiedź powstaje z odpowiedzi huba, więc `--dry-run` wykonuje pełny protokół
+    na żywo i wstrzymuje wyłącznie punktowane zgłoszenie. Odwracalne: `reset` na
+    starcie przywraca planszę i punkty akcji.
+    """
 
     _unreadable: int = 0
     """Liczba wpisów logu, których nie dało się jednoznacznie zaklasyfikować."""

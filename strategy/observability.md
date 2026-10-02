@@ -82,7 +82,7 @@ w Langfuse. (…) największa wartość i tak wiąże się z możliwością łat
 stanu."* **Nie** pobieramy promptów z Langfuse w runtime — kod jest jedynym źródłem
 prawdy, Langfuse jest tylko rejestrem do porównywania.
 
-Mechanizm (wzorzec `4th-devs/03_01_observability/src/core/tracing/prompts.ts`,
+Mechanizm (wzorzec `../4th-devs/03_01_observability/src/core/tracing/prompts.ts`,
 przepisany na Python — reguła „4th-devs najpierw"):
 
 1. prompt w kodzie zadania (`tasks/sXXeYY_*/prompts.py`) — jedyne źródło prawdy,
