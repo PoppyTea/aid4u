@@ -38,7 +38,7 @@ import httpx
 from rich.console import Console
 
 from core.hub import HubClient
-from core.tasks import BaseTask, task
+from core.tasks import DRY_RUN_SAFE, BaseTask, task
 from tasks.s03e04_negotiations import secrets_probe
 
 _console = Console()
@@ -156,6 +156,12 @@ def poll_for_secret(hub: HubClient, *, attempts: int = 10, delay: int = 20) -> s
 @task("s03e04", hub_name="negotiations")
 class NegotiationsTask(BaseTask):
     """Zadanie z żywym serwerem — `solve()` celowo odmawia automatycznego przebiegu."""
+
+    dry_run_mode = DRY_RUN_SAFE
+    """
+    Deklaracja jawna, choć zgodna z domyślną: `solve()` zawsze rzuca, a rejestracja
+    narzędzi w hubie żyje w `main()` — poza ścieżką `run.py solve`.
+    """
 
     def solve(self, data: None) -> str:
         """Zawsze rzuca — patrz docstring modułu i `tasks/AGENTS.md`."""

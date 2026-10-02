@@ -96,3 +96,5 @@ markdown", z lokalnym odstępstwem dozwolonym w `AGENTS.md` dziecka.
 - `./contract-audit/` - Meta-reguły audytu całorepo (r16, r17).
 - `./cleanup/` - Reguły higieny repo i egzekwowania Linear-jako-jedynego-rejestru (r18-r20).
 - `./coderabbit-ingest/` - Polityka triage'u CodeRabbit → Linear (r21, r22).
+- `proposed-rules-2026-08-18.md` - Kwarantanna propozycji reguł czekających na akceptację;
+  **nie jest egzekwowana** — nic tu nie obowiązuje, dopóki nie trafi do podfolderu jako `rNN`.

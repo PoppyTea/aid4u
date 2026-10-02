@@ -39,7 +39,7 @@ from rich.console import Console
 from rich.markup import escape
 
 from core.runtime import check_command
-from core.tasks import BaseTask, task
+from core.tasks import DRY_RUN_LIVE, BaseTask, task
 from tasks.s05e03_shellaccess.archive import ArchiveShell
 
 _console = Console()
@@ -77,6 +77,13 @@ class ArchiveLookupError(RuntimeError):
 @task("s05e03", hub_name="shellaccess")
 class ShellAccessTask(BaseTask):
     """Zdalny grep po archiwum czasu; odpowiedź wypisywana `echo`-em na stdout serwera."""
+
+    dry_run_mode = DRY_RUN_LIVE
+    """
+    Odpowiedź powstaje z odpowiedzi huba, więc `--dry-run` wykonuje pełny protokół
+    na żywo i wstrzymuje wyłącznie punktowane zgłoszenie. Odwracalne: polecenia są wyłącznie
+    odczytem (`grep`, `ls`, `cat`).
+    """
 
     def solve(self, data: None) -> dict[str, str]:
         """
