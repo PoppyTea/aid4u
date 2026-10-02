@@ -1,7 +1,9 @@
 # Strategia implementacji zadań (aid4u)
 
 ## Proces dekompozycji (Task Decomposition)
-Szczegóły techniczne (format JSON, atrybuty, adnotacje): `strategy/tasks/task-decomposition.md`
+Formatu (JSON, atrybuty, adnotacje) **nie ma w repo** — mieszka w skillu
+`004-cat-decompose-task`. Wcześniejszy wskaźnik był martwy — plik
+`strategy/tasks/task-decomposition.md` nigdy nie powstał.
 
 ---
 
@@ -21,17 +23,26 @@ tasks/sXXeYY_nazwa/
 
 ## Flow — AID4U Task Pipeline
 
-Każde zadanie kursowe przechodzi przez ten pipeline. Nie pomijaj kroków.
+> ⚠️ **Ten pipeline należy do trybu nauki i jest dziś ZAWIESZONY.** Obowiązujący tryb
+> deklaruje baner w `AGENTS.md` w korzeniu repo; w efficiency mode TDD i planowanie przed
+> kodem nie są wymogiem wstępnym. Sprawdź tryb, zanim potraktujesz poniższe kroki jako
+> obowiązkowe — reguła „bliższy dokument rządzi szczegółami" nie znosi decyzji o trybie.
+
+W trybie nauki: każde zadanie kursowe przechodzi przez ten pipeline, nie pomijaj kroków.
 
 ### 0. PLAN `writing-plans`
-- Wygeneruj plan implementacji → `docs/superpowers/plans/sXXeYY.md`
-- Każdy checkbox z planu → task TW via `001-jeremy` z `depends` na poprzedni krok
+- Wygeneruj plan implementacji → `doc/superpowers/plans/sXXeYY.md`
+  (⚠️ `/doc/` w korzeniu repo jest w `.gitignore`, więc plan zapisany tam NIE trafi do
+  gita — traktuj go jako notatnik sesji, nie jako trwały zapis decyzji)
+- Każdy checkbox z planu → task TW via `001-papaver-tw-integration` z `depends` na poprzedni krok
 - Plan jest recovery mechanism — gdy sesja umrze, wiesz gdzie wróć
 
 ### 1. Research — `sXXeYY_001`
 - Przeczytaj plik lekcji `sXXeYY_*.md`
 - Zrozum wejście/wyjście zadania
-- `uv run run.py solve sXXeYY --dry-run` — sprawdź co hub.ag3nts.org zwraca
+- `uv run run.py solve sXXeYY --dry-run` — dla zadań `dry_run_mode = "safe"` pokazuje
+  odpowiedź bez wysyłki; dla zadań protokołowych odmawia startu. Kontrakt:
+  `core/AGENTS.md`, sekcja o `dry_run`
 - DONE gdy: wiesz co przychodzi i co musisz odesłać
 
 ### 2. TDD — `sXXeYY_002/003` → skill: `test-driven-development`
@@ -48,7 +59,7 @@ Każde zadanie kursowe przechodzi przez ten pipeline. Nie pomijaj kroków.
 - DONE gdy: `uv run pytest` → wszystkie testy zielone
 
 ### 4. Weryfikacja — `sXXeYY_005/006` → skill: `verification-before-completion`
-- `uv run run.py solve sXXeYY --dry-run`
+- `uv run run.py solve sXXeYY --dry-run` (jeśli zadanie go wspiera — patrz krok 1)
 - Skill `verification-before-completion` musi potwierdzić output zanim ogłosisz done
 
 **Debugging branch — wybierz dokładnie jedno:**
@@ -61,7 +72,7 @@ Szczegóły: `strategy/skills/skill-activation.md` → sekcja "Critical Decision
 ### 5. Submission — `sXXeYY_007`
 - `uv run run.py solve sXXeYY` — wysyłka do hub.ag3nts.org
 - Potwierdź flagę `{FLG:XXXXX}` w output lub `uv run run.py status`
-- `001-jeremy`: task done **dopiero po** potwierdzeniu flagi — nie wcześniej
+- `001-papaver-tw-integration`: task done **dopiero po** potwierdzeniu flagi — nie wcześniej
 
 ---
 

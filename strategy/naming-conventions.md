@@ -52,14 +52,13 @@ infer file type from style alone — no need to read the file to know what it is
 
 ```
 strategy/
-├── llm-selection.md          ← was: strategy_llm_v1.0.0.md
-├── naming-conventions.md     ← this file
+├── llm-selection.md          ← kebab-case, bez wersji w nazwie
+├── naming-conventions.md     ← ten plik
 ├── tasks/
-│   ├── workflow.md           ← unchanged (single word, fine)
-│   ├── task-decomposition.md ← was: strategy_task_decomposition_v1_0_0.md
-│   └── adhd-workflow.md      ← was: adhd_workflow_tw.md
+│   └── workflow.md           ← jedno słowo też jest kebab-case
 └── skills/
-    └── skill-activation.md   ← new file
+    ├── skill-activation.md
+    └── skill-contracts.md
 ```
 
 ---
@@ -115,23 +114,7 @@ agent_docs/          ❌
 | `SKILL.md` | `UPPERCASE` | Agent Skills open standard — do not rename |
 | `.claude/settings.json` | lowercase | Tool config — do not rename |
 | `CLAUDE_*.md` | `UPPERCASE_kebab` | CLAUDE.md imports via `@` — use sparingly |
-| `pyrightconfig.json` | lowercase | Tool config — do not rename |
-
----
-
-## Migration Table (current → new)
-
-Files to rename when convenient (not blocking — do alongside next edit of each file):
-
-| Current name | New name | Location |
-|---|---|---|
-| `strategy_llm_v1.0.0.md` | `llm-selection.md` | `strategy/` |
-| `strategy_task_decomposition_v1_0_0.md` | `task-decomposition.md` | `strategy/tasks/` |
-| `adhd_workflow_tw.md` | `adhd-workflow.md` | `strategy/tasks/` |
-| `models-reference.md` | scalone w `llm-selection.md` (2026-08-23) | `strategy/` |
-| `llm-strategy.md` | `llm-selection.md` | `strategy/` (merge with above) |
-
-> Update all `@` imports in `CLAUDE.md` after each rename.
+| `pyrefly.toml`, `pyproject.toml` | lowercase | Tool config — do not rename |
 
 ---
 
