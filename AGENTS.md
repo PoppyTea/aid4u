@@ -1,14 +1,16 @@
 # Projekt AI_Devs 4 (aid4u)
 
-Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w plikach docelowych.
+## Purpose
 
----
+Rozwiązania zadań kursu AI_Devs 4 wraz z własną infrastrukturą do ich uruchamiania
+(`core/`). Ten plik jest korzeniem kaskady DOX: trzyma reguły obowiązujące w całym repo
+i wskazuje, gdzie mieszkają szczegóły — sam ich nie powtarza.
 
 > ⚡ **TRYB: EFFICIENCY MODE** (od 2026-07-29) — priorytet to WYŁĄCZNIE szybkość i skuteczność
 > zdobywania flag, aż do 20/25. Część edukacyjna świadomie zeszła na drugi plan. Sposób
 > rozwiązania NIE MUSI być zgodny z założeniem/duchem zadania — liczy się EFEKT, nie droga.
 > Stary tryb (nauka, TDD-first, pełne planowanie przed kodem) jest schowany, nie usunięty —
-> `.help/learning-vs-efficiency/learning-mode/` + `aid4u/scripts/learning_mode_on_off.py on`
+> `../.help/learning-vs-efficiency/learning-mode/` + `scripts/learning_mode_on_off.py on`
 > przywraca go nieddestrukcyjnie. Kurs ma nadal służyć edukacyjnie po zdobyciu 20 flag —
 > to świadomy, tymczasowy kompromis, nie zmiana celu.
 
@@ -16,29 +18,54 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 > Cała końcówka (`s05e03 → s04e05 → s04e03 → s04e04 → s05e04`) poszła w zaplanowanej
 > kolejności, każde zadanie za pierwszym podejściem, **zero LLM i $0.00 łącznie**.
 > Retrospektywa: `tasks/s04/requirements/season.md`.
->
-> ✅ **SEZON 3 ZAMKNIĘTY (5/5)** — 15 flag w `.flags.json`
-> (`s01e03_proxy`, żywy serwer/ngrok, strukturalnie nie przechodzi przez
-> `solve()→submit()`, więc jego flaga nigdy nie trafia do pliku; cecha tego typu
-> zadania, nie błąd). **s03e01 zaliczone (2026-08-16)** — `{FLG:BUGGYSYSTEM}`,
-> pierwsza flaga sezonu. **s03e03 zaliczone (2026-08-17)** — `{FLG:INSTALLED}`,
-> druga flaga sezonu, deterministyczny BFS zero-LLM, 9 ruchów, koszt $0.00.
-> **s03e04 zaliczone (2026-08-19)** — `{FLG:WINDFARM}`, trzecia flaga sezonu, zero
-> LLM, koszt $0.00; agent Centrali zmieścił się w 6 z 10 kroków.
-> **s03e05 zaliczone (2026-08-20)** — `{FLG:INTACTCITY}` za pierwszym podejściem, plus
-> **pierwsza zdobyta flaga sekretna** `{FLG:ABEAVER}`; zero LLM, koszt $0.00.
-> **s03e02 zaliczone (2026-08-20)** — `{FLG:CANTTOUCHTHIS}`, zero LLM, koszt $0.00;
-> domyka sezon. Cztery osłony (AID-62/46/18/47) zbudowane przed nim faktycznie
-> zadziałały: bramka odrzuciła `rm`, `reboot` i wszystkie ścieżki z `.gitignore`.
-> Kolejność
-> ataku `e01 → e03 → e04 → e05 → e02` (e02 na końcu świadomie) i stack własny
-> `core/llm/` (nie `pydantic-ai`) — jedno i drugie rozstrzygnięte w
-> `tasks/s03/requirements/core-stack-decision.md`. Szczegóły i checklisty: `tasks/s03/requirements/`.
 
-## 🚀 Szybki start (efficiency mode)
+Przebieg sezonów 1–5, pułapki i koszty per epizod: `tasks/AGENTS.md` — nie tutaj.
+
+## Ownership
+
+Korzeń odpowiada za: reguły ogólnorepozytoryjne (poniżej), preferencje użytkownika,
+indeks dokumentów i kaskadę DOX. Wszystko, co dotyczy jednego podsystemu, należy do
+`AGENTS.md` tego podsystemu — patrz Child DOX Index.
+
+Cztery śledzone katalogi są poza kaskadą i nie mają własnego `AGENTS.md`:
+- `scripts/` — narzędzia ogólnorepozytoryjne. `scripts/panic.sh` podlega kontraktowi
+  kill switcha z `core/AGENTS.md` mimo braku lokalnego kontraktu.
+- `.claude/` — konfiguracja Claude Code (MCP, uprawnienia, skille).
+- `.game/` — stan gamifikacji; **czytany wyłącznie spoza repo** (skill
+  `aid4u-neurowarrior-progress`, hook `on-modify.friction-tracker`), więc repo nie ma
+  jak zweryfikować, czy format jeszcze pasuje (AID-135).
+- `doc/` — jeden plan `doc/superpowers/plans/s01e02.md`, wpisany do gita przed dodaniem
+  `/doc/` do `.gitignore`; nowe pliki tam już nie trafią.
+
+## Local Contracts
+
+1. **Efekt > droga.** Sposób rozwiązania nie musi być zgodny z założeniem zadania — liczy
+   się zdobyta flaga. TDD/planowanie nie są zabronione, ale nie są już wymogiem wstępnym.
+2. **4th-devs najpierw.** Przed projektowaniem nowego rozwiązania sprawdź `../4th-devs/`
+   (fork, TypeScript) — gotowe demo do przepisania na Python bije projektowanie od zera.
+3. **LLMClient:** Nie używaj bezpośrednio SDK — tylko `LLMClient` z `core/llm/`.
+4. **Observability:** `setup_observability()` zawsze jako pierwsza linia skryptu.
+5. **Rate Limit:** `503` → użyj `hub.get_data(path, tolerate_503=True)`.
+6. **Single focus:** Jeden task TW naraz. `task focus` — nie `task list`, nie pamięć.
+7. **Sekretne flagi — poza priorytetem do 20 flag.** Ten sam format `{FLG:...}` co flagi
+   główne, ale zdobywane ukrytą drogą; odblokowują dodatkowe materiały edukacyjne.
+   Zapisujemy je w `.flags.json` pod kluczem `sXXeYY_secret`, a `run.py status`
+   **egzekwuje** ten podział (`partition_flags()`) — inaczej zaniżałyby „ile jeszcze
+   do 20", czyli liczbę, według której planujemy sezon. Ta sama liczba ma drugą,
+   przeciwną korektę (`count_solved()` + `SOLVED_OUTSIDE_FLAGS_FILE` w `run.py`):
+   zadania zaliczone poza ścieżką `solve()→submit()` — dziś tylko `s01e03_proxy`,
+   żywy serwer — nie mają jak zapisać flagi do pliku, więc trzeba je doliczyć jawnie.
+   Sekret zaniżał, brak wpisu zawyżał; obie strony pokrywa `tests/test_run_status.py`.
+   Mianownik postępów to stałe `COURSE_TASK_COUNT = 25`, nie liczba zaimplementowanych
+   zadań. Nie zatrzymuj się na polowanie, jeśli flaga główna jest w zasięgu; jeśli sekret
+   wpada po drodze za darmo — bierzemy, ale nie projektujemy pod niego rozwiązania. **Jak ich szukać: `strategy/secret-flags.md`.**
+
+## Work Guidance
+
+### 🚀 Szybki start (efficiency mode)
 - **Zadanie dnia:** znajdź folder w `/tasks` → `uv run run.py solve sXXeYY`
 - **Nowe zadanie kursowe — PRZED pisaniem czegokolwiek:**
-  1. Sprawdź `4th-devs/` (fork: `github.com/PoppyTea/4th-devs-fork`) — jeśli jest gotowe demo
+  1. Sprawdź `../4th-devs/` (fork: `github.com/PoppyTea/4th-devs-fork`) — jeśli jest gotowe demo
      dla tego tematu, przepisz je na Python zamiast projektować od zera.
   2. Skonsultuj NotebookLM (komentarze kursu + notatnik zadań) — nierzadko ktoś już opisał
      jak przejść zadanie w godzinę-dwie. To pierwsze źródło, nie ostatnie.
@@ -59,10 +86,7 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 - **Observability:** `setup_observability()` musi być zawsze w pierwszej linii skryptu
 - **Nazewnictwo plików:** `strategy/naming-conventions.md` — czytaj przed tworzeniem nowych plików
 
----
-
-## 🗺️ Index
-
+### 🗺️ Index
 | Temat | Plik |
 | :--- | :--- |
 | **Strategia LLM (wybór/eskalacja/tier)** | `strategy/llm-selection.md` |
@@ -75,24 +99,20 @@ Centralny indeks projektu. Ten plik to zbiór wskaźników — szczegóły są w
 | **Śledzenie issues (Linear, jedyne źródło prawdy)** | `strategy/issue-tracking.md` |
 | **Kontrola jakości (rutyny/audyty, katalog)** | `strategy/quality-control.md` |
 
----
-
-## 🧰 Skille — roster (efficiency mode)
-
+### 🧰 Skille — roster (efficiency mode)
 | Skill | Kiedy |
 |---|---|
 | `verification-before-completion` | przed **każdym** `task done` — nawet szybko, sprawdź że faktycznie działa |
 | `systematic-debugging` | bug po 2+ próbach bez skutku |
 | `langfuse-observability` | instrumentacja agenta, trace |
 | `api-testing` | REST, hub.ag3nts.org patterns |
-| `001-jeremy` | **każda** operacja TW bez wyjątku |
+| `001-papaver-tw-integration` | **każda** operacja TW bez wyjątku |
 
-Pełny roster trybu nauki (`writing-plans`, `test-driven-development`, `adhd-daily-planner`
-itd.) jest w zarchiwizowanej wersji tego pliku — patrz baner na górze.
+Pełny roster (z warstwami trybu nauki: `writing-plans`, `test-driven-development`,
+`promptfoo-evals`, warstwa kontekstowa) oraz drzewa decyzyjne przy konflikcie skilli:
+`strategy/skills/skill-activation.md`.
 
----
-
-## 🛠️ Architektura i Stack
+### 🛠️ Architektura i Stack
 - **Python 3.12+**, `uv` jako manager pakietów
 - **Wzorce projektowe:**
   - `Strategy/Adapter` → `core/llm/adapters/`
@@ -100,9 +120,7 @@ itd.) jest w zarchiwizowanej wersji tego pliku — patrz baner na górze.
   - `Registry` → dekorator `@task`
   - `Chain of Responsibility` → `core/llm/middleware.py`
 
----
-
-## ⚙️ Najczęstsze komendy
+### ⚙️ Najczęstsze komendy
 ```bash
 uv sync                          # instalacja środowiska
 uv run run.py solve sXXeYY       # rozwiąż zadanie
@@ -111,30 +129,25 @@ uv run pytest                    # testy jednostkowe
 task focus                       # jedno zadanie — zawsze zaczynaj tutaj
 ```
 
----
+## Verification
 
-## ⚠️ Zasady pracy (efficiency mode)
+```bash
+uv run pytest                       # 909 zielonych — bramka przed PR
+uv run ruff check .                 # zielone — bramka przed PR
+uv run python scripts/check_dox.py  # spójność kaskady AGENTS.md — bramka przed PR
+uv run ruff format --check .        # NIE bramka, patrz niżej
+uv run pyrefly check                # NIE bramka, patrz niżej
+```
 
-1. **Efekt > droga.** Sposób rozwiązania nie musi być zgodny z założeniem zadania — liczy
-   się zdobyta flaga. TDD/planowanie nie są zabronione, ale nie są już wymogiem wstępnym.
-2. **4th-devs najpierw.** Przed projektowaniem nowego rozwiązania sprawdź `4th-devs/`
-   (fork, TypeScript) — gotowe demo do przepisania na Python bije projektowanie od zera.
-3. **LLMClient:** Nie używaj bezpośrednio SDK — tylko `LLMClient` z `core/llm/`.
-4. **Observability:** `setup_observability()` zawsze jako pierwsza linia skryptu.
-5. **Rate Limit:** `503` → użyj `hub.get_data(path, tolerate_503=True)`.
-6. **Single focus:** Jeden task TW naraz. `task focus` — nie `task list`, nie pamięć.
-7. **Sekretne flagi — poza priorytetem do 20 flag.** Ten sam format `{FLG:...}` co flagi
-   główne, ale zdobywane ukrytą drogą; odblokowują dodatkowe materiały edukacyjne.
-   Zapisujemy je w `.flags.json` pod kluczem `sXXeYY_secret`, a `run.py status`
-   **egzekwuje** ten podział (`partition_flags()`) — inaczej zaniżałyby „ile jeszcze
-   do 20", czyli liczbę, według której planujemy sezon. Ta sama liczba ma drugą,
-   przeciwną korektę (`count_solved()` + `SOLVED_OUTSIDE_FLAGS_FILE` w `run.py`):
-   zadania zaliczone poza ścieżką `solve()→submit()` — dziś tylko `s01e03_proxy`,
-   żywy serwer — nie mają jak zapisać flagi do pliku, więc trzeba je doliczyć jawnie.
-   Sekret zaniżał, brak wpisu zawyżał; obie strony pokrywa `tests/test_run_status.py`.
-   Mianownik postępów to stałe `COURSE_TASK_COUNT = 25`, nie liczba zaimplementowanych
-   zadań. Nie zatrzymuj się na polowanie, jeśli flaga główna jest w zasięgu; jeśli sekret
-   wpada po drodze za darmo — bierzemy, ale nie projektujemy pod niego rozwiązania. **Jak ich szukać: `strategy/secret-flags.md`.**
+Dwa ostatnie polecenia **nie są bramkami** i nie przechodzą na `main`:
+`ruff format --check` przeformatowałby 50 plików (repo nigdy nie przeszło pełnego
+formatowania), a `pyrefly` raportuje 5 błędów w kodzie z natury dynamicznym (`importlib`,
+parsowanie odpowiedzi bez schematu). Formatuj i typuj **tylko pliki, które i tak zmieniasz**
+— przelecenie formatera po całości zrobiłoby diff nie do zrecenzowania. Jeśli chcesz je
+zdjąć na czysto, zrób z tego osobne zadanie.
+
+Ostateczną weryfikacją zadania jest flaga z huba, nie zielone testy — patrz
+`tasks/AGENTS.md`.
 
 ## Core Contract
 
@@ -251,4 +264,3 @@ When the user requests a durable behavior change, record it here or in the relev
 - `data/`: Task datasets — static inputs, fetched doc trees (`data/input/`), run outputs.
 - `deploy/`: VPS deployment, systemd units, tunnel scripts.
 - `.issues/`: Historyczne archiwum triage'u sprzed migracji do Linear (2026-08-18) + dom żywych `summaries-4-human/` (narracyjne podsumowania recenzji PR-ów) — dług techniczny sam żyje w Linear, patrz `strategy/issue-tracking.md`.
-- `../misje-poboczne/`: Side missions and specific project artifacts.

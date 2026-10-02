@@ -6,7 +6,8 @@ zapis pod `sXXeYY_secret`) jest kontraktem i żyje w rootowym `AGENTS.md`, zasad
 tutaj jest to, czego kontrakt nie powinien nieść: sposób postępowania i przykłady.
 
 ## Ownership
-Kurs AI_Devs 4. Zdobyte dotąd: `s03e05_secret` = `{FLG:ABEAVER}` (2026-08-20, pierwsza).
+Kurs AI_Devs 4. **Które flagi sekretne są zdobyte, mówi `.flags.json`** (klucze
+`sXXeYY_secret`) i `run.py status` — nie ten plik. Tutaj jest metoda, nie licznik.
 
 ## Czym są
 Ten sam format `{FLG:...}` co flagi główne, ale zdobywane nieoczywistą, ukrytą drogą,
